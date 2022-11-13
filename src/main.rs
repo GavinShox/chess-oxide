@@ -1,6 +1,16 @@
 use std::mem::MaybeUninit;
 use std::mem;
 
+type Pos64 = [Square; 64];
+type Offset = [i32; 8];
+
+const PAWN_OFFSET: Offset = [0, 0, 0, 0, 0, 0, 0, 0];
+const KNIGHT_OFFSET: Offset = [-21, -19, -12, -8, 8, 12, 19, 21];
+const BISHOP_OFFSET: Offset = [-11, -9, 9, 11, 0, 0, 0, 0];
+const ROOK_OFFSET: Offset = [-10, -1, 1, 10, 0, 0, 0, 0];
+const QUEEN_KING_OFFSET: Offset = [-11, -10, -9, -1, 1, 9, 10, 11];
+
+
 pub enum PieceType {
     Pawn,
     Knight,
@@ -9,27 +19,27 @@ pub enum PieceType {
     Queen,
     King
 }
-
+#[derive(PartialEq)]
 pub enum PieceColour {
     White,
     Black
 }
-
 struct Piece {
-    colour: PieceColour,
-    ptype: PieceType
+    pcolour: PieceColour,
+    ptype: PieceType,
 }
-
 enum Square {
     Piece(Piece),
     Empty
 }
 
-struct Board {
-    position: [Square; 64]
+struct Position {
+    side: PieceColour,
+    position: Pos64,
 } 
 
-impl Board {
+impl Position {
+
     const MAILBOX: [i32; 120] = [
         -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
         -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
@@ -45,7 +55,8 @@ impl Board {
         -1, -1, -1, -1, -1, -1, -1, -1, -1, -1
     ];
 
-    const MAILBOX64: [usize; 64] = [
+    // what index a given board position is in the 120 mailbox
+    const MAILBOX64: [i32; 64] = [
         21, 22, 23, 24, 25, 26, 27, 28,
         31, 32, 33, 34, 35, 36, 37, 38,
         41, 42, 43, 44, 45, 46, 47, 48,
@@ -56,7 +67,7 @@ impl Board {
         91, 92, 93, 94, 95, 96, 97, 98
     ];
 
-    // new board with starting position
+    // new board with starting Position
     pub fn new() -> Self {
         let mut pos = {
             let mut pos: [MaybeUninit<Square>; 64] = unsafe {
@@ -68,45 +79,153 @@ impl Board {
             unsafe {mem::transmute::<_, [Square; 64]>(pos)}
         };
 
-        pos[0] = Square::Piece( Piece{colour: PieceColour::Black, ptype: PieceType::Rook} );
-        pos[1] = Square::Piece( Piece{colour: PieceColour::Black, ptype: PieceType::Knight} );
-        pos[2] = Square::Piece( Piece{colour: PieceColour::Black, ptype: PieceType::Bishop} );
-        pos[3] = Square::Piece( Piece{colour: PieceColour::Black, ptype: PieceType::Queen} );
-        pos[4] = Square::Piece( Piece{colour: PieceColour::Black, ptype: PieceType::King} );
-        pos[5] = Square::Piece( Piece{colour: PieceColour::Black, ptype: PieceType::Bishop} );
-        pos[6] = Square::Piece( Piece{colour: PieceColour::Black, ptype: PieceType::Knight} );
-        pos[7] = Square::Piece( Piece{colour: PieceColour::Black, ptype: PieceType::Rook} );
+        pos[0] = Square::Piece( Piece{pcolour: PieceColour::Black, ptype: PieceType::Rook} );
+        pos[1] = Square::Piece( Piece{pcolour: PieceColour::Black, ptype: PieceType::Knight} );
+        pos[2] = Square::Piece( Piece{pcolour: PieceColour::Black, ptype: PieceType::Bishop} );
+        pos[3] = Square::Piece( Piece{pcolour: PieceColour::Black, ptype: PieceType::Queen} );
+        pos[4] = Square::Piece( Piece{pcolour: PieceColour::Black, ptype: PieceType::King} );
+        pos[5] = Square::Piece( Piece{pcolour: PieceColour::Black, ptype: PieceType::Bishop} );
+        pos[6] = Square::Piece( Piece{pcolour: PieceColour::Black, ptype: PieceType::Knight} );
+        pos[7] = Square::Piece( Piece{pcolour: PieceColour::Black, ptype: PieceType::Rook} );
         for i in 8..16 {
-            pos[i] = Square::Piece( Piece{colour: PieceColour::Black, ptype: PieceType::Pawn} );
+            pos[i] = Square::Piece( Piece{pcolour: PieceColour::Black, ptype: PieceType::Pawn} );
         }
         for i in 48..56 {
-            pos[i] = Square::Piece( Piece{colour: PieceColour::White, ptype: PieceType::Pawn} );
+            pos[i] = Square::Piece( Piece{pcolour: PieceColour::White, ptype: PieceType::Pawn} );
         }
-        pos[56] = Square::Piece( Piece{colour: PieceColour::White, ptype: PieceType::Rook} );
-        pos[57] = Square::Piece( Piece{colour: PieceColour::White, ptype: PieceType::Knight} );
-        pos[58] = Square::Piece( Piece{colour: PieceColour::White, ptype: PieceType::Bishop} );
-        pos[59] = Square::Piece( Piece{colour: PieceColour::White, ptype: PieceType::Queen} );
-        pos[60] = Square::Piece( Piece{colour: PieceColour::White, ptype: PieceType::King} );
-        pos[61] = Square::Piece( Piece{colour: PieceColour::White, ptype: PieceType::Bishop} );
-        pos[62] = Square::Piece( Piece{colour: PieceColour::White, ptype: PieceType::Knight} );
-        pos[63] = Square::Piece( Piece{colour: PieceColour::White, ptype: PieceType::Rook} );
+        pos[56] = Square::Piece( Piece{pcolour: PieceColour::White, ptype: PieceType::Rook} );
+        pos[57] = Square::Piece( Piece{pcolour: PieceColour::White, ptype: PieceType::Knight} );
+        pos[58] = Square::Piece( Piece{pcolour: PieceColour::White, ptype: PieceType::Bishop} );
+        pos[59] = Square::Piece( Piece{pcolour: PieceColour::White, ptype: PieceType::Queen} );
+        pos[60] = Square::Piece( Piece{pcolour: PieceColour::White, ptype: PieceType::King} );
+        pos[61] = Square::Piece( Piece{pcolour: PieceColour::White, ptype: PieceType::Bishop} );
+        pos[62] = Square::Piece( Piece{pcolour: PieceColour::White, ptype: PieceType::Knight} );
+        pos[63] = Square::Piece( Piece{pcolour: PieceColour::White, ptype: PieceType::Rook} );
 
-        Self { position: pos }
+        Self { position: pos, side: PieceColour::White }
     }
 
-    fn piece_mailbox_index(piece_pos_index: usize) -> usize {
-        Self::MAILBOX64[piece_pos_index]
+    fn get_offset(piece: &Piece) -> Offset {
+        match piece.ptype {
+            PieceType::Pawn => PAWN_OFFSET,
+            PieceType::Knight => KNIGHT_OFFSET,
+            PieceType::Bishop => BISHOP_OFFSET,
+            PieceType::Rook => ROOK_OFFSET,
+            PieceType::Queen => QUEEN_KING_OFFSET,
+            PieceType::King => QUEEN_KING_OFFSET,
+        }
+    }
+
+    fn movegen(&self, piece: &Piece, i: usize, slide: bool) -> Vec<i32> {
+        let mut move_vec = Vec::with_capacity(64);
+
+        for j in Self::get_offset(piece) {
+
+            // end of offsets
+            if j == 0 { break; }
+
+            let mut slide_idx = j;
+            let mut mv = Self::MAILBOX[(Self::MAILBOX64[i] + j) as usize];
+
+            while mv >= 0 {
+                
+                let mv_square = &self.position[mv as usize];
+                match mv_square {
+                    Square::Piece(mv_square_piece) => {
+                        if piece.pcolour == mv_square_piece.pcolour {
+                            break;
+                        }
+                        else {
+                            move_vec.push(mv);
+                            break;
+                        }
+                    }
+                    Square::Empty => { move_vec.push(mv); }
+                }
+                
+                if slide {
+
+                    let next_idx = (Self::MAILBOX64[i] + slide_idx) as usize;     
+                    mv = Self::MAILBOX[next_idx];
+                    slide_idx += j;
+                    
+                    continue;
+
+                } else { break; }
+            }
+        }
+        move_vec
+    }
+
+    fn get_moves(&self) -> Vec<i32> {
+        let mut move_vec: Vec<i32> = vec![];
+        for (i, s) in self.position.iter().enumerate() {
+            match s {
+                Square::Piece(p) => {
+                    if p.pcolour != PieceColour::Black {
+                        match p.ptype {
+                            PieceType::Pawn => {
+                            }
+                            PieceType::Knight => {
+                                move_vec.extend(self.movegen(p, i, false));
+                            }
+                            PieceType::Bishop => {
+                                move_vec.extend(self.movegen(p, i, true));
+                            }
+                            PieceType::Rook => {
+                                move_vec.extend(self.movegen(p, i, true));
+                            }
+                            PieceType::Queen => {
+
+                            }
+                            PieceType::King => {
+
+                            }
+                        }
+                    }
+                }
+                _ => {continue}
+            }
+        }
+        move_vec
+    }
+
+
+}
+
+fn print_board(board: &Position) {
+    let pawn = " ♙ ";
+    let knight = " ♘ ";
+    let bishop = " ♗ ";
+    let rook = " ♖ ";
+    let queen = " ♕ ";
+    let king = " ♔ ";
+
+
+    for (num, j) in board.position.iter().enumerate() {
+        match j {
+            Square::Piece(p) => {
+                match p.ptype {
+                    PieceType::Pawn => { print!("{}", pawn); },
+                    PieceType::Knight => { print!("{}", knight); },
+                    PieceType::Bishop => { print!("{}", bishop); },
+                    PieceType::Rook => { print!("{}", rook); },
+                    PieceType::Queen => { print!("{}", queen); },
+                    PieceType::King => { print!("{}", king); },
+                }
+            },
+            Square::Empty => { print!(" - "); },
+        }
+        
+        if ((num+1) % 8) == 0 {
+            println!()
+        } 
     }
 }
 
 fn main() {
-    println!("Hello, world!");
-    let board: &Board = &Board::new();
-    let pos1 = &board.position[1];
-
-    match pos1{
-        Square::Empty => println!("Empty"),
-        Square::Piece(p) => println!("There is a piece")
-    }
-    println!("Done");
+    let board = &mut Position::new();
+    let newvec = board.get_moves();
+    print_board(board);
+    println!("{:?}", newvec);
 }
