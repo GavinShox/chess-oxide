@@ -1,6 +1,8 @@
 use std::mem::MaybeUninit;
 use std::mem;
 
+mod mailbox;
+
 type Pos64 = [Square; 64];
 type Offset = [i32; 8];
 
@@ -39,33 +41,6 @@ struct Position {
 } 
 
 impl Position {
-
-    const MAILBOX: [i32; 120] = [
-        -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
-        -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
-        -1,  0,  1,  2,  3,  4,  5,  6,  7, -1,
-        -1,  8,  9, 10, 11, 12, 13, 14, 15, -1,
-        -1, 16, 17, 18, 19, 20, 21, 22, 23, -1,
-        -1, 24, 25, 26, 27, 28, 29, 30, 31, -1,
-        -1, 32, 33, 34, 35, 36, 37, 38, 39, -1,
-        -1, 40, 41, 42, 43, 44, 45, 46, 47, -1,
-        -1, 48, 49, 50, 51, 52, 53, 54, 55, -1,
-        -1, 56, 57, 58, 59, 60, 61, 62, 63, -1,
-        -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
-        -1, -1, -1, -1, -1, -1, -1, -1, -1, -1
-    ];
-
-    // what index a given board position is in the 120 mailbox
-    const MAILBOX64: [i32; 64] = [
-        21, 22, 23, 24, 25, 26, 27, 28,
-        31, 32, 33, 34, 35, 36, 37, 38,
-        41, 42, 43, 44, 45, 46, 47, 48,
-        51, 52, 53, 54, 55, 56, 57, 58,
-        61, 62, 63, 64, 65, 66, 67, 68,
-        71, 72, 73, 74, 75, 76, 77, 78,
-        81, 82, 83, 84, 85, 86, 87, 88,
-        91, 92, 93, 94, 95, 96, 97, 98
-    ];
 
     // new board with starting Position
     pub fn new() -> Self {
@@ -116,7 +91,7 @@ impl Position {
         }
     }
 
-    fn movegen(&self, piece: &Piece, i: usize, slide: bool) -> Vec<i32> {
+    fn movegen(&self, piece: &Piece, i: usize, slide: bool) -> Vec<usize> {
         let mut move_vec = Vec::with_capacity(64);
 
         for j in Self::get_offset(piece) {
@@ -124,8 +99,8 @@ impl Position {
             // end of offsets
             if j == 0 { break; }
 
+            let mut mv = mailbox::next_mailbox_number(i, j);
             let mut slide_idx = j;
-            let mut mv = Self::MAILBOX[(Self::MAILBOX64[i] + j) as usize];
 
             while mv >= 0 {
                 
@@ -136,18 +111,20 @@ impl Position {
                             break;
                         }
                         else {
-                            move_vec.push(mv);
+                            move_vec.push(mv as usize);
                             break;
                         }
                     }
-                    Square::Empty => { move_vec.push(mv); }
+                    Square::Empty => { move_vec.push(mv as usize); }
                 }
                 
                 if slide {
 
-                    let next_idx = (Self::MAILBOX64[i] + slide_idx) as usize;     
-                    mv = Self::MAILBOX[next_idx];
+                    // let next_idx = (Self::MAILBOX64[i] + slide_idx) as usize;     
+                    // mv = Self::MAILBOX[next_idx];
+
                     slide_idx += j;
+                    mv = mailbox::next_mailbox_number(i, slide_idx);
                     
                     continue;
 
@@ -157,8 +134,8 @@ impl Position {
         move_vec
     }
 
-    fn get_moves(&self) -> Vec<i32> {
-        let mut move_vec: Vec<i32> = vec![];
+    fn get_moves(&self) -> Vec<usize> {
+        let mut move_vec: Vec<usize> = vec![];
         for (i, s) in self.position.iter().enumerate() {
             match s {
                 Square::Piece(p) => {
@@ -193,7 +170,7 @@ impl Position {
 
 }
 
-fn print_board(board: &Position) {
+fn print_board(board: &Position, move_vec: &Vec<usize>) {
     let pawn = " ♙ ";
     let knight = " ♘ ";
     let bishop = " ♗ ";
@@ -214,7 +191,13 @@ fn print_board(board: &Position) {
                     PieceType::King => { print!("{}", king); },
                 }
             },
-            Square::Empty => { print!(" - "); },
+            Square::Empty => { 
+                if move_vec.contains(&num) {
+                    print!(" + ");
+                } else {
+                    print!(" - "); 
+                }
+            },
         }
         
         if ((num+1) % 8) == 0 {
@@ -224,8 +207,8 @@ fn print_board(board: &Position) {
 }
 
 fn main() {
-    let board = &mut Position::new();
+    let board = Position::new();
     let newvec = board.get_moves();
-    print_board(board);
-    println!("{:?}", newvec);
+    print_board(&board, &newvec);
+
 }
