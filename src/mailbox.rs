@@ -1,6 +1,3 @@
-type Mailbox = [i32; 120];
-type Mailbox64 = [i32; 64];
-
 // mailbox used to determine if a given move is legal. 
 // e.g. to move to the right, add 1 to the index. in a regular 
 // array of 64 pieces, this allows a piece to move from a8 to h7
@@ -38,5 +35,6 @@ const MAILBOX64: [i32; 64] = [
 // }
 
 pub fn next_mailbox_number(i: usize, j: i32) -> i32 {
+    // MAILBOX64[i] + j should always be a valid index
     MAILBOX[(MAILBOX64[i] + j) as usize]
 }
