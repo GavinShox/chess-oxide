@@ -2,12 +2,12 @@ mod mailbox;
 mod position;
 
 use std::collections::HashMap;
+use std::io;
 
 use position::Position;
 use position::Piece;
 use position::MoveVec;
-use std::time::{Duration, Instant};
-
+use std::time::{ Duration, Instant };
 
 struct Board {
     position: Position,
@@ -15,9 +15,54 @@ struct Board {
 
 // impl Board<'_> {
 //     fn new() -> Self {
-        
+
 //     }
 // }
+
+fn get_all_legal_positions(pos: &Position, depth: i32) -> Vec<Position> {
+    let mut positions = Vec::new();
+    if depth == 0 {
+        return positions;
+    }
+    for (i, mv) in &pos.legal_moves {
+        for j in mv {
+            let p = pos.new_move(*i, *j);
+            positions.extend(get_all_legal_positions(&p, depth - 1));
+            if depth == 1 {
+                positions.push(p);
+            }
+        }
+    }
+    positions
+}
+
+fn move_pos(p: &Position) -> io::Result<()> {
+    let mut pos = p.clone();
+    let stdin = io::stdin();
+    let mut input1 = String::new();
+    let mut input2 = String::new();
+
+    loop {
+        println!("Move from:");
+        stdin.read_line(&mut input1)?;
+        println!("Move to:");
+        stdin.read_line(&mut input2)?;
+
+        let (i, j) = Position::move_as_notation(&input1, &input2);
+        println!("i={}, j={}", &i, &j);
+        if pos.legal_moves.contains_key(&i) && pos.legal_moves.get(&i).unwrap().contains(&j) {
+            pos = pos.new_move(i, j);
+            pos.print_board();
+            println!("{:?}", &pos);
+        } else {
+            println!("Move isn't legal!");
+        }
+        input1.clear();
+        input2.clear();
+    }
+
+    Ok(())
+}
 
 fn main() {
     let mut pos = Position::new_starting();
@@ -32,15 +77,26 @@ fn main() {
     //     _ => {}
     // }
     // todo move king to 31 and see if it allows a legal move
-    let mut movevec: Vec<usize> = Vec::new();
+
     let start = Instant::now();
-    let legal_moves: HashMap<usize, MoveVec> = pos.movegen_legal();
+
+    let positions: Vec<Position> = get_all_legal_positions(&pos, 4);
+
+    // let legal_moves = &pos.legal_moves;
+
+    // for (i, mv) in legal_moves {
+    //     for j in mv {
+    //         let p = pos.new_move(*i, *j);
+    //         positions.push(p);
+    //     }
+    // }
     let duration = start.elapsed();
 
-    for (_, mv) in legal_moves {
-        movevec.extend(mv);
-    }
-    pos.print_board(&movevec);
-    println!("Time elapsed in legal_moves is: {:?}", duration);
-
+    // for p in &positions {
+    //     p.print_board(&Vec::new());
+    //     println!();
+    // }
+    println!("{}", positions.len());
+    println!("Time elapsed is: {:?}", duration);
+    //move_pos(&pos);
 }
