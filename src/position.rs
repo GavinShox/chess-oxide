@@ -170,16 +170,52 @@ impl Position {
         new_pos
     }
 
-    // moves piece at i, to j, without changing side, to regen defend maps to determine if the move is legal
-    // legality here meaning would the move leave your king in check. Actual piece movement is done in movegen
-    fn is_move_legal(&self, i: usize, j: usize) -> bool {
+    fn is_move_legal_clone(&self, i: usize, j: usize) -> bool {
         let mut new_pos = self.clone();
         new_pos.position[j] = new_pos.position[i];
         new_pos.position[i] = Square::Empty;
+        let ep = new_pos.en_passant_capture_mv(i, j);
+        if ep.is_some() {
+            new_pos.position[ep.unwrap()] = Square::Empty;
+        }
         // we only need to gen new defend map
         new_pos.gen_defend_map();
 
         !new_pos.is_in_check()
+        
+    }
+
+    // moves piece at i, to j, without changing side, to regen defend maps to determine if the move is legal
+    // legality here meaning would the move leave your king in check. Actual piece movement is done in movegen
+    fn is_move_legal(&mut self, i: usize, j: usize) -> bool {
+        //let mut new_pos = self.clone();
+        let original_i = self.position[i];
+        let original_j = self.position[j];
+        let ep = self.en_passant_capture_mv(i, j);
+        let mut original_ep = Square::Empty;
+        if ep.is_some() {
+            original_ep = self.position[ep.unwrap()];
+        }
+
+        self.position[j] = self.position[i];
+        self.position[i] = Square::Empty;
+        if ep.is_some() {
+            self.position[ep.unwrap()] = Square::Empty;
+        }
+
+        // we only need to gen new defend map
+        self.gen_defend_map();
+
+        let r = !self.is_in_check();
+        self.position[i] = original_i;
+        self.position[j] = original_j;
+
+        if ep.is_some() {
+            self.position[ep.unwrap()] = original_ep;
+        }
+        
+        r
+    
     }
 
     fn toggle_side(&mut self) -> () {
@@ -220,16 +256,17 @@ impl Position {
 
     pub fn gen_legal_moves(&mut self) -> () {
         self.legal_moves = HashMap::new();
+        let sidemovemap = self.side_move_map.clone();
 
-        for (i, move_vec) in &self.side_move_map {
+        for (i, move_vec) in sidemovemap {
             let mut legal_move_vec: MoveVec = Vec::with_capacity(MOVE_VEC_SIZE);
 
             for mv in move_vec {
-                if self.is_move_legal(*i, *mv) {
-                    legal_move_vec.push(*mv);
+                if self.is_move_legal(i, mv) {
+                    legal_move_vec.push(mv);
                 }
             }
-            self.legal_moves.insert(*i, legal_move_vec);
+            self.legal_moves.insert(i, legal_move_vec);
         }
     }
 
@@ -244,7 +281,6 @@ impl Position {
                         matches!(mv_s, Square::Empty) &&
                         ((i as i32) - (mv as i32)) % ABOVE_BELOW_MODULO != 0
                     {
-                        println!("enpassant!");
                         let offset: i32 = if p.pcolour == PieceColour::White {
                             ABOVE_BELOW_MODULO
                         } else {
