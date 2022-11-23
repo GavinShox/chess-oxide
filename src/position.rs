@@ -1,11 +1,9 @@
-use std::collections::HashMap;
-
 use crate::mailbox;
 
 type Pos64 = Vec<Square>;
 type Offset = [i32; 8];
 
-pub type MoveVec = Vec<usize>;
+pub type MoveVec = Vec<Move>;
 
 const MOVE_VEC_SIZE: usize = 27; // max number of squares a queen can possibly move to is 27
 
@@ -26,6 +24,12 @@ macro_rules! extract_enum_value {
     }
     };
 }
+#[derive(Debug, PartialEq, Clone, Copy)]
+pub struct Move {
+    pub from: usize,
+    pub to: usize,
+    pub capture: usize,
+}
 
 #[derive(Debug, PartialEq, Clone, Copy)]
 pub enum PieceType {
@@ -43,13 +47,13 @@ pub enum PieceColour {
     Black,
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Piece {
     pcolour: PieceColour,
     ptype: PieceType,
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub enum Square {
     Piece(Piece),
     Empty,
@@ -69,9 +73,9 @@ pub struct Position {
     pub position: Pos64,
     side: PieceColour,
     movegen_flags: MovegenFlags,
-    side_move_map: HashMap<usize, MoveVec>, // map of possible moves from "side"
-    defend_map: HashMap<usize, MoveVec>, // map of squares opposite colour is defending
-    pub legal_moves: HashMap<usize, MoveVec>, // legal moves hashmap only generated on function call
+    side_move_map: MoveVec, // map of possible moves from "side"
+    defend_map: Vec<usize>, // map of squares opposite colour is defending
+    pub legal_moves: MoveVec, // legal moves in given position
 }
 // TODO impl hash for position
 impl Position {
@@ -100,8 +104,7 @@ impl Position {
     // new board with starting Position
     pub fn new_starting() -> Self {
         let mut pos: Pos64 = Vec::with_capacity(64);
-        let attack_map: HashMap<usize, MoveVec> = HashMap::new();
-        let defend_map: HashMap<usize, MoveVec> = HashMap::new();
+
         let movegen_flags = MovegenFlags {
             white_castle_short: true,
             white_castle_long: true,
@@ -142,9 +145,9 @@ impl Position {
             position: pos,
             side,
             movegen_flags,
-            side_move_map: attack_map,
-            defend_map,
-            legal_moves: HashMap::new(),
+            side_move_map: Vec::new(),
+            defend_map: Vec::new(),
+            legal_moves: Vec::new(),
         };
         new.gen_maps();
         new.gen_legal_moves();
@@ -152,16 +155,16 @@ impl Position {
         new
     }
 
-    pub fn new_move(&self, i: usize, j: usize) -> Self {
+    pub fn new_move(&self, mv: &Move) -> Self {
         // assert move is legal maybe?
         let mut new_pos = self.clone();
-        new_pos.en_passant_pawn_push(i, j);
-        new_pos.position[j] = new_pos.position[i];
-        new_pos.position[i] = Square::Empty;
-
-        let ep = self.en_passant_capture_mv(i, j);
-        if ep.is_some() {
-            new_pos.position[ep.unwrap()] = Square::Empty;
+        new_pos.set_en_passant_flag(mv);
+        new_pos.set_castle_flags(mv);
+        new_pos.position[mv.to] = new_pos.position[mv.from];
+        new_pos.position[mv.from] = Square::Empty;
+        // en passant, 'to' square is different from the captured square
+        if mv.to != mv.capture {
+            new_pos.position[mv.capture] = Square::Empty;
         }
 
         new_pos.toggle_side();
@@ -170,52 +173,44 @@ impl Position {
         new_pos
     }
 
-    fn is_move_legal_clone(&self, i: usize, j: usize) -> bool {
-        let mut new_pos = self.clone();
-        new_pos.position[j] = new_pos.position[i];
-        new_pos.position[i] = Square::Empty;
-        let ep = new_pos.en_passant_capture_mv(i, j);
-        if ep.is_some() {
-            new_pos.position[ep.unwrap()] = Square::Empty;
-        }
-        // we only need to gen new defend map
-        new_pos.gen_defend_map();
+    // fn is_move_legal_clone(&self, i: usize, j: usize) -> bool {
+    //     let mut new_pos = self.clone();
+    //     new_pos.position[j] = new_pos.position[i];
+    //     new_pos.position[i] = Square::Empty;
+    //     let ep = new_pos.en_passant_capture_mv(i, j);
+    //     if ep.is_some() {
+    //         new_pos.position[ep.unwrap()] = Square::Empty;
+    //     }
+    //     // we only need to gen new defend map
+    //     new_pos.gen_defend_map();
 
-        !new_pos.is_in_check()
-        
-    }
+    //     !new_pos.is_in_check()
+
+    // }
 
     // moves piece at i, to j, without changing side, to regen defend maps to determine if the move is legal
     // legality here meaning would the move leave your king in check. Actual piece movement is done in movegen
-    fn is_move_legal(&mut self, i: usize, j: usize) -> bool {
-        //let mut new_pos = self.clone();
-        let original_i = self.position[i];
-        let original_j = self.position[j];
-        let ep = self.en_passant_capture_mv(i, j);
-        let mut original_ep = Square::Empty;
-        if ep.is_some() {
-            original_ep = self.position[ep.unwrap()];
-        }
+    fn is_move_legal(&mut self, mv: &Move) -> bool {
+        let original_from = self.position[mv.from];
+        let original_to = self.position[mv.to];
+        let original_capture = self.position[mv.capture];
 
-        self.position[j] = self.position[i];
-        self.position[i] = Square::Empty;
-        if ep.is_some() {
-            self.position[ep.unwrap()] = Square::Empty;
+        self.position[mv.to] = self.position[mv.from];
+        self.position[mv.from] = Square::Empty;
+        if mv.to != mv.capture {
+            self.position[mv.capture] = Square::Empty;
         }
 
         // we only need to gen new defend map
         self.gen_defend_map();
 
-        let r = !self.is_in_check();
-        self.position[i] = original_i;
-        self.position[j] = original_j;
+        let result = !self.is_in_check();
 
-        if ep.is_some() {
-            self.position[ep.unwrap()] = original_ep;
-        }
-        
-        r
-    
+        self.position[mv.from] = original_from;
+        self.position[mv.to] = original_to;
+        self.position[mv.capture] = original_capture;
+
+        result
     }
 
     fn toggle_side(&mut self) -> () {
@@ -232,11 +227,9 @@ impl Position {
             match s {
                 Square::Piece(p) => {
                     if matches!(p.ptype, PieceType::King) && p.pcolour == self.side {
-                        for (_, m) in &self.defend_map {
-                            if m.contains(&i) {
-                                in_check = true;
-                                break;
-                            }
+                        if self.defend_map.contains(&i) {
+                            in_check = true;
+                            break;
                         }
                         break;
                     }
@@ -247,62 +240,49 @@ impl Position {
         in_check
     }
 
-    // pub fn get_legal_moves(&mut self) -> &HashMap<usize, MoveVec> {
-    //     if self.legal_moves.is_empty() {
-    //         self.gen_legal_moves();
-    //     }
-    //     &self.legal_moves
-    // }
+    fn gen_legal_moves(&mut self) -> () {
+        self.legal_moves = Vec::new();
 
-    pub fn gen_legal_moves(&mut self) -> () {
-        self.legal_moves = HashMap::new();
-        let sidemovemap = self.side_move_map.clone();
-
-        for (i, move_vec) in sidemovemap {
-            let mut legal_move_vec: MoveVec = Vec::with_capacity(MOVE_VEC_SIZE);
-
-            for mv in move_vec {
-                if self.is_move_legal(i, mv) {
-                    legal_move_vec.push(mv);
-                }
+        for mv in self.side_move_map.clone() {
+            if self.is_move_legal(&mv) {
+                self.legal_moves.push(mv);
             }
-            self.legal_moves.insert(i, legal_move_vec);
         }
     }
 
     // check if a move i -> mv is an en passant capture, if it is return usize of the pawn to be captured
-    fn en_passant_capture_mv(&self, i: usize, mv: usize) -> Option<usize> {
-        let s = &self.position[i];
-        let mv_s = &self.position[mv];
-        match s {
-            Square::Piece(p) => {
-                if p.ptype == PieceType::Pawn {
-                    if
-                        matches!(mv_s, Square::Empty) &&
-                        ((i as i32) - (mv as i32)) % ABOVE_BELOW_MODULO != 0
-                    {
-                        let offset: i32 = if p.pcolour == PieceColour::White {
-                            ABOVE_BELOW_MODULO
-                        } else {
-                            -ABOVE_BELOW_MODULO
-                        };
-                        return Some(((mv as i32) + offset) as usize);
-                    }
-                }
-            }
-            Square::Empty => {}
-        }
-        None
-    }
+    // fn en_passant_capture_mv(&self, i: usize, mv: usize) -> Option<usize> {
+    //     let s = &self.position[i];
+    //     let mv_s = &self.position[mv];
+    //     match s {
+    //         Square::Piece(p) => {
+    //             if p.ptype == PieceType::Pawn {
+    //                 if
+    //                     matches!(mv_s, Square::Empty) &&
+    //                     ((i as i32) - (mv as i32)) % ABOVE_BELOW_MODULO != 0
+    //                 {
+    //                     let offset: i32 = if p.pcolour == PieceColour::White {
+    //                         ABOVE_BELOW_MODULO
+    //                     } else {
+    //                         -ABOVE_BELOW_MODULO
+    //                     };
+    //                     return Some(((mv as i32) + offset) as usize);
+    //                 }
+    //             }
+    //         }
+    //         Square::Empty => {}
+    //     }
+    //     None
+    // }
 
-    // sets enpassant movegen flag to Some(mv), if the move i -> mv is a double pawn push
-    fn en_passant_pawn_push(&mut self, i: usize, mv: usize) -> () {
-        let s = &self.position[i];
+    // sets enpassant movegen flag to Some(idx of pawn that can be captured), if the move is a double pawn push
+    fn set_en_passant_flag(&mut self, mv: &Move) -> () {
+        let s = &self.position[mv.from];
         match s {
             Square::Piece(p) => {
                 if p.ptype == PieceType::Pawn {
-                    if ((i as i32) - (mv as i32)) % 16 == 0 {
-                        self.movegen_flags.en_passant = Some(mv);
+                    if ((mv.from as i32) - (mv.to as i32)) % (ABOVE_BELOW_MODULO * 2) == 0 {
+                        self.movegen_flags.en_passant = Some(mv.to);
                         return;
                     }
                 }
@@ -312,6 +292,48 @@ impl Position {
         self.movegen_flags.en_passant = None;
     }
 
+    fn get_piece(&self, pos: usize) -> Option<&Piece> {
+        match &self.position[pos] {
+            Square::Piece(p) => Some(p),
+            Square::Empty => None
+        }
+    }
+
+    fn set_castle_flags(&mut self, mv: &Move) -> () {
+        // starting positions for castling pieces
+        const QUEEN_BLACK_ROOK: usize = 0;
+        const KING_BLACK_ROOK: usize = 7;
+        const QUEEN_WHITE_ROOK: usize = 56;
+        const KING_WHITE_ROOK: usize = 63;
+        const BLACK_KING: usize = 4;
+        const WHITE_KING: usize = 60;
+
+
+        match mv.from {
+            WHITE_KING => {
+                self.movegen_flags.white_castle_long = false;
+                self.movegen_flags.white_castle_short = false;
+            }
+            BLACK_KING => {
+                self.movegen_flags.black_castle_long = false;
+                self.movegen_flags.black_castle_short = false;
+            }
+            QUEEN_BLACK_ROOK => {
+                self.movegen_flags.black_castle_long = false;
+            }
+            QUEEN_WHITE_ROOK => {
+                self.movegen_flags.white_castle_long = false;
+            }
+            KING_BLACK_ROOK => {
+                self.movegen_flags.black_castle_short = false;
+            }
+            KING_WHITE_ROOK => {
+                self.movegen_flags.white_castle_short = false;
+            }
+            _ => {}
+        }
+    }
+
     // generates moves for the piece at index i
     pub fn movegen(
         &self,
@@ -319,22 +341,24 @@ impl Position {
         i: usize,
         slide: bool,
         defending: bool,
-        _include_pawn_pushes: bool
+        include_pawn_pushes: bool
     ) -> MoveVec {
         let mut move_vec: MoveVec = Vec::with_capacity(MOVE_VEC_SIZE);
 
         // move gen for pawns
         if matches!(piece.ptype, PieceType::Pawn) {
+            // mailbox offset for moving pawns straight up/down
             let white_push_offset = -10;
             let black_push_offset = 10;
 
+            // set push offset to either white or black
             let push_offset = if piece.pcolour == PieceColour::White {
                 white_push_offset
             } else {
                 black_push_offset
             };
 
-            if _include_pawn_pushes {
+            if include_pawn_pushes {
                 let starting: bool;
 
                 // check if pawn is still on starting rank
@@ -355,7 +379,7 @@ impl Position {
                         // push mv if the square is empty
                         let mv_square = &self.position[mv as usize];
                         if matches!(mv_square, Square::Empty) {
-                            move_vec.push(mv as usize);
+                            move_vec.push(Move { from: i, to: mv as usize, capture: mv as usize });
                             true
                         } else {
                             false
@@ -371,6 +395,7 @@ impl Position {
                 // if pawn is on starting square and the square above it is empty
                 if starting && empty {
                     mv = mailbox::next_mailbox_number(i, push_offset * 2);
+                    // again, only pushing if the second square above is empty
                     push_if_empty(mv);
                 }
             }
@@ -392,17 +417,26 @@ impl Position {
                     match mv_square {
                         Square::Piece(mv_square_piece) => {
                             if piece.pcolour != mv_square_piece.pcolour || defending {
-                                move_vec.push(mv as usize);
-                                continue;
-                            } else {
-                                continue;
+                                move_vec.push(Move {
+                                    from: i,
+                                    to: mv as usize,
+                                    capture: mv as usize,
+                                });
+                            } 
+                        }
+                        Square::Empty => {
+                            if defending {
+                                move_vec.push(Move {
+                                    from: i,
+                                    to: mv as usize,
+                                    capture: mv as usize,
+                                });
                             }
                         }
-                        Square::Empty => {}
                     }
                 }
             }
-            // en passant captures
+            // en passant captures, checking pawns left and right
             let attack_en_passant_offset = [-1, 1];
             if self.movegen_flags.en_passant.is_some() {
                 let en_passant_mv = self.movegen_flags.en_passant.unwrap();
@@ -413,11 +447,12 @@ impl Position {
                         let mv_above = mailbox::next_mailbox_number(mv as usize, push_offset);
                         if mv_above >= 0 {
                             let mv_above_square = &self.position[mv_above as usize];
-                            match mv_above_square {
-                                Square::Empty => {
-                                    move_vec.push(mv_above as usize);
-                                }
-                                Square::Piece(_) => {}
+                            if matches!(mv_above_square, Square::Empty) {
+                                move_vec.push(Move {
+                                    from: i,
+                                    to: mv_above as usize,
+                                    capture: mv as usize,
+                                });
                             }
                         }
                     } else {
@@ -441,12 +476,16 @@ impl Position {
                     match mv_square {
                         Square::Piece(mv_square_piece) => {
                             if piece.pcolour != mv_square_piece.pcolour || defending {
-                                move_vec.push(mv as usize);
+                                move_vec.push(Move {
+                                    from: i,
+                                    to: mv as usize,
+                                    capture: mv as usize,
+                                });
                             }
                             break;
                         }
                         Square::Empty => {
-                            move_vec.push(mv as usize);
+                            move_vec.push(Move { from: i, to: mv as usize, capture: mv as usize });
                         }
                     }
 
@@ -462,17 +501,21 @@ impl Position {
             }
         }
 
+        // finally, movegen for castling
+        if piece.ptype == PieceType::King {
+
+        }
+
         move_vec
     }
 
     fn gen_side_move_map(&mut self) -> () {
-        self.side_move_map.drain();
+        self.side_move_map.clear();
         for (i, s) in self.position.iter().enumerate() {
             match s {
                 Square::Piece(p) => {
                     if p.pcolour == self.side {
-                        self.side_move_map.insert(
-                            i,
+                        self.side_move_map.extend(
                             self.movegen(p, i, Self::get_slide(p), false, true)
                         );
                     }
@@ -485,15 +528,14 @@ impl Position {
     }
 
     fn gen_defend_map(&mut self) -> () {
-        self.defend_map.drain();
+        self.defend_map.clear();
         for (i, s) in self.position.iter().enumerate() {
             match s {
                 Square::Piece(p) => {
                     if p.pcolour != self.side {
-                        self.defend_map.insert(
-                            i,
-                            self.movegen(p, i, Self::get_slide(p), true, false)
-                        );
+                        for mv in self.movegen(p, i, Self::get_slide(p), true, false) {
+                            self.defend_map.push(mv.to);
+                        }
                     }
                 }
                 Square::Empty => {
@@ -504,28 +546,6 @@ impl Position {
     }
 
     pub fn gen_maps(&mut self) -> () {
-        // self.side_move_map.drain();
-        // self.defend_map.drain();
-        // for (i, s) in self.position.iter().enumerate() {
-        //     match s {
-        //         Square::Piece(p) => {
-        //             if p.pcolour == self.side && side_move_map {
-        //                 self.side_move_map.insert(
-        //                     i,
-        //                     self.movegen(p, i, Self::get_slide(p), false, true)
-        //                 );
-        //             } else if p.pcolour != self.side && defend_map {
-        //                 self.defend_map.insert(
-        //                     i,
-        //                     self.movegen(p, i, Self::get_slide(p), true, false)
-        //                 );
-        //             }
-        //         }
-        //         Square::Empty => {
-        //             continue;
-        //         }
-        //     }
-        // }
         self.gen_side_move_map();
         self.gen_defend_map();
     }
