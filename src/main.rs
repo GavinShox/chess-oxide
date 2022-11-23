@@ -25,7 +25,7 @@ fn get_all_legal_positions(pos: &Position, depth: i32) -> Vec<Position> {
         return positions;
     }
     for mv in &pos.legal_moves {
-            let p = pos.new_move(mv);
+            let p = pos.new_position(mv);
             positions.extend(get_all_legal_positions(&p, depth - 1));
             if depth == 1 {
                 positions.push(p);
@@ -51,7 +51,7 @@ fn move_pos(p: &Position) -> io::Result<()> {
 
         for mv in pos.legal_moves.clone() {
             if mv.from == i && mv.to == j {
-                pos = pos.new_move(&mv);
+                pos = pos.new_position(&mv);
                 pos.print_board();
                 illegal = false;
             }
@@ -82,7 +82,7 @@ fn main() {
 
     let start = Instant::now();
 
-    let positions: Vec<Position> = get_all_legal_positions(&pos, 4);
+    let positions: Vec<Position> = get_all_legal_positions(&pos, 3);
 
     // let legal_moves = &pos.legal_moves;
 
