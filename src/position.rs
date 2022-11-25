@@ -28,9 +28,6 @@ const AFTER_SHORT_CASTLE_ROOK_OFFSET: i32 = -2;
 
 const ABOVE_BELOW_MODULO: i32 = 8; // (initial square index - move square index) % const == 0 if either index is above/below the other.
 
-const CAPTURE_CASTLE_SHORT_FLAG: usize = 100;
-const CAPTURE_CASTLE_LONG_FLAG: usize = 101;
-
 #[macro_export]
 macro_rules! extract_enum_value {
     ($value:expr, $pattern:pat => $extracted_value:expr) => {
@@ -44,14 +41,20 @@ macro_rules! extract_enum_value {
 pub struct Move {
     pub from: usize,
     pub to: usize,
-    pub special: MoveSpecial,
+    pub move_type: MoveType,
 }
 #[derive(Debug, PartialEq, Clone, Copy)]
-pub enum MoveSpecial {
+pub struct CastleMove {
+    pub rook_from: usize,
+    pub rook_to: usize,
+    pub king_squares: (usize, usize, usize),
+}
+
+#[derive(Debug, PartialEq, Clone, Copy)]
+pub enum MoveType {
     EnPassant(usize),
-    CastleLong,
-    CastleShort,
-    None
+    Castle(CastleMove),
+    Normal,
 }
 
 #[derive(Debug, PartialEq, Clone, Copy)]
@@ -182,31 +185,24 @@ impl Position {
     pub fn new_position(&self, mv: &Move) -> Self {
         // assert move is legal maybe?
         let mut new_pos = self.clone();
-        new_pos.set_en_passant_flag(mv);
-        new_pos.set_castle_flags(mv);
-        new_pos.position[mv.to] = new_pos.position[mv.from];
-        new_pos.position[mv.from] = Square::Empty;
 
-        match mv.special {
-            MoveSpecial::EnPassant(ep_capture) => {
-            // en passant, 'to' square is different from the captured square
-            new_pos.position[ep_capture] = Square::Empty;
-            },
-            MoveSpecial::CastleLong => {
-                let long_rook_pos_start = (mv.from as i32 + LONG_CASTLE_ROOK_OFFSET) as usize;
-                let long_rook_pos_end = (long_rook_pos_start as i32 + AFTER_LONG_CASTLE_ROOK_OFFSET) as usize;
-                new_pos.position[long_rook_pos_end] = new_pos.position[long_rook_pos_start];
-                new_pos.position[long_rook_pos_start] = Square::Empty;
-            },
-            MoveSpecial::CastleShort => {            
-                let short_rook_pos_start = (mv.from as i32 + SHORT_CASTLE_ROOK_OFFSET) as usize;
-                let short_rook_pos_end = (short_rook_pos_start as i32 + AFTER_SHORT_CASTLE_ROOK_OFFSET) as usize;
-                new_pos.position[short_rook_pos_end] = new_pos.position[short_rook_pos_start];
-                new_pos.position[short_rook_pos_start] = Square::Empty;
-            },
-            MoveSpecial::None => {},
+        match mv.move_type {
+            MoveType::EnPassant(ep_capture) => {
+                // en passant, 'to' square is different from the captured square
+                new_pos.position[ep_capture] = Square::Empty;
+            }
+            MoveType::Castle(castle_mv) => {
+                new_pos.position[castle_mv.rook_to] = new_pos.position[castle_mv.rook_from];
+                new_pos.position[castle_mv.rook_from] = Square::Empty;
+            }
+            MoveType::Normal => {}
         }
 
+        new_pos.position[mv.to] = new_pos.position[mv.from];
+        new_pos.position[mv.from] = Square::Empty;
+        
+        new_pos.set_en_passant_flag(mv);
+        new_pos.set_castle_flags(mv);
         new_pos.toggle_side();
         new_pos.gen_maps();
         new_pos.gen_legal_moves();
@@ -231,20 +227,30 @@ impl Position {
     // moves piece at i, to j, without changing side, to regen defend maps to determine if the move is legal
     // legality here meaning would the move leave your king in check. Actual piece movement is done in movegen
     fn is_move_legal(&mut self, mv: &Move) -> bool {
-
         let original_position: Pos64 = self.position.clone();
 
+        // doing special move types first, to check if mv is a castling move, and return there first
+        match mv.move_type {
+            MoveType::EnPassant(ep_capture) => {
+                self.position[ep_capture] = Square::Empty;
+            }
+            MoveType::Castle(castle_mv) => {
+                if
+                    self.is_defended(castle_mv.king_squares.0) ||
+                    self.is_defended(castle_mv.king_squares.1) ||
+                    self.is_defended(castle_mv.king_squares.2)
+                {
+                    return false;
+                } else {
+                    return true;
+                }
+            }
+            MoveType::Normal => {}
+        }
+
+        // this has to be after the castleing section probably, so it doesnt just move the king out of check
         self.position[mv.to] = self.position[mv.from];
         self.position[mv.from] = Square::Empty;
-
-        match mv.special {
-            MoveSpecial::EnPassant(ep_capture) => {
-                self.position[ep_capture] = Square::Empty
-            }
-            MoveSpecial::CastleLong => {todo!()}
-            MoveSpecial::CastleShort => {todo!()}
-            MoveSpecial::None => {}
-        }
 
         // we only need to gen new defend map
         self.gen_defend_map();
@@ -262,6 +268,10 @@ impl Position {
         } else {
             PieceColour::White
         };
+    }
+
+    pub fn is_defended(&self, i: usize) -> bool {
+        self.defend_map.contains(&i)
     }
 
     pub fn is_in_check(&self) -> bool {
@@ -376,7 +386,9 @@ impl Position {
         }
     }
 
-    // generates moves for the piece at index i
+    // generates moves for the piece at index i, only checks legality regarding where pieces could possibly move to
+    // doesnt account for king checks
+
     pub fn movegen(
         &self,
         piece: &Piece,
@@ -421,7 +433,11 @@ impl Position {
                         // push mv if the square is empty
                         let mv_square = &self.position[mv as usize];
                         if matches!(mv_square, Square::Empty) {
-                            move_vec.push(Move { from: i, to: mv as usize, special: MoveSpecial::None });
+                            move_vec.push(Move {
+                                from: i,
+                                to: mv as usize,
+                                move_type: MoveType::Normal,
+                            });
                             true
                         } else {
                             false
@@ -462,7 +478,7 @@ impl Position {
                                 move_vec.push(Move {
                                     from: i,
                                     to: mv as usize,
-                                    special: MoveSpecial::None,
+                                    move_type: MoveType::Normal,
                                 });
                             }
                         }
@@ -471,7 +487,7 @@ impl Position {
                                 move_vec.push(Move {
                                     from: i,
                                     to: mv as usize,
-                                    special: MoveSpecial::None,
+                                    move_type: MoveType::Normal,
                                 });
                             }
                         }
@@ -493,7 +509,7 @@ impl Position {
                                 move_vec.push(Move {
                                     from: i,
                                     to: mv_above as usize,
-                                    special: MoveSpecial::EnPassant(mv as usize),
+                                    move_type: MoveType::EnPassant(mv as usize),
                                 });
                             }
                         }
@@ -521,13 +537,17 @@ impl Position {
                                 move_vec.push(Move {
                                     from: i,
                                     to: mv as usize,
-                                    special: MoveSpecial::None,
+                                    move_type: MoveType::Normal,
                                 });
                             }
                             break;
                         }
                         Square::Empty => {
-                            move_vec.push(Move { from: i, to: mv as usize, special: MoveSpecial::None });
+                            move_vec.push(Move {
+                                from: i,
+                                to: mv as usize,
+                                move_type: MoveType::Normal,
+                            });
                         }
                     }
 
@@ -544,13 +564,13 @@ impl Position {
         }
 
         // finally, movegen for castling
-        if piece.ptype == PieceType::King {
+        if piece.ptype == PieceType::King && !defending {
             if
                 (piece.pcolour == PieceColour::White && i == WHITE_KING_START) ||
                 (piece.pcolour == PieceColour::Black && i == BLACK_KING_START)
             {
                 // no need to check mailbox, or check if an index is out of bounds
-                // as we presume king is on its starting square
+                // as we check that the king is on its starting square
 
                 if
                     (piece.pcolour == PieceColour::White &&
@@ -559,6 +579,8 @@ impl Position {
                 {
                     let short_mv_through_idx = i + 1;
                     let short_mv_to_idx = i + 2;
+                    let short_rook_start_idx = i + 3;
+                    let short_rook_end_idx = short_mv_through_idx;
                     if
                         matches!(&self.position[short_mv_through_idx], Square::Empty) &&
                         matches!(&self.position[short_mv_to_idx], Square::Empty)
@@ -566,7 +588,11 @@ impl Position {
                         move_vec.push(Move {
                             from: i,
                             to: short_mv_to_idx,
-                            special: MoveSpecial::CastleShort,
+                            move_type: MoveType::Castle(CastleMove {
+                                rook_from: short_rook_start_idx,
+                                rook_to: short_rook_end_idx,
+                                king_squares: (i, short_mv_through_idx, short_mv_to_idx),
+                            }),
                         });
                     }
                 }
@@ -576,7 +602,9 @@ impl Position {
                 {
                     let long_mv_through_idx = i - 1;
                     let long_mv_to_idx = i - 2;
-                    let long_mv_past_idx = i - 3;
+                    let long_mv_past_idx = i - 3; // sqaure not in kings path but still needs to be empty for rook
+                    let long_rook_start_idx = i - 4;
+                    let long_rook_end_idx = long_mv_through_idx;
                     if
                         matches!(&self.position[long_mv_through_idx], Square::Empty) &&
                         matches!(&self.position[long_mv_to_idx], Square::Empty) &&
@@ -585,7 +613,11 @@ impl Position {
                         move_vec.push(Move {
                             from: i,
                             to: long_mv_to_idx,
-                            special: MoveSpecial::CastleLong,
+                            move_type: MoveType::Castle(CastleMove {
+                                rook_from: long_rook_start_idx,
+                                rook_to: long_rook_end_idx,
+                                king_squares: (i, long_mv_through_idx, long_mv_to_idx),
+                            }),
                         });
                     }
                 }

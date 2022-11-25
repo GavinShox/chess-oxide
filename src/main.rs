@@ -82,7 +82,7 @@ fn main() {
 
     let start = Instant::now();
 
-    let positions: Vec<Position> = get_all_legal_positions(&pos, 3);
+    let positions: Vec<Position> = get_all_legal_positions(&pos, 4);
 
     // let legal_moves = &pos.legal_moves;
 
