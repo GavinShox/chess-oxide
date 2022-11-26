@@ -2,7 +2,7 @@ use std::mem::MaybeUninit;
 
 use crate::mailbox;
 
-type Pos64 = Vec<Square>;
+type Pos64 = [Square; 64];
 type Offset = [i32; 8];
 
 pub type MoveVec = Vec<Move>;
@@ -99,7 +99,7 @@ pub struct Position {
     pub position: Pos64,
     side: PieceColour,
     movegen_flags: MovegenFlags,
-    side_move_map: MoveVec, // map of possible moves from "side"
+    // side_move_map: MoveVec, // map of possible moves from "side"
     defend_map: Vec<usize>, // map of squares opposite colour is defending
     pub legal_moves: MoveVec, // legal moves in given position
 }
@@ -129,7 +129,7 @@ impl Position {
 
     // new board with starting Position
     pub fn new_starting() -> Self {
-        let mut pos: Pos64 = Vec::with_capacity(64);
+        let mut pos: Pos64 = [Square::Empty; 64];
 
         let movegen_flags = MovegenFlags {
             white_castle_short: true,
@@ -139,31 +139,31 @@ impl Position {
             en_passant: None,
         };
 
-        pos.push(Square::Piece(Piece { pcolour: PieceColour::Black, ptype: PieceType::Rook }));
-        pos.push(Square::Piece(Piece { pcolour: PieceColour::Black, ptype: PieceType::Knight }));
-        pos.push(Square::Piece(Piece { pcolour: PieceColour::Black, ptype: PieceType::Bishop }));
-        pos.push(Square::Piece(Piece { pcolour: PieceColour::Black, ptype: PieceType::Queen }));
-        pos.push(Square::Piece(Piece { pcolour: PieceColour::Black, ptype: PieceType::King }));
-        pos.push(Square::Piece(Piece { pcolour: PieceColour::Black, ptype: PieceType::Bishop }));
-        pos.push(Square::Piece(Piece { pcolour: PieceColour::Black, ptype: PieceType::Knight }));
-        pos.push(Square::Piece(Piece { pcolour: PieceColour::Black, ptype: PieceType::Rook }));
-        for _ in 8..16 {
-            pos.push(Square::Piece(Piece { pcolour: PieceColour::Black, ptype: PieceType::Pawn }));
+        pos[0] = (Square::Piece(Piece { pcolour: PieceColour::Black, ptype: PieceType::Rook }));
+        pos[1] = (Square::Piece(Piece { pcolour: PieceColour::Black, ptype: PieceType::Knight }));
+        pos[2] = (Square::Piece(Piece { pcolour: PieceColour::Black, ptype: PieceType::Bishop }));
+        pos[3] = (Square::Piece(Piece { pcolour: PieceColour::Black, ptype: PieceType::Queen }));
+        pos[4] = (Square::Piece(Piece { pcolour: PieceColour::Black, ptype: PieceType::King }));
+        pos[5] = (Square::Piece(Piece { pcolour: PieceColour::Black, ptype: PieceType::Bishop }));
+        pos[6] = (Square::Piece(Piece { pcolour: PieceColour::Black, ptype: PieceType::Knight }));
+        pos[7] = (Square::Piece(Piece { pcolour: PieceColour::Black, ptype: PieceType::Rook }));
+        for i in 8..16 {
+            pos[i] = (Square::Piece(Piece { pcolour: PieceColour::Black, ptype: PieceType::Pawn }));
         }
-        for _ in 16..48 {
-            pos.push(Square::Empty);
+        for i in 16..48 {
+            pos[i] = (Square::Empty);
         }
-        for _ in 48..56 {
-            pos.push(Square::Piece(Piece { pcolour: PieceColour::White, ptype: PieceType::Pawn }));
+        for i in 48..56 {
+            pos[i] = (Square::Piece(Piece { pcolour: PieceColour::White, ptype: PieceType::Pawn }));
         }
-        pos.push(Square::Piece(Piece { pcolour: PieceColour::White, ptype: PieceType::Rook }));
-        pos.push(Square::Piece(Piece { pcolour: PieceColour::White, ptype: PieceType::Knight }));
-        pos.push(Square::Piece(Piece { pcolour: PieceColour::White, ptype: PieceType::Bishop }));
-        pos.push(Square::Piece(Piece { pcolour: PieceColour::White, ptype: PieceType::Queen }));
-        pos.push(Square::Piece(Piece { pcolour: PieceColour::White, ptype: PieceType::King }));
-        pos.push(Square::Piece(Piece { pcolour: PieceColour::White, ptype: PieceType::Bishop }));
-        pos.push(Square::Piece(Piece { pcolour: PieceColour::White, ptype: PieceType::Knight }));
-        pos.push(Square::Piece(Piece { pcolour: PieceColour::White, ptype: PieceType::Rook }));
+        pos[56] = (Square::Piece(Piece { pcolour: PieceColour::White, ptype: PieceType::Rook }));
+        pos[57] = (Square::Piece(Piece { pcolour: PieceColour::White, ptype: PieceType::Knight }));
+        pos[58] = (Square::Piece(Piece { pcolour: PieceColour::White, ptype: PieceType::Bishop }));
+        pos[59] = (Square::Piece(Piece { pcolour: PieceColour::White, ptype: PieceType::Queen }));
+        pos[60] = (Square::Piece(Piece { pcolour: PieceColour::White, ptype: PieceType::King }));
+        pos[61] = (Square::Piece(Piece { pcolour: PieceColour::White, ptype: PieceType::Bishop }));
+        pos[62] = (Square::Piece(Piece { pcolour: PieceColour::White, ptype: PieceType::Knight }));
+        pos[63] = (Square::Piece(Piece { pcolour: PieceColour::White, ptype: PieceType::Rook }));
 
         let side = PieceColour::White;
 
@@ -171,7 +171,7 @@ impl Position {
             position: pos,
             side,
             movegen_flags,
-            side_move_map: Vec::new(),
+            // side_move_map: Vec::new(),
             defend_map: Vec::new(),
             legal_moves: Vec::new(),
         };
@@ -296,10 +296,22 @@ impl Position {
 
     fn gen_legal_moves(&mut self) -> () {
         self.legal_moves = Vec::new();
-
-        for mv in self.side_move_map.clone() {
-            if self.is_move_legal(&mv) {
-                self.legal_moves.push(mv);
+        let mut side_moves = Vec::new();
+        for (i, s) in self.position.iter().enumerate() {
+            match s {
+                Square::Piece(p) => {
+                    if p.pcolour == self.side {
+                        side_moves.extend(self.movegen(p, i, Self::get_slide(p), false, true));
+                    }
+                }
+                Square::Empty => {
+                    continue;
+                }
+            }
+        }
+        for mv in &side_moves {
+            if self.is_move_legal(mv) {
+                self.legal_moves.push(*mv)
             }
         }
     }
@@ -629,23 +641,23 @@ impl Position {
         move_vec
     }
 
-    fn gen_side_move_map(&mut self) -> () {
-        self.side_move_map.clear();
-        for (i, s) in self.position.iter().enumerate() {
-            match s {
-                Square::Piece(p) => {
-                    if p.pcolour == self.side {
-                        self.side_move_map.extend(
-                            self.movegen(p, i, Self::get_slide(p), false, true)
-                        );
-                    }
-                }
-                Square::Empty => {
-                    continue;
-                }
-            }
-        }
-    }
+    // fn gen_side_move_map(&mut self) -> () {
+    //     self.side_move_map.clear();
+    //     for (i, s) in self.position.iter().enumerate() {
+    //         match s {
+    //             Square::Piece(p) => {
+    //                 if p.pcolour == self.side {
+    //                     self.side_move_map.extend(
+    //                         self.movegen(p, i, Self::get_slide(p), false, true)
+    //                     );
+    //                 }
+    //             }
+    //             Square::Empty => {
+    //                 continue;
+    //             }
+    //         }
+    //     }
+    // }
 
     fn gen_defend_map(&mut self) -> () {
         self.defend_map.clear();
@@ -666,7 +678,7 @@ impl Position {
     }
 
     pub fn gen_maps(&mut self) -> () {
-        self.gen_side_move_map();
+        //self.gen_side_move_map();
         self.gen_defend_map();
     }
 
