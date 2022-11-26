@@ -185,6 +185,8 @@ impl Position {
     pub fn new_position(&self, mv: &Move) -> Self {
         // assert move is legal maybe?
         let mut new_pos = self.clone();
+        new_pos.set_en_passant_flag(mv);
+        new_pos.set_castle_flags(mv);
 
         match mv.move_type {
             MoveType::EnPassant(ep_capture) => {
@@ -201,8 +203,7 @@ impl Position {
         new_pos.position[mv.to] = new_pos.position[mv.from];
         new_pos.position[mv.from] = Square::Empty;
         
-        new_pos.set_en_passant_flag(mv);
-        new_pos.set_castle_flags(mv);
+
         new_pos.toggle_side();
         new_pos.gen_maps();
         new_pos.gen_legal_moves();
@@ -329,6 +330,7 @@ impl Position {
     // }
 
     // sets enpassant movegen flag to Some(idx of pawn that can be captured), if the move is a double pawn push
+    // TODO THIS SHOIULDNT CHECK FOR PAWN, IT MESSES UP WHEN REORDERING THIS FUNCTIUON IN NEW MOVE ABOVE
     fn set_en_passant_flag(&mut self, mv: &Move) -> () {
         let s = &self.position[mv.from];
         match s {
