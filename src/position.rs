@@ -54,6 +54,7 @@ pub struct CastleMove {
 pub enum MoveType {
     EnPassant(usize),
     Castle(CastleMove),
+    DoublePawnPush,
     Normal,
 }
 
@@ -139,31 +140,31 @@ impl Position {
             en_passant: None,
         };
 
-        pos[0] = (Square::Piece(Piece { pcolour: PieceColour::Black, ptype: PieceType::Rook }));
-        pos[1] = (Square::Piece(Piece { pcolour: PieceColour::Black, ptype: PieceType::Knight }));
-        pos[2] = (Square::Piece(Piece { pcolour: PieceColour::Black, ptype: PieceType::Bishop }));
-        pos[3] = (Square::Piece(Piece { pcolour: PieceColour::Black, ptype: PieceType::Queen }));
-        pos[4] = (Square::Piece(Piece { pcolour: PieceColour::Black, ptype: PieceType::King }));
-        pos[5] = (Square::Piece(Piece { pcolour: PieceColour::Black, ptype: PieceType::Bishop }));
-        pos[6] = (Square::Piece(Piece { pcolour: PieceColour::Black, ptype: PieceType::Knight }));
-        pos[7] = (Square::Piece(Piece { pcolour: PieceColour::Black, ptype: PieceType::Rook }));
+        pos[0] = Square::Piece(Piece { pcolour: PieceColour::Black, ptype: PieceType::Rook });
+        pos[1] = Square::Piece(Piece { pcolour: PieceColour::Black, ptype: PieceType::Knight });
+        pos[2] = Square::Piece(Piece { pcolour: PieceColour::Black, ptype: PieceType::Bishop });
+        pos[3] = Square::Piece(Piece { pcolour: PieceColour::Black, ptype: PieceType::Queen });
+        pos[4] = Square::Piece(Piece { pcolour: PieceColour::Black, ptype: PieceType::King });
+        pos[5] = Square::Piece(Piece { pcolour: PieceColour::Black, ptype: PieceType::Bishop });
+        pos[6] = Square::Piece(Piece { pcolour: PieceColour::Black, ptype: PieceType::Knight });
+        pos[7] = Square::Piece(Piece { pcolour: PieceColour::Black, ptype: PieceType::Rook });
         for i in 8..16 {
-            pos[i] = (Square::Piece(Piece { pcolour: PieceColour::Black, ptype: PieceType::Pawn }));
+            pos[i] = Square::Piece(Piece { pcolour: PieceColour::Black, ptype: PieceType::Pawn });
         }
         for i in 16..48 {
-            pos[i] = (Square::Empty);
+            pos[i] = Square::Empty;
         }
         for i in 48..56 {
-            pos[i] = (Square::Piece(Piece { pcolour: PieceColour::White, ptype: PieceType::Pawn }));
+            pos[i] = Square::Piece(Piece { pcolour: PieceColour::White, ptype: PieceType::Pawn });
         }
-        pos[56] = (Square::Piece(Piece { pcolour: PieceColour::White, ptype: PieceType::Rook }));
-        pos[57] = (Square::Piece(Piece { pcolour: PieceColour::White, ptype: PieceType::Knight }));
-        pos[58] = (Square::Piece(Piece { pcolour: PieceColour::White, ptype: PieceType::Bishop }));
-        pos[59] = (Square::Piece(Piece { pcolour: PieceColour::White, ptype: PieceType::Queen }));
-        pos[60] = (Square::Piece(Piece { pcolour: PieceColour::White, ptype: PieceType::King }));
-        pos[61] = (Square::Piece(Piece { pcolour: PieceColour::White, ptype: PieceType::Bishop }));
-        pos[62] = (Square::Piece(Piece { pcolour: PieceColour::White, ptype: PieceType::Knight }));
-        pos[63] = (Square::Piece(Piece { pcolour: PieceColour::White, ptype: PieceType::Rook }));
+        pos[56] = Square::Piece(Piece { pcolour: PieceColour::White, ptype: PieceType::Rook });
+        pos[57] = Square::Piece(Piece { pcolour: PieceColour::White, ptype: PieceType::Knight });
+        pos[58] = Square::Piece(Piece { pcolour: PieceColour::White, ptype: PieceType::Bishop });
+        pos[59] = Square::Piece(Piece { pcolour: PieceColour::White, ptype: PieceType::Queen });
+        pos[60] = Square::Piece(Piece { pcolour: PieceColour::White, ptype: PieceType::King });
+        pos[61] = Square::Piece(Piece { pcolour: PieceColour::White, ptype: PieceType::Bishop });
+        pos[62] = Square::Piece(Piece { pcolour: PieceColour::White, ptype: PieceType::Knight });
+        pos[63] = Square::Piece(Piece { pcolour: PieceColour::White, ptype: PieceType::Rook });
 
         let side = PieceColour::White;
 
@@ -197,12 +198,11 @@ impl Position {
                 new_pos.position[castle_mv.rook_to] = new_pos.position[castle_mv.rook_from];
                 new_pos.position[castle_mv.rook_from] = Square::Empty;
             }
-            MoveType::Normal => {}
+            _ => {}
         }
 
         new_pos.position[mv.to] = new_pos.position[mv.from];
         new_pos.position[mv.from] = Square::Empty;
-        
 
         new_pos.toggle_side();
         new_pos.gen_maps();
@@ -246,7 +246,7 @@ impl Position {
                     return true;
                 }
             }
-            MoveType::Normal => {}
+            _ => {}
         }
 
         // this has to be after the castleing section probably, so it doesnt just move the king out of check
@@ -311,52 +311,18 @@ impl Position {
         }
         for mv in &side_moves {
             if self.is_move_legal(mv) {
-                self.legal_moves.push(*mv)
+                self.legal_moves.push(*mv);
             }
         }
     }
 
-    // check if a move i -> mv is an en passant capture, if it is return usize of the pawn to be captured
-    // fn en_passant_capture_mv(&self, i: usize, mv: usize) -> Option<usize> {
-    //     let s = &self.position[i];
-    //     let mv_s = &self.position[mv];
-    //     match s {
-    //         Square::Piece(p) => {
-    //             if p.ptype == PieceType::Pawn {
-    //                 if
-    //                     matches!(mv_s, Square::Empty) &&
-    //                     ((i as i32) - (mv as i32)) % ABOVE_BELOW_MODULO != 0
-    //                 {
-    //                     let offset: i32 = if p.pcolour == PieceColour::White {
-    //                         ABOVE_BELOW_MODULO
-    //                     } else {
-    //                         -ABOVE_BELOW_MODULO
-    //                     };
-    //                     return Some(((mv as i32) + offset) as usize);
-    //                 }
-    //             }
-    //         }
-    //         Square::Empty => {}
-    //     }
-    //     None
-    // }
-
     // sets enpassant movegen flag to Some(idx of pawn that can be captured), if the move is a double pawn push
-    // TODO THIS SHOIULDNT CHECK FOR PAWN, IT MESSES UP WHEN REORDERING THIS FUNCTIUON IN NEW MOVE ABOVE
     fn set_en_passant_flag(&mut self, mv: &Move) -> () {
-        let s = &self.position[mv.from];
-        match s {
-            Square::Piece(p) => {
-                if p.ptype == PieceType::Pawn {
-                    if ((mv.from as i32) - (mv.to as i32)) % (ABOVE_BELOW_MODULO * 2) == 0 {
-                        self.movegen_flags.en_passant = Some(mv.to);
-                        return;
-                    }
-                }
-            }
-            Square::Empty => {}
+        if mv.move_type == MoveType::DoublePawnPush {
+            self.movegen_flags.en_passant = Some(mv.to)
+        } else {
+            self.movegen_flags.en_passant = None;
         }
-        self.movegen_flags.en_passant = None;
     }
 
     fn get_piece(&self, pos: usize) -> Option<&Piece> {
@@ -441,7 +407,7 @@ impl Position {
 
                 // closure that pushes move to move_vec, if move is valid and the mv square is empty
                 // returns true if it pushes successfully
-                let mut push_if_empty = |mv: i32| -> bool {
+                let mut push_if_empty = |mv: i32, mvtype: MoveType| -> bool {
                     // check mv is valid
                     if mv >= 0 {
                         // push mv if the square is empty
@@ -450,7 +416,7 @@ impl Position {
                             move_vec.push(Move {
                                 from: i,
                                 to: mv as usize,
-                                move_type: MoveType::Normal,
+                                move_type: mvtype,
                             });
                             true
                         } else {
@@ -462,13 +428,13 @@ impl Position {
                 };
 
                 let mut mv = mailbox::next_mailbox_number(i, push_offset);
-                let empty = push_if_empty(mv);
+                let empty = push_if_empty(mv, MoveType::Normal);
 
                 // if pawn is on starting square and the square above it is empty
                 if starting && empty {
                     mv = mailbox::next_mailbox_number(i, push_offset * 2);
                     // again, only pushing if the second square above is empty
-                    push_if_empty(mv);
+                    push_if_empty(mv, MoveType::DoublePawnPush);
                 }
             }
 
