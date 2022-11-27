@@ -318,7 +318,6 @@ impl Position {
     }
 
     fn set_castle_flags(&mut self, mv: &Move) -> () {
-
         match mv.from {
             WHITE_KING_START => {
                 self.movegen_flags.white_castle_long = false;
@@ -328,6 +327,22 @@ impl Position {
                 self.movegen_flags.black_castle_long = false;
                 self.movegen_flags.black_castle_short = false;
             }
+            LONG_BLACK_ROOK_START => {
+                self.movegen_flags.black_castle_long = false;
+            }
+            LONG_WHITE_ROOK_START => {
+                self.movegen_flags.white_castle_long = false;
+            }
+            SHORT_BLACK_ROOK_START => {
+                self.movegen_flags.black_castle_short = false;
+            }
+            SHORT_WHITE_ROOK_START => {
+                self.movegen_flags.white_castle_short = false;
+            }
+            _ => {}
+        }
+        // if a rook is captured
+        match mv.to {
             LONG_BLACK_ROOK_START => {
                 self.movegen_flags.black_castle_long = false;
             }
