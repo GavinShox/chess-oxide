@@ -3,6 +3,7 @@ use std::mem::MaybeUninit;
 use crate::mailbox;
 
 type Pos64 = [Square; 64];
+type DefendMap = [bool; 64]; // array of boolean values determining if a square is defended by opposite side
 type Offset = [i32; 8];
 
 pub type MoveVec = Vec<Move>;
@@ -15,12 +16,13 @@ const BISHOP_OFFSET: Offset = [-11, -9, 9, 11, 0, 0, 0, 0];
 const ROOK_OFFSET: Offset = [-10, -1, 1, 10, 0, 0, 0, 0];
 const QUEEN_KING_OFFSET: Offset = [-11, -10, -9, -1, 1, 9, 10, 11];
 
+// starting indexes for castling logic
+const LONG_BLACK_ROOK_START: usize = 0;
+const SHORT_BLACK_ROOK_START: usize = 7;
+const LONG_WHITE_ROOK_START: usize = 56;
+const SHORT_WHITE_ROOK_START: usize = 63;
 const BLACK_KING_START: usize = 4;
 const WHITE_KING_START: usize = 60;
-
-// offset from king start position and long/short rook
-const LONG_CASTLE_ROOK_OFFSET: i32 = -4;
-const SHORT_CASTLE_ROOK_OFFSET: i32 = 3;
 
 // offset of rook from original position after castling
 const AFTER_LONG_CASTLE_ROOK_OFFSET: i32 = 3;
@@ -100,8 +102,7 @@ pub struct Position {
     pub position: Pos64,
     side: PieceColour,
     movegen_flags: MovegenFlags,
-    // side_move_map: MoveVec, // map of possible moves from "side"
-    defend_map: Vec<usize>, // map of squares opposite colour is defending
+    defend_map: DefendMap, // map of squares opposite colour is defending
     pub legal_moves: MoveVec, // legal moves in given position
 }
 // TODO impl hash for position
@@ -172,8 +173,7 @@ impl Position {
             position: pos,
             side,
             movegen_flags,
-            // side_move_map: Vec::new(),
-            defend_map: Vec::new(),
+            defend_map: [false; 64],
             legal_moves: Vec::new(),
         };
         new.gen_maps();
@@ -210,21 +210,6 @@ impl Position {
         new_pos
     }
 
-    // fn is_move_legal_clone(&self, i: usize, j: usize) -> bool {
-    //     let mut new_pos = self.clone();
-    //     new_pos.position[j] = new_pos.position[i];
-    //     new_pos.position[i] = Square::Empty;
-    //     let ep = new_pos.en_passant_capture_mv(i, j);
-    //     if ep.is_some() {
-    //         new_pos.position[ep.unwrap()] = Square::Empty;
-    //     }
-    //     // we only need to gen new defend map
-    //     new_pos.gen_defend_map();
-
-    //     !new_pos.is_in_check()
-
-    // }
-
     // moves piece at i, to j, without changing side, to regen defend maps to determine if the move is legal
     // legality here meaning would the move leave your king in check. Actual piece movement is done in movegen
     fn is_move_legal(&mut self, mv: &Move) -> bool {
@@ -236,20 +221,20 @@ impl Position {
                 self.position[ep_capture] = Square::Empty;
             }
             MoveType::Castle(castle_mv) => {
-                if
+                return if
                     self.is_defended(castle_mv.king_squares.0) ||
                     self.is_defended(castle_mv.king_squares.1) ||
                     self.is_defended(castle_mv.king_squares.2)
                 {
-                    return false;
+                    false  // if any square the king moves from, through or to are defended, move isnt legal
                 } else {
-                    return true;
+                    true  // else castling is a legal move
                 }
             }
             _ => {}
         }
 
-        // this has to be after the castleing section probably, so it doesnt just move the king out of check
+        // this has to be after the castleing section above, as king cant castle out of check
         self.position[mv.to] = self.position[mv.from];
         self.position[mv.from] = Square::Empty;
 
@@ -272,7 +257,7 @@ impl Position {
     }
 
     pub fn is_defended(&self, i: usize) -> bool {
-        self.defend_map.contains(&i)
+        self.defend_map[i]
     }
 
     pub fn is_in_check(&self) -> bool {
@@ -281,7 +266,7 @@ impl Position {
             match s {
                 Square::Piece(p) => {
                     if matches!(p.ptype, PieceType::King) && p.pcolour == self.side {
-                        if self.defend_map.contains(&i) {
+                        if self.is_defended(i) {
                             in_check = true;
                             break;
                         }
@@ -301,7 +286,7 @@ impl Position {
             match s {
                 Square::Piece(p) => {
                     if p.pcolour == self.side {
-                        side_moves.extend(self.movegen(p, i, Self::get_slide(p), false, true));
+                        side_moves.extend(self.movegen(p, i, false, true));
                     }
                 }
                 Square::Empty => {
@@ -333,33 +318,26 @@ impl Position {
     }
 
     fn set_castle_flags(&mut self, mv: &Move) -> () {
-        // starting positions for castling pieces
-        const QUEEN_BLACK_ROOK: usize = 0;
-        const KING_BLACK_ROOK: usize = 7;
-        const QUEEN_WHITE_ROOK: usize = 56;
-        const KING_WHITE_ROOK: usize = 63;
-        const BLACK_KING: usize = 4;
-        const WHITE_KING: usize = 60;
 
         match mv.from {
-            WHITE_KING => {
+            WHITE_KING_START => {
                 self.movegen_flags.white_castle_long = false;
                 self.movegen_flags.white_castle_short = false;
             }
-            BLACK_KING => {
+            BLACK_KING_START => {
                 self.movegen_flags.black_castle_long = false;
                 self.movegen_flags.black_castle_short = false;
             }
-            QUEEN_BLACK_ROOK => {
+            LONG_BLACK_ROOK_START => {
                 self.movegen_flags.black_castle_long = false;
             }
-            QUEEN_WHITE_ROOK => {
+            LONG_WHITE_ROOK_START => {
                 self.movegen_flags.white_castle_long = false;
             }
-            KING_BLACK_ROOK => {
+            SHORT_BLACK_ROOK_START => {
                 self.movegen_flags.black_castle_short = false;
             }
-            KING_WHITE_ROOK => {
+            SHORT_WHITE_ROOK_START => {
                 self.movegen_flags.white_castle_short = false;
             }
             _ => {}
@@ -373,7 +351,6 @@ impl Position {
         &self,
         piece: &Piece,
         i: usize,
-        slide: bool,
         defending: bool,
         include_pawn_pushes: bool
     ) -> MoveVec {
@@ -530,8 +507,8 @@ impl Position {
                             });
                         }
                     }
-
-                    if slide {
+                    // is piece a sliding type
+                    if Self::get_slide(piece) {
                         slide_idx += j;
                         mv = mailbox::next_mailbox_number(i, slide_idx);
 
@@ -607,32 +584,15 @@ impl Position {
         move_vec
     }
 
-    // fn gen_side_move_map(&mut self) -> () {
-    //     self.side_move_map.clear();
-    //     for (i, s) in self.position.iter().enumerate() {
-    //         match s {
-    //             Square::Piece(p) => {
-    //                 if p.pcolour == self.side {
-    //                     self.side_move_map.extend(
-    //                         self.movegen(p, i, Self::get_slide(p), false, true)
-    //                     );
-    //                 }
-    //             }
-    //             Square::Empty => {
-    //                 continue;
-    //             }
-    //         }
-    //     }
-    // }
 
     fn gen_defend_map(&mut self) -> () {
-        self.defend_map.clear();
+        self.defend_map = [false; 64];
         for (i, s) in self.position.iter().enumerate() {
             match s {
                 Square::Piece(p) => {
                     if p.pcolour != self.side {
-                        for mv in self.movegen(p, i, Self::get_slide(p), true, false) {
-                            self.defend_map.push(mv.to);
+                        for mv in self.movegen(p, i, true, false) {
+                            self.defend_map[mv.to] = true;
                         }
                     }
                 }
@@ -644,7 +604,6 @@ impl Position {
     }
 
     pub fn gen_maps(&mut self) -> () {
-        //self.gen_side_move_map();
         self.gen_defend_map();
     }
 
