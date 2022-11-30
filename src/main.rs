@@ -1,5 +1,6 @@
 mod mailbox;
 mod position;
+mod engine;
 
 use std::collections::HashMap;
 use std::io;
@@ -52,14 +53,20 @@ fn move_pos(p: &Position) -> io::Result<()> {
         for mv in pos.gen_legal_moves() {
             if mv.from == i && mv.to == j {
                 pos = pos.new_position(&mv);
-                pos.print_board();
+                //pos.print_board();
                 illegal = false;
                 break;
             }
         } 
         if illegal {
             println!("Move isn't legal!");
+            input1.clear();
+            input2.clear();
+            continue;
         }
+        let engine_mv = engine::choose_move(&mut pos);
+        pos = pos.new_position(&engine_mv);
+        pos.print_board();
         input1.clear();
         input2.clear();
     }
