@@ -16,6 +16,13 @@ const BISHOP_OFFSET: Offset = [-11, -9, 9, 11, 0, 0, 0, 0];
 const ROOK_OFFSET: Offset = [-10, -1, 1, 10, 0, 0, 0, 0];
 const QUEEN_KING_OFFSET: Offset = [-11, -10, -9, -1, 1, 9, 10, 11];
 
+const PROMOTION_PIECE_TYPES: [PieceType; 4] = [
+    PieceType::Queen,
+    PieceType::Rook,
+    PieceType::Bishop,
+    PieceType::Knight,
+];
+
 // starting indexes for castling logic
 const LONG_BLACK_ROOK_START: usize = 0;
 const SHORT_BLACK_ROOK_START: usize = 7;
@@ -55,6 +62,7 @@ pub struct CastleMove {
 #[derive(Debug, PartialEq, Clone, Copy)]
 pub enum MoveType {
     EnPassant(usize),
+    Promotion(PieceType),
     Castle(CastleMove),
     DoublePawnPush,
     Normal,
@@ -103,7 +111,7 @@ pub struct Position {
     side: PieceColour,
     movegen_flags: MovegenFlags,
     defend_map: DefendMap, // map of squares opposite colour is defending
-    pub legal_moves: MoveVec, // legal moves in given position
+    attack_map: Vec<Move>,
 }
 // TODO impl hash for position
 impl Position {
@@ -174,7 +182,7 @@ impl Position {
             side,
             movegen_flags,
             defend_map: [false; 64],
-            legal_moves: Vec::new(),
+            attack_map: Vec::new(),
         };
         new.gen_maps();
         new.gen_legal_moves();
@@ -198,6 +206,14 @@ impl Position {
                 new_pos.position[castle_mv.rook_to] = new_pos.position[castle_mv.rook_from];
                 new_pos.position[castle_mv.rook_from] = Square::Empty;
             }
+            MoveType::Promotion(ptype) => {
+                match &mut new_pos.position[mv.from] {
+                    Square::Piece(p) => {
+                        p.ptype = ptype;
+                    }
+                    Square::Empty => {/* should never get here */}
+                }
+            }
             _ => {}
         }
 
@@ -206,7 +222,6 @@ impl Position {
 
         new_pos.toggle_side();
         new_pos.gen_maps();
-        new_pos.gen_legal_moves();
         new_pos
     }
 
@@ -226,11 +241,12 @@ impl Position {
                     self.is_defended(castle_mv.king_squares.1) ||
                     self.is_defended(castle_mv.king_squares.2)
                 {
-                    false  // if any square the king moves from, through or to are defended, move isnt legal
+                    false // if any square the king moves from, through or to are defended, move isnt legal
                 } else {
-                    true  // else castling is a legal move
-                }
+                    true // else castling is a legal move
+                };
             }
+            MoveType::Promotion(_) => {/* the piece the pawn promotes to doesn't effect legality */}
             _ => {}
         }
 
@@ -279,41 +295,22 @@ impl Position {
         in_check
     }
 
-    fn gen_legal_moves(&mut self) -> () {
-        self.legal_moves = Vec::new();
-        let mut side_moves = Vec::new();
-        for (i, s) in self.position.iter().enumerate() {
-            match s {
-                Square::Piece(p) => {
-                    if p.pcolour == self.side {
-                        side_moves.extend(self.movegen(p, i, false, true));
-                    }
-                }
-                Square::Empty => {
-                    continue;
-                }
+    pub fn gen_legal_moves(&mut self) -> Vec<Move> {
+        let mut legal_moves = Vec::new();
+        for mv in self.attack_map.clone() {
+            if self.is_move_legal(&mv) {
+                legal_moves.push(mv);
             }
         }
-        for mv in &side_moves {
-            if self.is_move_legal(mv) {
-                self.legal_moves.push(*mv);
-            }
-        }
+        legal_moves
     }
 
     // sets enpassant movegen flag to Some(idx of pawn that can be captured), if the move is a double pawn push
     fn set_en_passant_flag(&mut self, mv: &Move) -> () {
         if mv.move_type == MoveType::DoublePawnPush {
-            self.movegen_flags.en_passant = Some(mv.to)
+            self.movegen_flags.en_passant = Some(mv.to);
         } else {
             self.movegen_flags.en_passant = None;
-        }
-    }
-
-    fn get_piece(&self, pos: usize) -> Option<&Piece> {
-        match &self.position[pos] {
-            Square::Piece(p) => Some(p),
-            Square::Empty => None,
         }
     }
 
@@ -490,6 +487,31 @@ impl Position {
                     }
                 }
             }
+            // promotion movegen, we only need to do this if a pawn is one rank away from promotion, to save performance
+            if
+                (piece.pcolour == PieceColour::White && i < 16 && i > 7) ||
+                (piece.pcolour == PieceColour::Black && i < 56 && i > 47)
+            {
+                let mut promotion_move_vec: Vec<Move> = Vec::new();
+                move_vec.retain(|&mv| {
+                    if
+                        (piece.pcolour == PieceColour::White && mv.to <= 7) ||
+                        (piece.pcolour == PieceColour::Black && mv.to >= 56)
+                    {
+                        for ptype in PROMOTION_PIECE_TYPES {
+                            promotion_move_vec.push(Move {
+                                from: mv.from,
+                                to: mv.to,
+                                move_type: MoveType::Promotion(ptype),
+                            });
+                        }
+                        false // delete original move from movevec
+                    } else {
+                        true
+                    }
+                });
+                move_vec.extend(promotion_move_vec);
+            }
         } else {
             // move gen for other pieces
             for j in Self::get_offset(piece) {
@@ -599,7 +621,6 @@ impl Position {
         move_vec
     }
 
-
     fn gen_defend_map(&mut self) -> () {
         self.defend_map = [false; 64];
         for (i, s) in self.position.iter().enumerate() {
@@ -619,7 +640,26 @@ impl Position {
     }
 
     pub fn gen_maps(&mut self) -> () {
-        self.gen_defend_map();
+        self.defend_map = [false; 64];
+        self.attack_map = Vec::new();
+        for (i, s) in self.position.iter().enumerate() {
+            match s {
+                Square::Piece(p) => {
+                    if p.pcolour != self.side {
+                        for mv in self.movegen(p, i, true, false) {
+                            self.defend_map[mv.to] = true;
+                        }
+                    } else {
+                        for mv in self.movegen(p, i, false, true) {
+                            self.attack_map.push(mv);
+                        }
+                    }
+                }
+                Square::Empty => {
+                    continue;
+                }
+            }
+        }
     }
 
     pub fn print_board(&self) {

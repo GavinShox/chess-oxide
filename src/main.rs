@@ -19,14 +19,14 @@ struct Board {
 //     }
 // }
 
-fn get_all_legal_positions(pos: &Position, depth: i32) -> Vec<Position> {
+fn get_all_legal_positions(pos: &mut Position, depth: i32) -> Vec<Position> {
     let mut positions = Vec::new();
     if depth == 0 {
         return positions;
     }
-    for mv in &pos.legal_moves {
-            let p = pos.new_position(mv);
-            positions.extend(get_all_legal_positions(&p, depth - 1));
+    for mv in pos.gen_legal_moves() {
+            let mut p = pos.new_position(&mv);
+            positions.extend(get_all_legal_positions(&mut p, depth - 1));
             if depth == 1 {
                 positions.push(p);
             }
@@ -49,11 +49,12 @@ fn move_pos(p: &Position) -> io::Result<()> {
         let mut illegal = true;
         let (i, j) = Position::move_as_notation(&input1, &input2);
 
-        for mv in pos.legal_moves.clone() {
+        for mv in pos.gen_legal_moves() {
             if mv.from == i && mv.to == j {
                 pos = pos.new_position(&mv);
                 pos.print_board();
                 illegal = false;
+                break;
             }
         } 
         if illegal {
@@ -82,7 +83,7 @@ fn main() {
 
     let start = Instant::now();
 
-    let positions: Vec<Position> = get_all_legal_positions(&pos, 4);
+    let positions: Vec<Position> = get_all_legal_positions(&mut pos, 4);
 
     // let legal_moves = &pos.legal_moves;
 
