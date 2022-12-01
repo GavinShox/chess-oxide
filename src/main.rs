@@ -20,20 +20,21 @@ struct Board {
 //     }
 // }
 
-fn get_all_legal_positions(pos: &mut Position, depth: i32) -> Vec<Position> {
-    let mut positions = Vec::new();
+fn get_all_legal_positions(mut pos: Position, depth: i32, nodes: &mut u64) -> () {
     if depth == 0 {
-        return positions;
+        return;
     }
     for mv in pos.gen_legal_moves() {
             let mut p = pos.new_position(&mv);
-            positions.extend(get_all_legal_positions(&mut p, depth - 1));
+
+            get_all_legal_positions(p, depth - 1, nodes);
             if depth == 1 {
-                positions.push(p);
+                //positions.push(p);
+                *nodes += 1;
             }
         
     }
-    positions
+    return;
 }
 
 fn move_pos(p: &Position) -> io::Result<()> {
@@ -89,8 +90,8 @@ fn main() {
     // todo move king to 31 and see if it allows a legal move
 
     let start = Instant::now();
-
-    let positions: Vec<Position> = get_all_legal_positions(&mut pos, 4);
+    let mut nodes: u64 = 0;
+    get_all_legal_positions(pos, 4, &mut nodes);
 
     // let legal_moves = &pos.legal_moves;
 
@@ -106,7 +107,9 @@ fn main() {
     //     p.print_board(&Vec::new());
     //     println!();
     // }
-    println!("{}", positions.len());
+    println!("{}", nodes);
     println!("Time elapsed is: {:?}", duration);
-    move_pos(&pos);
+    //move_pos(&pos);
+    let p = Position::new_position_from_fen("r3r1k1/p4ppp/3q1p2/1p6/1P6/Pn5P/B1P2PP1/3R1RK1 w - - 0 22");
+    p.print_board();
 }

@@ -1,4 +1,5 @@
-use std::mem::MaybeUninit;
+use core::panic;
+use std::{ mem::MaybeUninit, default };
 
 use crate::mailbox;
 
@@ -187,6 +188,169 @@ impl Position {
         new.gen_maps();
         new.gen_legal_moves();
 
+        new
+    }
+
+    pub fn new_position_from_fen(fen: &str) -> Self {
+        let mut pos: Pos64 = [Square::Empty; 64];
+        let fen_vec: Vec<&str> = fen.split(' ').collect();
+        assert_eq!(fen_vec.len(), 6);
+
+        // first field of FEN defines the piece positions
+        let mut rank_start_idx = 0;
+        for rank in fen_vec[0].split('/') {
+            let mut i = 0;
+            for c in rank.chars() {
+                let mut square = Square::Empty;
+                match c {
+                    'p' => {
+                        square = Square::Piece(Piece {
+                            pcolour: PieceColour::Black,
+                            ptype: PieceType::Pawn,
+                        });
+                    }
+                    'P' => {
+                        square = Square::Piece(Piece {
+                            pcolour: PieceColour::White,
+                            ptype: PieceType::Pawn,
+                        });
+                    }
+                    'r' => {
+                        square = Square::Piece(Piece {
+                            pcolour: PieceColour::Black,
+                            ptype: PieceType::Rook,
+                        });
+                    }
+                    'R' => {
+                        square = Square::Piece(Piece {
+                            pcolour: PieceColour::White,
+                            ptype: PieceType::Rook,
+                        });
+                    }
+                    'n' => {
+                        square = Square::Piece(Piece {
+                            pcolour: PieceColour::Black,
+                            ptype: PieceType::Knight,
+                        });
+                    }
+                    'N' => {
+                        square = Square::Piece(Piece {
+                            pcolour: PieceColour::White,
+                            ptype: PieceType::Knight,
+                        });
+                    }
+                    'b' => {
+                        square = Square::Piece(Piece {
+                            pcolour: PieceColour::Black,
+                            ptype: PieceType::Bishop,
+                        });
+                    }
+                    'B' => {
+                        square = Square::Piece(Piece {
+                            pcolour: PieceColour::White,
+                            ptype: PieceType::Bishop,
+                        });
+                    }
+                    'q' => {
+                        square = Square::Piece(Piece {
+                            pcolour: PieceColour::Black,
+                            ptype: PieceType::Queen,
+                        });
+                    }
+                    'Q' => {
+                        square = Square::Piece(Piece {
+                            pcolour: PieceColour::White,
+                            ptype: PieceType::Queen,
+                        });
+                    }
+                    'k' => {
+                        square = Square::Piece(Piece {
+                            pcolour: PieceColour::Black,
+                            ptype: PieceType::King,
+                        });
+                    }
+                    'K' => {
+                        square = Square::Piece(Piece {
+                            pcolour: PieceColour::White,
+                            ptype: PieceType::King,
+                        });
+                    }
+                    x if x.is_ascii_digit() => {
+                        for _ in 0..x.to_digit(10).unwrap() {
+                            pos[i + rank_start_idx] = Square::Empty;
+                            i += 1;
+                        }
+                        continue; // skip the below square assignment for pieces
+                    }
+                    other => {
+                        panic!("invalid char in first field: {}", other);
+                    }
+                }
+                pos[i + rank_start_idx] = square;
+                i += 1;
+            }
+            rank_start_idx += 8; // next rank
+        }
+
+        // second filed of FEN defines which side it is to move, either 'w' or 'b'
+        let mut side = PieceColour::White;
+        match fen_vec[1] {
+            "w" => {/* already set as white */}
+            "b" => {
+                side = PieceColour::Black;
+            }
+            other => {
+                panic!("invalid second field: {}", other);
+            }
+        }
+
+        // initialise movegen flags for the next two FEN fields
+        let mut movegen_flags = MovegenFlags {
+            white_castle_short: false,
+            white_castle_long: false,
+            black_castle_short: false,
+            black_castle_long: false,
+            en_passant: None,
+        };
+
+        // third field of FEN defines castling flags
+        for c in fen_vec[2].chars() {
+            match c {
+                'q' => {
+                    movegen_flags.black_castle_long = true;
+                }
+                'Q' => {
+                    movegen_flags.white_castle_long = true;
+                }
+                'k' => {
+                    movegen_flags.black_castle_short = true;
+                }
+                'K' => {
+                    movegen_flags.white_castle_short = true;
+                }
+                '-' => {}
+                other => panic!("invalid char in third field: {}", other),
+            }
+        }
+
+        // fourth field of FEN defines en passant flag, it gives notation of the square the pawn jumped over
+        if !(fen_vec[3] == "-") {
+            let ep_mv_idx = Self::notation_to_index(fen_vec[3]);
+            // in our struct however, we store the idx of the pawn to be captured
+            let ep_flag = if side == PieceColour::White { ep_mv_idx + 8 } else { ep_mv_idx - 8 };
+            movegen_flags.en_passant = Some(ep_flag);
+        }
+
+        // todo last two fields of FEN
+
+        let mut new = Self {
+            position: pos,
+            side: side,
+            movegen_flags,
+            defend_map: [false; 64],
+            attack_map: Vec::new(),
+        };
+        new.gen_maps();
         new
     }
 
@@ -739,33 +903,28 @@ impl Position {
         }
     }
 
-    pub fn move_as_notation(p: &str, mv: &str) -> (usize, usize) {
-        let rank_starts = [56, 48, 40, 32, 24, 16, 8, 0]; // 8th to 1st rank starting indexes
+    pub fn notation_to_index(n: &str) -> usize {
+        let file: char = n.chars().nth(0).unwrap();
+        let rank: char = n.chars().nth(1).unwrap();
+        let rank_starts = [56, 48, 40, 32, 24, 16, 8, 0]; // 1st to 8th rank starting indexes
 
-        let get_file_offset = |c: &char| -> usize {
-            match c {
-                'a' => 0,
-                'b' => 1,
-                'c' => 2,
-                'd' => 3,
-                'e' => 4,
-                'f' => 5,
-                'g' => 6,
-                'h' => 7,
-                _ => 0,
-            }
+        let file_offset = match file {
+            'a' => 0,
+            'b' => 1,
+            'c' => 2,
+            'd' => 3,
+            'e' => 4,
+            'f' => 5,
+            'g' => 6,
+            'h' => 7,
+            _ => 0,
         };
+        file_offset + rank_starts[(rank.to_digit(10).unwrap() - 1) as usize]
+    }
 
-        let pfile: char = p.chars().nth(0).unwrap();
-        let prank: char = p.chars().nth(1).unwrap();
-
-        let mvfile: char = mv.chars().nth(0).unwrap();
-        let mvrank: char = mv.chars().nth(1).unwrap();
-
-        let i: usize =
-            get_file_offset(&pfile) + rank_starts[(prank.to_digit(10).unwrap() - 1) as usize];
-        let j: usize =
-            get_file_offset(&mvfile) + rank_starts[(mvrank.to_digit(10).unwrap() - 1) as usize];
+    pub fn move_as_notation(p: &str, mv: &str) -> (usize, usize) {
+        let i: usize = Self::notation_to_index(p);
+        let j: usize = Self::notation_to_index(mv);
 
         (i, j)
     }
