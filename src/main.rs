@@ -76,7 +76,10 @@ fn move_pos(p: &Position) -> io::Result<()> {
 }
 
 fn main() {
-    let mut pos = Position::new_starting();
+    //let mut pos = Position::new_starting();
+    let mut pos = Position::new_position_from_fen("r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 0");
+    pos.print_board();
+    println!("{:#?}", pos);
     // let idx: usize = 62;
     // let s = &pos.position[idx];
     // match s {
@@ -110,6 +113,4 @@ fn main() {
     println!("{}", nodes);
     println!("Time elapsed is: {:?}", duration);
     //move_pos(&pos);
-    let p = Position::new_position_from_fen("r3r1k1/p4ppp/3q1p2/1p6/1P6/Pn5P/B1P2PP1/3R1RK1 w - - 0 22");
-    p.print_board();
 }

@@ -424,6 +424,7 @@ impl Position {
         let result = !self.is_in_check();
 
         self.position = original_position;
+        self.gen_defend_map();  // todo FIX THIS
 
         result
     }
