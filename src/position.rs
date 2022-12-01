@@ -393,6 +393,7 @@ impl Position {
     // legality here meaning would the move leave your king in check. Actual piece movement is done in movegen
     fn is_move_legal(&mut self, mv: &Move) -> bool {
         let original_position: Pos64 = self.position.clone();
+        let original_defend_map = self.defend_map.clone();
 
         // doing special move types first, to check if mv is a castling move, and return there first
         match mv.move_type {
@@ -424,8 +425,7 @@ impl Position {
         let result = !self.is_in_check();
 
         self.position = original_position;
-        self.gen_defend_map();  // todo FIX THIS
-
+        self.defend_map = original_defend_map;
         result
     }
 
