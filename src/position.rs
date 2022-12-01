@@ -7,8 +7,6 @@ type Pos64 = [Square; 64];
 type DefendMap = [bool; 64]; // array of boolean values determining if a square is defended by opposite side
 type Offset = [i32; 8];
 
-pub type MoveVec = Vec<Move>;
-
 const MOVE_VEC_SIZE: usize = 27; // max number of squares a queen can possibly move to is 27
 
 const PAWN_OFFSET: Offset = [0, 0, 0, 0, 0, 0, 0, 0];
@@ -32,11 +30,7 @@ const SHORT_WHITE_ROOK_START: usize = 63;
 const BLACK_KING_START: usize = 4;
 const WHITE_KING_START: usize = 60;
 
-// offset of rook from original position after castling
-const AFTER_LONG_CASTLE_ROOK_OFFSET: i32 = 3;
-const AFTER_SHORT_CASTLE_ROOK_OFFSET: i32 = -2;
-
-const ABOVE_BELOW_MODULO: i32 = 8; // (initial square index - move square index) % const == 0 if either index is above/below the other.
+const ABOVE_BELOW: usize = 8; // 8 indexes from i is the square directly above/below in the pos64 array
 
 #[macro_export]
 macro_rules! extract_enum_value {
@@ -112,7 +106,7 @@ pub struct Position {
     side: PieceColour,
     movegen_flags: MovegenFlags,
     defend_map: DefendMap, // map of squares opposite colour is defending
-    attack_map: Vec<Move>,
+    attack_map: Vec<Move>,  // map of moves from attacking side
 }
 // TODO impl hash for position
 impl Position {
@@ -186,7 +180,7 @@ impl Position {
             attack_map: Vec::new(),
         };
         new.gen_maps();
-        new.gen_legal_moves();
+        new.get_legal_moves();
 
         new
     }
@@ -337,7 +331,7 @@ impl Position {
         if !(fen_vec[3] == "-") {
             let ep_mv_idx = Self::notation_to_index(fen_vec[3]);
             // in our struct however, we store the idx of the pawn to be captured
-            let ep_flag = if side == PieceColour::White { ep_mv_idx + 8 } else { ep_mv_idx - 8 };
+            let ep_flag = if side == PieceColour::White { ep_mv_idx + ABOVE_BELOW } else { ep_mv_idx - ABOVE_BELOW };
             movegen_flags.en_passant = Some(ep_flag);
         }
 
@@ -356,7 +350,6 @@ impl Position {
 
     // Assumes a legal move, no legality checks are done, so no bounds checking is done here
     pub fn new_position(&self, mv: &Move) -> Self {
-        // assert move is legal maybe?
         let mut new_pos = self.clone();
         new_pos.set_en_passant_flag(mv);
         new_pos.set_castle_flags(mv);
@@ -391,20 +384,19 @@ impl Position {
 
     // moves piece at i, to j, without changing side, to regen defend maps to determine if the move is legal
     // legality here meaning would the move leave your king in check. Actual piece movement is done in movegen
-    fn is_move_legal(&mut self, mv: &Move) -> bool {
-        let original_position: Pos64 = self.position.clone();
-        let original_defend_map = self.defend_map.clone();
+    fn is_move_legal(&self, mv: &Move) -> bool {
+        let mut test_pos = self.clone();
 
         // doing special move types first, to check if mv is a castling move, and return there first
         match mv.move_type {
             MoveType::EnPassant(ep_capture) => {
-                self.position[ep_capture] = Square::Empty;
+                test_pos.position[ep_capture] = Square::Empty;
             }
             MoveType::Castle(castle_mv) => {
                 return if
-                    self.is_defended(castle_mv.king_squares.0) ||
-                    self.is_defended(castle_mv.king_squares.1) ||
-                    self.is_defended(castle_mv.king_squares.2)
+                    test_pos.is_defended(castle_mv.king_squares.0) ||
+                    test_pos.is_defended(castle_mv.king_squares.1) ||
+                    test_pos.is_defended(castle_mv.king_squares.2)
                 {
                     false // if any square the king moves from, through or to are defended, move isnt legal
                 } else {
@@ -416,16 +408,16 @@ impl Position {
         }
 
         // this has to be after the castleing section above, as king cant castle out of check
-        self.position[mv.to] = self.position[mv.from];
-        self.position[mv.from] = Square::Empty;
+        test_pos.position[mv.to] = self.position[mv.from];
+        test_pos.position[mv.from] = Square::Empty;
 
         // we only need to gen new defend map
-        self.gen_defend_map();
+        test_pos.gen_defend_map();
 
-        let result = !self.is_in_check();
+        let result = !test_pos.is_in_check();
 
-        self.position = original_position;
-        self.defend_map = original_defend_map;
+        // self.position = original_position;
+        // self.defend_map = original_defend_map;
         result
     }
 
@@ -442,14 +434,12 @@ impl Position {
     }
 
     pub fn is_in_check(&self) -> bool {
-        let mut in_check = false;
         for (i, s) in self.position.iter().enumerate() {
             match s {
                 Square::Piece(p) => {
                     if matches!(p.ptype, PieceType::King) && p.pcolour == self.side {
                         if self.is_defended(i) {
-                            in_check = true;
-                            break;
+                            return true;
                         }
                         break;
                     }
@@ -457,13 +447,13 @@ impl Position {
                 Square::Empty => {}
             }
         }
-        in_check
+        return false;
     }
 
-    pub fn gen_legal_moves(&mut self) -> Vec<Move> {
+    pub fn get_legal_moves(&self) -> Vec<&Move> {
         let mut legal_moves = Vec::new();
-        for mv in self.attack_map.clone() {
-            if self.is_move_legal(&mv) {
+        for mv in &self.attack_map {
+            if self.is_move_legal(mv) {
                 legal_moves.push(mv);
             }
         }
@@ -529,13 +519,12 @@ impl Position {
         piece: &Piece,
         i: usize,
         defending: bool,
-        include_pawn_pushes: bool
-    ) -> MoveVec {
-        let mut move_vec: MoveVec = Vec::with_capacity(MOVE_VEC_SIZE);
+    ) -> Vec<Move> {
+        let mut move_vec: Vec<Move> = Vec::new();
 
         // move gen for pawns
         if matches!(piece.ptype, PieceType::Pawn) {
-            // mailbox offset for moving pawns straight up/down
+            // mailbox offset for moving pawns straight up
             let white_push_offset = -10;
             let black_push_offset = 10;
 
@@ -546,7 +535,8 @@ impl Position {
                 black_push_offset
             };
 
-            if include_pawn_pushes {
+            // pawn push logic, only when defending is false, as pawn pushes are non-controlling moves
+            if !defending {
                 let starting: bool;
 
                 // check if pawn is still on starting rank
@@ -577,7 +567,7 @@ impl Position {
                             false
                         }
                     } else {
-                        false
+                        false  // also return false if mv is out of bounds
                     }
                 };
 
@@ -792,7 +782,7 @@ impl Position {
             match s {
                 Square::Piece(p) => {
                     if p.pcolour != self.side {
-                        for mv in self.movegen(p, i, true, false) {
+                        for mv in self.movegen(p, i, true) {
                             self.defend_map[mv.to] = true;
                         }
                     }
@@ -811,13 +801,14 @@ impl Position {
             match s {
                 Square::Piece(p) => {
                     if p.pcolour != self.side {
-                        for mv in self.movegen(p, i, true, false) {
+                        for mv in self.movegen(p, i, true) {
                             self.defend_map[mv.to] = true;
                         }
                     } else {
-                        for mv in self.movegen(p, i, false, true) {
-                            self.attack_map.push(mv);
-                        }
+                        // for mv in self.movegen(p, i, false, true) {
+                        //     self.attack_map.push(mv);
+                        // }
+                        self.attack_map.extend(self.movegen(p, i, false));
                     }
                 }
                 Square::Empty => {
@@ -921,6 +912,23 @@ impl Position {
             _ => 0,
         };
         file_offset + rank_starts[(rank.to_digit(10).unwrap() - 1) as usize]
+    }
+
+    pub fn index_to_notation(i: usize) -> String {
+        let file = match i % 8 {
+            0 => 'a',
+            1 => 'b',
+            2 => 'c',
+            3 => 'd',
+            4 => 'e',
+            5 => 'f',
+            6 => 'g',
+            7 => 'h',
+            _ => ' '
+        };
+        let rank_num = (i / 8) + 1;
+        let rank = char::from_digit(rank_num.try_into().unwrap(), 10).unwrap(); 
+        format!("{}{}", file, rank)
     }
 
     pub fn move_as_notation(p: &str, mv: &str) -> (usize, usize) {

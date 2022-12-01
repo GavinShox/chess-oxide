@@ -7,7 +7,6 @@ use std::io;
 
 use position::Position;
 use position::Piece;
-use position::MoveVec;
 use std::time::{ Duration, Instant };
 
 struct Board {
@@ -24,13 +23,14 @@ fn get_all_legal_positions(mut pos: Position, depth: i32, nodes: &mut u64) -> ()
     if depth == 0 {
         return;
     }
-    for mv in pos.gen_legal_moves() {
-            let mut p = pos.new_position(&mv);
+    for mv in pos.get_legal_moves() {
 
-            get_all_legal_positions(p, depth - 1, nodes);
             if depth == 1 {
-                //positions.push(p);
                 *nodes += 1;
+            } else {
+                let mut p = pos.new_position(mv);
+
+                get_all_legal_positions(p, depth - 1, nodes);
             }
         
     }
@@ -51,7 +51,7 @@ fn move_pos(p: &Position) -> io::Result<()> {
         let mut illegal = true;
         let (i, j) = Position::move_as_notation(&input1, &input2);
 
-        for mv in pos.gen_legal_moves() {
+        for mv in pos.get_legal_moves() {
             if mv.from == i && mv.to == j {
                 pos = pos.new_position(&mv);
                 //pos.print_board();
@@ -65,8 +65,8 @@ fn move_pos(p: &Position) -> io::Result<()> {
             input2.clear();
             continue;
         }
-        let engine_mv = engine::choose_move(&mut pos);
-        pos = pos.new_position(&engine_mv);
+        let engine_mv = engine::choose_move(&pos);
+        pos = pos.new_position(engine_mv);
         pos.print_board();
         input1.clear();
         input2.clear();
@@ -76,10 +76,10 @@ fn move_pos(p: &Position) -> io::Result<()> {
 }
 
 fn main() {
-    //let mut pos = Position::new_starting();
-    let mut pos = Position::new_position_from_fen("r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 0");
+    let mut pos = Position::new_starting();
+    //let mut pos = Position::new_position_from_fen("r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 0");
     pos.print_board();
-    println!("{:#?}", pos);
+    //println!("{:#?}", pos);
     // let idx: usize = 62;
     // let s = &pos.position[idx];
     // match s {
@@ -94,7 +94,7 @@ fn main() {
 
     let start = Instant::now();
     let mut nodes: u64 = 0;
-    get_all_legal_positions(pos, 4, &mut nodes);
+    //get_all_legal_positions(pos, 4, &mut nodes);
 
     // let legal_moves = &pos.legal_moves;
 
@@ -112,5 +112,5 @@ fn main() {
     // }
     println!("{}", nodes);
     println!("Time elapsed is: {:?}", duration);
-    //move_pos(&pos);
+    move_pos(&pos);
 }

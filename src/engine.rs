@@ -1,6 +1,6 @@
 use crate::position::*;
 use rand::seq::SliceRandom;
 
-pub fn choose_move(pos: &mut Position) -> Move {
-    *pos.gen_legal_moves().choose(&mut rand::thread_rng()).unwrap()
+pub fn choose_move(pos: &Position) -> &Move {
+    *pos.get_legal_moves().choose(&mut rand::thread_rng()).unwrap_or_else(|| panic!("CHECKMATE"))
 }
