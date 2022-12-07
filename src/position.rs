@@ -1,5 +1,6 @@
 use core::panic;
-use std::{ mem::MaybeUninit, default };
+use std::{ mem::MaybeUninit, default, hash::Hasher };
+use std::hash::Hash;
 
 use crate::mailbox;
 
@@ -41,20 +42,20 @@ macro_rules! extract_enum_value {
     }
     };
 }
-#[derive(Debug, PartialEq, Clone, Copy)]
+#[derive(Debug, PartialEq, Clone, Copy, Hash)]
 pub struct Move {
     pub from: usize,
     pub to: usize,
     pub move_type: MoveType,
 }
-#[derive(Debug, PartialEq, Clone, Copy)]
+#[derive(Debug, PartialEq, Clone, Copy, Hash)]
 pub struct CastleMove {
     pub rook_from: usize,
     pub rook_to: usize,
     pub king_squares: (usize, usize, usize),
 }
 
-#[derive(Debug, PartialEq, Clone, Copy)]
+#[derive(Debug, PartialEq, Clone, Copy, Hash)]
 pub enum MoveType {
     EnPassant(usize),
     Promotion(PieceType),
@@ -63,7 +64,7 @@ pub enum MoveType {
     Normal,
 }
 
-#[derive(Debug, PartialEq, Clone, Copy)]
+#[derive(Debug, PartialEq, Clone, Copy, Hash)]
 pub enum PieceType {
     Pawn,
     Knight,
@@ -73,25 +74,25 @@ pub enum PieceType {
     King,
 }
 
-#[derive(PartialEq, Debug, Clone, Copy)]
+#[derive(PartialEq, Debug, Clone, Copy, Hash)]
 pub enum PieceColour {
     White,
     Black,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq, Hash)]
 pub struct Piece {
     pcolour: PieceColour,
     ptype: PieceType,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq, Hash)]
 pub enum Square {
     Piece(Piece),
     Empty,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Hash)]
 struct MovegenFlags {
     white_castle_short: bool,
     white_castle_long: bool,
@@ -100,7 +101,7 @@ struct MovegenFlags {
     en_passant: Option<usize>,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Hash)]
 pub struct Position {
     pub position: Pos64,
     side: PieceColour,
@@ -108,8 +109,14 @@ pub struct Position {
     defend_map: DefendMap, // map of squares opposite colour is defending
     attack_map: Vec<Move>,  // map of moves from attacking side
 }
-// TODO impl hash for position
+
 impl Position {
+    pub fn pos_hash(&self) -> u64 {
+        let mut hasher = std::collections::hash_map::DefaultHasher::new();
+        self.hash(&mut hasher);
+        hasher.finish()
+    }
+
     fn get_offset(piece: &Piece) -> Offset {
         match piece.ptype {
             PieceType::Pawn => PAWN_OFFSET, // not used
@@ -335,7 +342,7 @@ impl Position {
             movegen_flags.en_passant = Some(ep_flag);
         }
 
-        // todo last two fields of FEN
+        // Last two fields not used here, as the 50 move rule isnt calculated in Position struct
 
         let mut new = Self {
             position: pos,
@@ -386,7 +393,6 @@ impl Position {
     // legality here meaning would the move leave your king in check. Actual piece movement is done in movegen
     fn is_move_legal(&self, mv: &Move) -> bool {
         let mut test_pos = self.clone();
-
         // doing special move types first, to check if mv is a castling move, and return there first
         match mv.move_type {
             MoveType::EnPassant(ep_capture) => {
