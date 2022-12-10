@@ -2,7 +2,7 @@ use std::{rc::Rc, collections::HashMap};
 
 use crate::position::*;
 
-enum GameState {
+pub enum GameState {
     Check,
     Checkmate,
     Stalemate,

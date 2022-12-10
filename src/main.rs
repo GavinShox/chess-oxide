@@ -98,8 +98,8 @@ fn main() {
 
     let start = Instant::now();
     let mut nodes: u64 = 0;
-    println!("{:x}", pos.pos_hash());
-    get_all_legal_positions(pos, 4, &mut nodes);
+    //println!("{:x}", pos.pos_hash());
+    //get_all_legal_positions(pos, 4, &mut nodes);
 
     // let legal_moves = &pos.legal_moves;
 
@@ -109,13 +109,14 @@ fn main() {
     //         positions.push(p);
     //     }
     // }
-    let duration = start.elapsed();
 
     // for p in &positions {
     //     p.print_board(&Vec::new());
     //     println!();
     // }
-    println!("{}", nodes);
+    //println!("{}", engine::negatedMax(&pos, 4));
+    let duration = start.elapsed();
+
     println!("Time elapsed is: {:?}", duration);
-    //move_pos(&pos);
+    move_pos(&pos);
 }
