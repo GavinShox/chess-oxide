@@ -1,8 +1,6 @@
-use std::rc::Rc;
-
 use crate::position::*;
 
-enum GameState {
+pub enum GameState {
     Check,
     Checkmate,
     Stalemate,
