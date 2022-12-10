@@ -104,7 +104,7 @@ struct MovegenFlags {
 #[derive(Debug, Clone, Hash)]
 pub struct Position {
     pub position: Pos64,
-    side: PieceColour,
+    pub side: PieceColour,
     movegen_flags: MovegenFlags,
     defend_map: DefendMap, // map of squares opposite colour is defending
     attack_map: Vec<Move>,  // map of moves from attacking side

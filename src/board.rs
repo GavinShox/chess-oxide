@@ -1,4 +1,4 @@
-use std::rc::Rc;
+use std::{rc::Rc, collections::HashMap};
 
 use crate::position::*;
 
@@ -16,6 +16,8 @@ struct BoardState {
     move_count: u32,
     halfmove_count: u32,
     hash: u64,
+    side_to_move: PieceColour,
+    game_state: GameState
 
 }
 
@@ -23,14 +25,20 @@ impl BoardState {
     pub fn new_starting() -> Self {
         let position = Position::new_starting();
         let position_hash = position.pos_hash();
-        BoardState { position, move_count: 0, halfmove_count: 0, hash: position_hash }
+        let side_to_move = position.side;
+        let game_state = GameState::Active;
+        BoardState { position, move_count: 0, halfmove_count: 0, hash: position_hash, side_to_move, game_state }
     }
+}
+
+struct BoardTree {
+    
 }
 
 pub struct Board {
     current_position: usize,
     positions: Vec<Position>,
-    position_hashes: Vec<u64>,
+    position_occurences: HashMap<u64, usize>,
     move_count: u32,
     halfmove_count: u32
 }
@@ -40,10 +48,10 @@ impl Board {
         let init_pos = Position::new_starting();
         let init_pos_hash = init_pos.pos_hash();
         let mut positions = Vec::new();
-        let mut position_hashes = Vec::new();
+        let mut position_hashes = HashMap::new();
         positions.push(init_pos);
-        position_hashes.push(init_pos_hash);
-        Board { current_position: 0, positions, position_hashes, move_count: 0, halfmove_count: 0 }
+        position_hashes.insert(init_pos_hash, 1);
+        Board { current_position: 0, positions, position_occurences: position_hashes, move_count: 0, halfmove_count: 0 }
     }
     pub fn get_gamestate(&self) -> GameState {
         let legal_move_len = self.positions[self.current_position].get_legal_moves().len();
