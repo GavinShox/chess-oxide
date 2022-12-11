@@ -31,7 +31,7 @@ const MAILBOX64: [i32; 64] = [
 ];
 
 // pub fn mailbox_number(i: i32) -> i32 {
-//     MAILBOX[MAILBOX64[i as usize] as usize]
+//     MAILBO                                                                                                                               X[MAILBOX64[i as usize] as usize]
 // }
 
 pub fn next_mailbox_number(i: usize, j: i32) -> i32 {
