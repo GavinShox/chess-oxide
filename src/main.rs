@@ -48,6 +48,12 @@ fn move_pos(p: &Position) -> io::Result<()> {
     let mut input2 = String::new();
 
     loop {
+        let engine_mv = engine::choose_move(&pos);
+        pos = pos.new_position(engine_mv);
+        pos.print_board();
+        input1.clear();
+        input2.clear();
+
         println!("Move from:");
         stdin.read_line(&mut input1)?;
         println!("Move to:");
@@ -69,11 +75,11 @@ fn move_pos(p: &Position) -> io::Result<()> {
             input2.clear();
             continue;
         }
-        let engine_mv = engine::choose_move(&pos);
-        pos = pos.new_position(engine_mv);
-        pos.print_board();
-        input1.clear();
-        input2.clear();
+        // let engine_mv = engine::choose_move(&pos);
+        // pos = pos.new_position(engine_mv);
+        // pos.print_board();
+        // input1.clear();
+        // input2.clear();
     }
 
     Ok(())
@@ -99,7 +105,7 @@ fn main() {
     let start = Instant::now();
     let mut nodes: u64 = 0;
     //println!("{:x}", pos.pos_hash());
-    get_all_legal_positions(pos, 5, &mut nodes);
+    //get_all_legal_positions(pos, 5, &mut nodes);
 
     // let legal_moves = &pos.legal_moves;
 
@@ -116,8 +122,8 @@ fn main() {
     // }
     //println!("{}", engine::negatedMax(&pos, 4));
     let duration = start.elapsed();
-    println!("nodes: {}", nodes);
+    //println!("nodes: {}", nodes);
 
     println!("Time elapsed is: {:?}", duration);
-    //move_pos(&pos);
+    move_pos(&pos);
 }
