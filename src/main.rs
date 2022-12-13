@@ -1,3 +1,4 @@
+#![allow(warnings)]
 mod mailbox;
 mod position;
 mod engine;
