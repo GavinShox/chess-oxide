@@ -600,7 +600,7 @@ impl Position {
 
             for j in attack_offset {
                 let mv = mailbox::next_mailbox_number(i, j);
-                if mv > 0 {
+                if mv >= 0 {
                     let mv_square = &self.position[mv as usize];
                     match mv_square {
                         Square::Piece(mv_square_piece) => {
@@ -626,7 +626,7 @@ impl Position {
             }
             // en passant captures, checking pawns left and right
             let attack_en_passant_offset = [-1, 1];
-            if self.movegen_flags.en_passant.is_some() {
+            if !defending && self.movegen_flags.en_passant.is_some() {
                 let en_passant_mv = self.movegen_flags.en_passant.unwrap();
                 for j in attack_en_passant_offset {
                     let mv = mailbox::next_mailbox_number(i, j);
@@ -650,8 +650,9 @@ impl Position {
             }
             // promotion movegen, we only need to do this if a pawn is one rank away from promotion, to save performance
             if
-                (piece.pcolour == PieceColour::White && i < 16 && i > 7) ||
-                (piece.pcolour == PieceColour::Black && i < 56 && i > 47)
+                !defending &&
+                ((piece.pcolour == PieceColour::White && i < 16 && i > 7) ||
+                (piece.pcolour == PieceColour::Black && i < 56 && i > 47))
             {
                 let mut promotion_move_vec: Vec<Move> = Vec::new();
                 move_vec.retain(|&mv| {
