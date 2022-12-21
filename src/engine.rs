@@ -1,12 +1,14 @@
 use crate::position::*;
 use rand::seq::SliceRandom;
 use std::cmp;
+use crate::movegen::*;
 
 static mut EVALUALTED_POSITIONS: u64 = 0;
 
-pub fn choose_move(pos: &Position) -> &Move {
+pub fn choose_move(pos: &Position, depth: i32) -> &Move {
+    // TODO add check if position is in endgame, for different evaluation
     unsafe {
-    let mv = minimax(pos, 4, i32::MIN, i32::MAX, true, pos.side).1.unwrap();
+    let mv = minimax(pos, depth, i32::MIN, i32::MAX, true, pos.side).1;
         println!("{}", EVALUALTED_POSITIONS);
         EVALUALTED_POSITIONS = 0;
         mv
@@ -51,12 +53,12 @@ pub fn sort_moves(pos: &Position, moves: &mut Vec<&Move>) {
     *moves = moves_c;
 }
 
-pub unsafe fn minimax(pos: &Position, depth: i32, mut alpha: i32, mut beta: i32, is_maxi: bool, maxi_colour: PieceColour) -> (i32, Option<&Move>) {
+pub fn minimax(pos: &Position, depth: i32, mut alpha: i32, mut beta: i32, is_maxi: bool, maxi_colour: PieceColour) -> (i32, &Move) {
     let mut moves = pos.get_legal_moves();
     //sort_moves(pos, &mut moves);
     if depth == 0 || moves.len() == 0 {
-        EVALUALTED_POSITIONS += 1;
-        return (evaluate(pos, maxi_colour), None);
+        unsafe {EVALUALTED_POSITIONS += 1;}
+        return (evaluate(pos, maxi_colour), &NULL_MOVE);
     }
     let mut best_move = moves[0];
 
@@ -74,7 +76,7 @@ pub unsafe fn minimax(pos: &Position, depth: i32, mut alpha: i32, mut beta: i32,
                 break;
             }
         }
-        return (max_eval, Some(best_move));
+        return (max_eval, best_move);
     } else {
         let mut min_eval = i32::MAX;
         for mv in moves {
@@ -90,7 +92,7 @@ pub unsafe fn minimax(pos: &Position, depth: i32, mut alpha: i32, mut beta: i32,
                 break;
             }
         }
-        return (min_eval, Some(best_move));
+        return (min_eval, best_move);
     }
 }
 
@@ -205,44 +207,3 @@ pub fn evaluate(pos: &Position, maxi_colour: PieceColour) -> i32 {
     let eval = w_eval - b_eval;
     return eval * (if maxi_colour == PieceColour::White {1} else {-1});
 }
-
-
-
-
-// pub fn aiminimax(pos: &Position, depth: i32, is_maxi: bool, maxi_colour: PieceColour, alpha: i32, beta: i32) -> (i32, Option<&Move>) {
-//     let moves = pos.get_legal_moves();
-//     if depth == 0 || moves.len() == 0 {
-//         return (evaluate(pos, maxi_colour), None);
-//     }
-//     let mut best_move = moves[0];
-
-//     if is_maxi {
-//         let mut max_eval = i32::MIN;
-//         for mv in moves {
-//             let child_pos = pos.new_position(mv);
-//             let eval = aiminimax(&child_pos, depth - 1, false, maxi_colour, alpha, beta).0;
-//             if eval > max_eval {
-//                 max_eval = eval;
-//                 best_move = mv;
-//             }
-//             alpha = cmp::max(alpha, max_eval);
-//             if beta <= alpha {
-//                 break;
-//             }
-//         }
-//         return (max_eval, Some(best_move));
-//     } else {
-//         let mut min_eval = i32::MAX;
-//         for mv in moves {
-//             let child_pos = pos.new_position(mv);
-//             let eval = aiminimax(&child_pos, depth - 1, true, maxi_colour, alpha, beta).0;
-//             if eval < min_eval {
-//                 min_eval = eval;
-//                 best_move = mv;
-//             }
-//             beta = cmp::min(beta, min_eval);
-//             if beta <= alpha {
-//                 break;
-//             }
-//         }
-//         return (min
