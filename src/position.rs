@@ -16,11 +16,19 @@ impl AttackMap {
     fn new() -> Self {
         Self(Vec::new())
     }
+
+    fn clear(&mut self) {
+        self.0.clear();
+    }
 }
 
 impl DefendMap {
     fn new() -> Self {
         Self([false; 64])
+    }
+
+    fn clear(&mut self) {
+        self.0 = [false; 64];
     }
 }
 
@@ -44,6 +52,7 @@ pub struct Position {
     pub movegen_flags: MovegenFlags,
     defend_map: DefendMap, // map of squares opposite colour is defending
     attack_map: AttackMap, // map of moves from attacking side
+    
 }
 
 impl Position {
@@ -101,8 +110,6 @@ impl Position {
             attack_map: AttackMap::new(),
         };
         new.gen_maps();
-        new.get_legal_moves();
-
         new
     }
 
@@ -307,9 +314,61 @@ impl Position {
         new_pos
     }
 
+    fn is_move_legal_nc(&mut self, mv: &Move) -> bool {
+        //let mut test_pos = self.clone();
+        let mut original_ep_capture = None;
+        let mut original_ep_idx = 0;
+        // doing special move types first, to check if mv is a castling move, and return there first
+        match mv.move_type {
+            MoveType::EnPassant(ep_capture) => {
+                original_ep_capture = Some(self.position[ep_capture]);
+                original_ep_idx = ep_capture;
+                self.position[ep_capture] = Square::Empty;
+            }
+            MoveType::Castle(castle_mv) => {
+                // no cleanup needed
+                // if any square the king moves from, through or to are defended, move isnt legal
+                return !(
+                    self.is_defended(castle_mv.king_squares.0) ||
+                    self.is_defended(castle_mv.king_squares.1) ||
+                    self.is_defended(castle_mv.king_squares.2)
+                );
+            }
+            MoveType::Promotion(_) => {/* the piece the pawn promotes to doesn't effect legality */}
+            _ => {}
+        }
+
+        // this has to be after the castleing section above, as king cant castle out of check
+        let original_from = self.position[mv.from];
+        let original_to = self.position[mv.to];
+        self.position[mv.to] = self.position[mv.from];
+        self.position[mv.from] = Square::Empty;
+        // TODO maybe short circuit this by storing kind idx....
+        // we only need to gen new defend map
+        self.gen_defend_map();
+
+        let result = !self.is_in_check();
+        self.position[mv.to] = original_to;
+        self.position[mv.from] = original_from;
+        if let Some(s) = original_ep_capture {
+            self.position[original_ep_idx] = s;
+        }
+        // self.position = original_position;
+        // self.defend_map = original_defend_map;
+        result
+    }
+
     // moves piece at i, to j, without changing side, to regen defend maps to determine if the move is legal
     // legality here meaning would the move leave your king in check. Actual piece movement is done in movegen
     fn is_move_legal(&self, mv: &Move) -> bool {
+        // if let MoveType::Castle(castle_mv) = mv.move_type {
+        //     return !(
+        //         self.is_defended(castle_mv.king_squares.0) ||
+        //         self.is_defended(castle_mv.king_squares.1) ||
+        //         self.is_defended(castle_mv.king_squares.2)
+        //     );
+        // }
+
         let mut test_pos = self.clone();
         // doing special move types first, to check if mv is a castling move, and return there first
         match mv.move_type {
@@ -378,6 +437,7 @@ impl Position {
                 legal_moves.push(mv);
             }
         }
+
         legal_moves
     }
 
@@ -433,13 +493,13 @@ impl Position {
     }
 
     fn gen_defend_map(&mut self) -> () {
-        //self.defend_map.clear();
-        let mut defend_map = DefendMap::new();
+        self.defend_map.clear();
+        //let mut defend_map = DefendMap::new();
         for (i, s) in self.position.iter().enumerate() {
             match s {
                 Square::Piece(p) => {
                     if p.pcolour != self.side {
-                        movegen(self, p, i, true, &mut defend_map);
+                        movegen(&self.position, &self.movegen_flags, p, i, true, &mut self.defend_map);
                     }
                 }
                 Square::Empty => {
@@ -447,24 +507,23 @@ impl Position {
                 }
             }
         }
-        self.defend_map = defend_map;
+        // self.defend_map = defend_map;
     }
 
     pub fn gen_maps(&mut self) -> () {
-        let mut defend_map = DefendMap::new();
-        let mut attack_map = AttackMap::new();
-        // self.defend_map.clear();
-        // self.attack_map.clear();
+        self.defend_map.clear();
+        self.attack_map.clear();
+
         for (i, s) in self.position.iter().enumerate() {
             match s {
                 Square::Piece(p) => {
                     if p.pcolour != self.side {
-                        movegen(self, p, i, true, &mut defend_map)
+                        movegen(&self.position, &self.movegen_flags, p, i, true, &mut self.defend_map)
                     } else {
                         // for mv in self.movegen(p, i, false, true) {
                         //     self.attack_map.push(mv); 
                         // }
-                        movegen(self, p, i, false, &mut attack_map);
+                        movegen(&self.position, &self.movegen_flags, p, i, false, &mut self.attack_map);
                     }
                 }
                 Square::Empty => {
@@ -472,8 +531,7 @@ impl Position {
                 }
             }
         }
-        self.defend_map = defend_map;
-        self.attack_map = attack_map;
+
     }
 
     pub fn print_board(&self) {

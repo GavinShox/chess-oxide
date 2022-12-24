@@ -10,8 +10,9 @@ rand = "0.8.5"
 clap = {version = "4.0", features = ["derive"]}
 jemallocator = "0.5.0"
 
+
 [profile.release]
-lto = "thin"
+lto = true
 codegen-units = 1
 opt-level = 3
 panic = "abort"

@@ -98,6 +98,7 @@ pub trait MoveMap {
     fn add_move(&mut self, _: &Move) -> ();
 }
 
+#[inline(always)]
 fn pawn_promotion(mv_map: &mut dyn MoveMap, i: usize, mv: i32) {
     for ptype in PROMOTION_PIECE_TYPES {
         mv_map.add_move(
@@ -110,10 +111,12 @@ fn pawn_promotion(mv_map: &mut dyn MoveMap, i: usize, mv: i32) {
     }
 }
 
-fn is_square_empty(pos: &Position, i: usize) -> bool {
-    pos.position[i] == Square::Empty
+#[inline(always)]
+fn is_square_empty(pos: &position::Pos64, i: usize) -> bool {
+    pos[i] == Square::Empty
 }
 
+#[inline(always)]
 fn mb_get_pawn_push_offset(piece: &Piece) -> i32 {
     match piece.pcolour {
         PieceColour::White => -10,
@@ -121,6 +124,7 @@ fn mb_get_pawn_push_offset(piece: &Piece) -> i32 {
     }
 }
 
+#[inline(always)]
 fn mb_get_pawn_attack_offset(piece: &Piece) -> [i32; 2] {
     const WHITE_ATTACK_OFFSET: [i32; 2] = [-9, -11];
     const BLACK_ATTACK_OFFSET: [i32; 2] = [9, 11];
@@ -130,6 +134,7 @@ fn mb_get_pawn_attack_offset(piece: &Piece) -> [i32; 2] {
     }
 }
 
+#[inline(always)]
 fn mb_get_offset(piece: &Piece) -> Offset {
     match piece.ptype {
         PieceType::Pawn => PAWN_OFFSET, // not used
@@ -141,6 +146,7 @@ fn mb_get_offset(piece: &Piece) -> Offset {
     }
 }
 
+#[inline(always)]
 fn get_slide(piece: &Piece) -> bool {
     match piece.ptype {
         PieceType::Pawn => false,
@@ -152,6 +158,7 @@ fn get_slide(piece: &Piece) -> bool {
     }
 }
 
+#[inline(always)]
 fn pawn_is_promotion_square(i: i32, piece: &Piece) -> bool {
     match piece.pcolour {
         PieceColour::White => i <= 7,
@@ -159,6 +166,7 @@ fn pawn_is_promotion_square(i: i32, piece: &Piece) -> bool {
     }
 }
 
+#[inline(always)]
 fn pawn_is_starting_rank(i: usize, piece: &Piece) -> bool {
     match piece.pcolour {
         PieceColour::White => i < 56 && i > 47,
@@ -169,7 +177,8 @@ fn pawn_is_starting_rank(i: usize, piece: &Piece) -> bool {
 // generates moves for the piece at index i, only checks legality regarding where pieces could possibly move to
 // doesnt account for king checks
 pub fn movegen(
-    pos: &position::Position,
+    pos: &position::Pos64,
+    movegen_flags: &MovegenFlags,
     piece: &Piece,
     i: usize,
     defending: bool,
@@ -230,7 +239,7 @@ pub fn movegen(
         for j in attack_offset {
             let mv = mailbox::next_mailbox_number(i, j);
             if mv >= 0 {
-                let mv_square = &pos.position[mv as usize];
+                let mv_square = &pos[mv as usize];
                 match mv_square {
                     Square::Piece(mv_square_piece) => {
                         if piece.pcolour != mv_square_piece.pcolour || defending {
@@ -264,17 +273,16 @@ pub fn movegen(
         }
         // en passant captures, checking pawns left and right
         // also dont check for promotion, as a pawn cannot en passant to the back rank
-        let attack_en_passant_offset = [-1, 1];
-        if !defending && pos.movegen_flags.en_passant.is_some() {
-            let en_passant_mv = pos.movegen_flags.en_passant.unwrap();
+        if !defending && movegen_flags.en_passant.is_some() {
+            let attack_en_passant_offset = [-1, 1];
+            let en_passant_mv = movegen_flags.en_passant.unwrap();
             for j in attack_en_passant_offset {
                 let mv = mailbox::next_mailbox_number(i, j);
                 if mv == (en_passant_mv as i32) {
                     // check if square above this is empty
                     let mv_above = mailbox::next_mailbox_number(mv as usize, push_offset);
                     if mv_above >= 0 {
-                        let mv_above_square = &pos.position[mv_above as usize];
-                        if matches!(mv_above_square, Square::Empty) {
+                        if is_square_empty(pos, mv_above as usize) {
                             mv_map.add_move(
                                 &(Move {
                                     from: i,
@@ -301,7 +309,7 @@ pub fn movegen(
             let mut slide_idx = j;
 
             while mv >= 0 {
-                let mv_square = &pos.position[mv as usize];
+                let mv_square = &pos[mv as usize];
                 match mv_square {
                     Square::Piece(mv_square_piece) => {
                         if piece.pcolour != mv_square_piece.pcolour || defending {
@@ -348,16 +356,16 @@ pub fn movegen(
             // as we check that the king is on its starting square
 
             if
-                (piece.pcolour == PieceColour::White && pos.movegen_flags.white_castle_short) ||
-                (piece.pcolour == PieceColour::Black && pos.movegen_flags.black_castle_short)
+                (piece.pcolour == PieceColour::White && movegen_flags.white_castle_short) ||
+                (piece.pcolour == PieceColour::Black && movegen_flags.black_castle_short)
             {
                 let short_mv_through_idx = i + 1;
                 let short_mv_to_idx = i + 2;
                 let short_rook_start_idx = i + 3;
                 let short_rook_end_idx = short_mv_through_idx;
                 if
-                    matches!(&pos.position[short_mv_through_idx], Square::Empty) &&
-                    matches!(&pos.position[short_mv_to_idx], Square::Empty)
+                    matches!(&pos[short_mv_through_idx], Square::Empty) &&
+                    matches!(&pos[short_mv_to_idx], Square::Empty)
                 {
                     mv_map.add_move(
                         &(Move {
@@ -373,8 +381,8 @@ pub fn movegen(
                 }
             }
             if
-                (piece.pcolour == PieceColour::White && pos.movegen_flags.white_castle_long) ||
-                (piece.pcolour == PieceColour::Black && pos.movegen_flags.black_castle_long)
+                (piece.pcolour == PieceColour::White && movegen_flags.white_castle_long) ||
+                (piece.pcolour == PieceColour::Black && movegen_flags.black_castle_long)
             {
                 let long_mv_through_idx = i - 1;
                 let long_mv_to_idx = i - 2;
@@ -382,9 +390,9 @@ pub fn movegen(
                 let long_rook_start_idx = i - 4;
                 let long_rook_end_idx = long_mv_through_idx;
                 if
-                    matches!(&pos.position[long_mv_through_idx], Square::Empty) &&
-                    matches!(&pos.position[long_mv_to_idx], Square::Empty) &&
-                    matches!(&pos.position[long_mv_past_idx], Square::Empty)
+                    matches!(&pos[long_mv_through_idx], Square::Empty) &&
+                    matches!(&pos[long_mv_to_idx], Square::Empty) &&
+                    matches!(&pos[long_mv_past_idx], Square::Empty)
                 {
                     mv_map.add_move(
                         &(Move {

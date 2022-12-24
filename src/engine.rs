@@ -5,6 +5,10 @@ use crate::movegen::*;
 
 static mut EVALUALTED_POSITIONS: u64 = 0;
 
+pub fn random_move(pos: &Position) -> &Move {
+    *pos.get_legal_moves().choose(&mut rand::thread_rng()).unwrap_or(&&NULL_MOVE)
+}
+
 pub fn choose_move(pos: &Position, depth: i32) -> &Move {
     // TODO add check if position is in endgame, for different evaluation
     unsafe {
@@ -15,6 +19,7 @@ pub fn choose_move(pos: &Position, depth: i32) -> &Move {
     }
     //*pos.get_legal_moves().choose(&mut rand::thread_rng()).unwrap_or_else(|| panic!("CHECKMATE"))
 }
+
 
 pub fn sort_moves(pos: &Position, moves: &mut Vec<&Move>) {
     let mut moves_c = moves.clone();

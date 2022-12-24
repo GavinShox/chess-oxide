@@ -30,8 +30,12 @@ const MAILBOX64: [i32; 64] = [
     91, 92, 93, 94, 95, 96, 97, 98
 ];
 
+#[inline(always)]
 pub fn next_mailbox_number(i: usize, j: i32) -> i32 {
     // MAILBOX64[i] + j should always be a valid index
+    // unsafe {
+    //     return *MAILBOX.get_unchecked((*MAILBOX64.get_unchecked(i) + j) as usize);
+    // }
     MAILBOX[(MAILBOX64[i] + j) as usize]
 }
 

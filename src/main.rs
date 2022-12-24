@@ -12,6 +12,7 @@ mod movegen;
 
 use std::{io, env};
 
+use board::Player;
 use movegen::MoveType;
 use position::Position;
 use std::time::{ Duration, Instant };
@@ -103,6 +104,13 @@ impl board::Player for HumanPlayer {
     }
 }
 
+struct RandomPlayer;
+impl Player for RandomPlayer {
+    fn get_move(&self, bstate: &board::BoardState) -> movegen::Move {
+        *engine::random_move(&bstate.position)
+    }
+}
+
 fn move_pos(p: &Position) -> io::Result<()> {
     let mut pos = p.clone();
     let stdin = io::stdin();
@@ -148,14 +156,23 @@ fn move_pos(p: &Position) -> io::Result<()> {
 }
 
 fn game_loop() {
-    let white_player = HumanPlayer;
+    let white_player = RandomPlayer;
     let black_player = EnginePlayer {depth: 4};
     let mut board = board::Board::new(Box::new(white_player), Box::new(black_player));
 
     loop {
-        board.make_move();
-        println!("{:?}", board.current_state.get_gamestate());
+        match board.make_move() {
+            Ok(_) => {},
+            Err(e) => {println!("{:?}", e); break;},
+        }
+        let game_state = board.current_state.get_gamestate();
+
+        println!("{:?}", game_state);
         board.current_state.position.print_board();
+
+        if game_state != board::GameState::Active && game_state != board::GameState::Check {
+            println!("Game over, gamestate: {:?}", game_state);
+        }
     }
 }
 
@@ -164,46 +181,9 @@ fn main() {
 //    let mut pos = Position::new_position_from_fen("r2q1rk1/pP1p2pp/Q4n2/bbp1p3/Np6/1B3NBn/pPPP1PPP/R3K2R b KQ - 0 1");
     //let mut pos = Position::new_position_from_fen("r3k2r/Pppp1ppp/1b3nbN/nP6/BBP1P3/q4N2/Pp1P2PP/R2Q1RK1 w kq - 0 1");
     pos.print_board();
-    // println!("{:?}", pos.defend_map);
-    //println!("{:#?}", pos);
-    // let idx: usize = 62;
-    // let s = &pos.position[idx];
-    // match s {
-    //     position::Square::Piece(p) => {
-    //         pos.print_board(pos.attack_map.get(&idx).unwrap());
-    //         println!("{:p}", p)
 
-    //     }
-    //     _ => {}
-    // }
-    // todo move king to 31 and see if it allows a legal move
-
-    let start = Instant::now();
-    let mut nodes: u64 = 0;
-    let mut promotions: u64 = 0;
-    //println!("{:x}", pos.pos_hash());
     perft(&pos, 5);
 
-    // let legal_moves = &pos.legal_moves;
-
-    // for (i, mv) in legal_moves {
-    //     for j in mv {
-    //         let p = pos.new_move(*i, *j);
-    //         positions.push(p);
-    //     }
-    // }
-
-    // for p in &positions {
-    //     p.print_board(&Vec::new());
-    //     println!();
-    // }
-    //println!("{}", engine::negatedMax(&pos, 4));
-    let duration = start.elapsed();
-    println!("nodes: {}", nodes);
-    println!("promotions: {}", promotions);
-
-    println!("Time elapsed is: {:?}", duration);
-
-    game_loop();
+    //game_loop();
     //move_pos(&pos);
 }
