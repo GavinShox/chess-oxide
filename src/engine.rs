@@ -53,12 +53,60 @@ pub fn sort_moves(pos: &Position, moves: &mut Vec<&Move>) {
     *moves = moves_c;
 }
 
+pub fn minimax_captures(pos: &Position, mut alpha: i32, mut beta: i32, is_maxi: bool, maxi_colour: PieceColour) -> (i32, &Move) {
+    let moves = pos.get_legal_moves();
+    let mut moves_captures = Vec::new();
+    for mv in moves {
+        if let Square::Piece(_) = pos.position[mv.to] {
+            moves_captures.push(mv);
+        }
+    }
+    if moves_captures.is_empty() {
+        return (evaluate(pos, maxi_colour), &NULL_MOVE);
+    }
+    let mut best_move = moves_captures[0];
+
+    if is_maxi {
+        let mut max_eval = i32::MIN;
+        for mv in moves_captures {
+            let child_pos = pos.new_position(mv);
+            let eval = minimax_captures(&child_pos, alpha, beta, false, maxi_colour).0;
+            if eval > max_eval {
+                max_eval = eval;
+                best_move = mv;
+            }
+            alpha = cmp::max(alpha, eval);
+            if beta <= alpha {
+                break;
+            }
+        }
+        (max_eval, best_move)
+    } else {
+        let mut min_eval = i32::MAX;
+        for mv in moves_captures {
+            let child_pos = pos.new_position(mv);
+            let eval = minimax_captures(&child_pos, alpha, beta, true, maxi_colour).0;
+            if eval < min_eval {
+                min_eval = eval;
+                best_move = mv;
+            }
+            beta = cmp::min(beta, eval);
+            //std::mem::swap(&mut alpha, &mut beta);
+            if beta <= alpha {
+                break;
+            }
+        }
+        (min_eval, best_move)
+    }
+}
+
 pub fn minimax(pos: &Position, depth: i32, mut alpha: i32, mut beta: i32, is_maxi: bool, maxi_colour: PieceColour) -> (i32, &Move) {
     let moves = pos.get_legal_moves();
     //sort_moves(pos, &mut moves);
     if depth == 0 || moves.is_empty() {
         return (evaluate(pos, maxi_colour), &NULL_MOVE);
     }
+
     let mut best_move = moves[0];
 
     if is_maxi {

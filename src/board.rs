@@ -26,7 +26,7 @@ pub enum GameState {
     FiftyMove,
     Active,
 }
-
+#[derive(Debug)]
 pub struct BoardState {
     pub position: Position,
     position_hash: u64,

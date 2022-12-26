@@ -10,7 +10,6 @@ rand = "0.8.5"
 clap = {version = "4.0", features = ["derive"]}
 jemallocator = "0.5.0"
 
-
 [profile.release]
 debug = 1
 lto = true

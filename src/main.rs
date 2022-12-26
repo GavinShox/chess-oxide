@@ -156,7 +156,7 @@ fn move_pos(p: &Position) -> io::Result<()> {
 }
 
 fn game_loop() {
-    let white_player = HumanPlayer;
+    let white_player = RandomPlayer;
     let black_player = EnginePlayer {depth: 4};
     let mut board = board::Board::new(Box::new(white_player), Box::new(black_player));
 
@@ -166,11 +166,14 @@ fn game_loop() {
             Err(e) => {println!("{:?}", e); break;},
         }
         let game_state = board.current_state.get_gamestate();
+        println!("Game state: {:?}", game_state);
 
         board.current_state.position.print_board();
 
         if game_state != board::GameState::Active && game_state != board::GameState::Check {
             println!("Game over, gamestate: {:?}", game_state);
+            println!("{:#?}", board.current_state);
+            break;
         }
     }
 }

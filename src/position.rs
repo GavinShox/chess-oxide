@@ -1,7 +1,6 @@
 use core::panic;
 use std::{ hash::Hasher };
 use std::hash::Hash;
-
 use crate::movegen::*;
 
 pub type Pos64 = [Square; 64];
@@ -11,6 +10,10 @@ pub type PositionHash = u64;
 pub struct DefendMap([bool; 64]);
 #[derive(Debug, PartialEq, Clone, Hash)]
 pub struct AttackMap(Vec<Move>);
+
+struct PositionChange {
+
+}
 
 impl AttackMap {
     fn new() -> Self {
@@ -295,19 +298,7 @@ impl Position {
         let mut new_pos = self.clone();
         new_pos.set_en_passant_flag(mv);
         new_pos.set_castle_flags(mv);
-
-        match new_pos.position[mv.from] {
-            Square::Piece(p) => {
-                if p.ptype == PieceType::King {
-                    if p.pcolour == PieceColour::White {
-                        new_pos.wking_idx = mv.to;
-                    } else {
-                        new_pos.bking_idx = mv.to;
-                    }
-                }
-            },
-            Square::Empty => todo!(),
-        }
+        new_pos.set_king_position(mv);
 
         match mv.move_type {
             MoveType::EnPassant(ep_capture) => {
@@ -342,6 +333,7 @@ impl Position {
     // }
 
     fn is_move_legal_nc(&mut self, mv: &Move) -> bool {
+        // TODO ISNT WORKING AFTER KING POS CHANGES and in check function
         //let mut test_pos = self.clone();
         let mut original_ep_capture = None;
         let mut original_ep_idx = 0;
@@ -385,6 +377,21 @@ impl Position {
         result
     }
 
+    fn set_king_position(&mut self, mv: &Move) {
+        match self.position[mv.from] {
+            Square::Piece(p) => {
+                if p.ptype == PieceType::King {
+                    if p.pcolour == PieceColour::White {
+                        self.wking_idx = mv.to;
+                    } else {
+                        self.bking_idx = mv.to;
+                    }
+                }
+            },
+            Square::Empty => {/* should never get here */},
+        }
+    }
+
     // moves piece at i, to j, without changing side, to regen defend maps to determine if the move is legal
     // legality here meaning would the move leave your king in check. Actual piece movement is done in movegen
     fn is_move_legal(&self, mv: &Move) -> bool {
@@ -397,6 +404,9 @@ impl Position {
         // }
 
         let mut test_pos = self.clone();
+        // HAS TO BE BEFORE MOVES ARE MADE
+        // TODO Fix these set flags so this cant happen maybe?
+        test_pos.set_king_position(mv);
         // doing special move types first, to check if mv is a castling move, and return there first
         match mv.move_type {
             MoveType::EnPassant(ep_capture) => {
@@ -412,14 +422,18 @@ impl Position {
             }
             MoveType::Promotion(_) => {/* the piece the pawn promotes to doesn't effect legality */}
             _ => {}
-        }
+        } 
+
+
 
         // this has to be after the castleing section above, as king cant castle out of check
         test_pos.position[mv.to] = self.position[mv.from];
         test_pos.position[mv.from] = Square::Empty;
 
+
         // we only need to gen new defend map
         test_pos.gen_defend_map();
+        // TODO can this defend map be different, like it can stop generating once the king is found to be in check once.
 
         
 
@@ -443,6 +457,20 @@ impl Position {
     pub fn is_in_check(&self) -> bool {
         let side_king = if self.side == PieceColour::White {self.wking_idx} else {self.bking_idx};
         self.is_defended(side_king)
+        // for (i, s) in self.position.iter().enumerate() {
+        //     match s {
+        //         Square::Piece(p) => {
+        //             if matches!(p.ptype, PieceType::King) && p.pcolour == self.side {
+        //                 if self.is_defended(i) {
+        //                     return true;
+        //                 }
+        //                 break;
+        //             }
+        //         }
+        //         Square::Empty => {}
+        //     }
+        // }
+        // return false;
     }
 
     pub fn get_legal_moves(&self) -> Vec<&Move> {
