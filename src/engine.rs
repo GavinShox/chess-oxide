@@ -3,20 +3,15 @@ use rand::seq::SliceRandom;
 use std::cmp;
 use crate::movegen::*;
 
-static mut EVALUALTED_POSITIONS: u64 = 0;
-
 pub fn random_move(pos: &Position) -> &Move {
-    *pos.get_legal_moves().choose(&mut rand::thread_rng()).unwrap_or(&&NULL_MOVE)
+    pos.get_legal_moves().choose(&mut rand::thread_rng()).unwrap_or(&&NULL_MOVE)
 }
 
 pub fn choose_move(pos: &Position, depth: i32) -> &Move {
     // TODO add check if position is in endgame, for different evaluation
-    unsafe {
     let mv = minimax(pos, depth, i32::MIN, i32::MAX, true, pos.side).1;
-        println!("{}", EVALUALTED_POSITIONS);
-        EVALUALTED_POSITIONS = 0;
         mv
-    }
+    
     //*pos.get_legal_moves().choose(&mut rand::thread_rng()).unwrap_or_else(|| panic!("CHECKMATE"))
 }
 
@@ -59,10 +54,9 @@ pub fn sort_moves(pos: &Position, moves: &mut Vec<&Move>) {
 }
 
 pub fn minimax(pos: &Position, depth: i32, mut alpha: i32, mut beta: i32, is_maxi: bool, maxi_colour: PieceColour) -> (i32, &Move) {
-    let mut moves = pos.get_legal_moves();
+    let moves = pos.get_legal_moves();
     //sort_moves(pos, &mut moves);
-    if depth == 0 || moves.len() == 0 {
-        unsafe {EVALUALTED_POSITIONS += 1;}
+    if depth == 0 || moves.is_empty() {
         return (evaluate(pos, maxi_colour), &NULL_MOVE);
     }
     let mut best_move = moves[0];
@@ -81,7 +75,7 @@ pub fn minimax(pos: &Position, depth: i32, mut alpha: i32, mut beta: i32, is_max
                 break;
             }
         }
-        return (max_eval, best_move);
+        (max_eval, best_move)
     } else {
         let mut min_eval = i32::MAX;
         for mv in moves {
@@ -97,7 +91,7 @@ pub fn minimax(pos: &Position, depth: i32, mut alpha: i32, mut beta: i32, is_max
                 break;
             }
         }
-        return (min_eval, best_move);
+        (min_eval, best_move)
     }
 }
 
@@ -210,5 +204,5 @@ pub fn evaluate(pos: &Position, maxi_colour: PieceColour) -> i32 {
         }
     }
     let eval = w_eval - b_eval;
-    return eval * (if maxi_colour == PieceColour::White {1} else {-1});
+    eval * (if maxi_colour == PieceColour::White {1} else {-1})
 }

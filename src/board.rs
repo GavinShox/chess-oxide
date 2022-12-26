@@ -1,9 +1,9 @@
-use std::hash::Hash;
+
 use std::{ rc::Rc, collections::HashMap };
 
-use crate::position;
+
 use crate::position::*;
-use crate::engine;
+
 use crate::movegen::*;
 
 pub trait Player {
@@ -17,7 +17,7 @@ pub enum BoardStateError {
     NoLegalMoves
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Eq)]
 pub enum GameState {
     Check,
     Checkmate,
@@ -85,8 +85,7 @@ impl BoardState {
         // deref all legal moves
         let legal_moves = position
             .get_legal_moves()
-            .into_iter()
-            .map(|x| *x)
+            .into_iter().copied()
             .collect();
 
         let move_count = if side_to_move == PieceColour::White {
@@ -126,7 +125,7 @@ impl BoardState {
         let occurence_of_current_pos = self.get_occurences_of_current_position();
 
         // checkmate has to be checked for first, as it supercedes other states like the 50 move rule
-        return if is_in_check && legal_move_len == 0 {
+        if is_in_check && legal_move_len == 0 {
             GameState::Checkmate
         } else if !is_in_check && legal_move_len == 0 {
             GameState::Stalemate
@@ -138,7 +137,7 @@ impl BoardState {
             GameState::Check
         } else {
             GameState::Active
-        };
+        }
     }
 }
 
@@ -163,7 +162,7 @@ impl Board {
             black_player,
         }
     }
-    pub fn branch(&self, branch_state: Rc<BoardState>) -> Self {
+    pub fn branch(&self, _branch_state: Rc<BoardState>) -> Self {
         // TODO, clone from specific state in state_history. Will probably need to store data differently like position_occurences
         // probably will have to go through all position hashes after the branch node, and remove occurences one by one
         todo!()

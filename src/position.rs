@@ -1,5 +1,5 @@
 use core::panic;
-use std::{ mem::MaybeUninit, default, hash::Hasher };
+use std::{ hash::Hasher };
 use std::hash::Hash;
 
 use crate::movegen::*;
@@ -7,7 +7,7 @@ use crate::movegen::*;
 pub type Pos64 = [Square; 64];
 pub type PositionHash = u64;
 
-#[derive(Debug, PartialEq, Clone, Copy, Hash)]
+#[derive(Debug, PartialEq, Eq, Clone, Copy, Hash)]
 pub struct DefendMap([bool; 64]);
 #[derive(Debug, PartialEq, Clone, Hash)]
 pub struct AttackMap(Vec<Move>);
@@ -33,13 +33,13 @@ impl DefendMap {
 }
 
 impl MoveMap for DefendMap {
-    fn add_move(&mut self, mv: &Move) -> () {
+    fn add_move(&mut self, mv: &Move) {
         self.0[mv.to] = true;
     }
 }
 
 impl MoveMap for AttackMap {
-    fn add_move(&mut self, mv: &Move) -> () {
+    fn add_move(&mut self, mv: &Move) {
         self.0.push(*mv);
     }
 }
@@ -52,6 +52,8 @@ pub struct Position {
     pub movegen_flags: MovegenFlags,
     defend_map: DefendMap, // map of squares opposite colour is defending
     attack_map: AttackMap, // map of moves from attacking side
+    wking_idx: usize,
+    bking_idx: usize
     
 }
 
@@ -108,6 +110,8 @@ impl Position {
             movegen_flags,
             defend_map: DefendMap::new(),
             attack_map: AttackMap::new(),
+            wking_idx: 60,
+            bking_idx: 4
         };
         new.gen_maps();
         new
@@ -120,6 +124,8 @@ impl Position {
 
         // first field of FEN defines the piece positions
         let mut rank_start_idx = 0;
+        let mut wking_idx = 0;
+        let mut bking_idx = 0;
         for rank in fen_vec[0].split('/') {
             let mut i = 0;
             for c in rank.chars() {
@@ -190,12 +196,14 @@ impl Position {
                             pcolour: PieceColour::Black,
                             ptype: PieceType::King,
                         });
+                        bking_idx = i;
                     }
                     'K' => {
                         square = Square::Piece(Piece {
                             pcolour: PieceColour::White,
                             ptype: PieceType::King,
                         });
+                        wking_idx = i;
                     }
                     x if x.is_ascii_digit() => {
                         for _ in 0..x.to_digit(10).unwrap() {
@@ -256,7 +264,7 @@ impl Position {
         }
 
         // fourth field of FEN defines en passant flag, it gives notation of the square the pawn jumped over
-        if !(fen_vec[3] == "-") {
+        if fen_vec[3] != "-" {
             let ep_mv_idx = Self::notation_to_index(fen_vec[3]);
             // in our struct however, we store the idx of the pawn to be captured
             let ep_flag = if side == PieceColour::White {
@@ -271,10 +279,12 @@ impl Position {
 
         let mut new = Self {
             position: pos,
-            side: side,
+            side,
             movegen_flags,
             defend_map: DefendMap::new(),
             attack_map: AttackMap::new(),
+            wking_idx,
+            bking_idx
         };
         new.gen_maps();
         new
@@ -285,6 +295,19 @@ impl Position {
         let mut new_pos = self.clone();
         new_pos.set_en_passant_flag(mv);
         new_pos.set_castle_flags(mv);
+
+        match new_pos.position[mv.from] {
+            Square::Piece(p) => {
+                if p.ptype == PieceType::King {
+                    if p.pcolour == PieceColour::White {
+                        new_pos.wking_idx = mv.to;
+                    } else {
+                        new_pos.bking_idx = mv.to;
+                    }
+                }
+            },
+            Square::Empty => todo!(),
+        }
 
         match mv.move_type {
             MoveType::EnPassant(ep_capture) => {
@@ -313,6 +336,10 @@ impl Position {
         new_pos.gen_maps();
         new_pos
     }
+
+    // fn make_move(&mut self, mv: &Move) -> (MovegenFlags, ) {
+
+    // }
 
     fn is_move_legal_nc(&mut self, mv: &Move) -> bool {
         //let mut test_pos = self.clone();
@@ -394,14 +421,14 @@ impl Position {
         // we only need to gen new defend map
         test_pos.gen_defend_map();
 
-        let result = !test_pos.is_in_check();
+        
 
         // self.position = original_position;
         // self.defend_map = original_defend_map;
-        result
+        !test_pos.is_in_check()
     }
 
-    fn toggle_side(&mut self) -> () {
+    fn toggle_side(&mut self) {
         self.side = if self.side == PieceColour::White {
             PieceColour::Black
         } else {
@@ -414,20 +441,8 @@ impl Position {
     }
 
     pub fn is_in_check(&self) -> bool {
-        for (i, s) in self.position.iter().enumerate() {
-            match s {
-                Square::Piece(p) => {
-                    if matches!(p.ptype, PieceType::King) && p.pcolour == self.side {
-                        if self.is_defended(i) {
-                            return true;
-                        }
-                        break;
-                    }
-                }
-                Square::Empty => {}
-            }
-        }
-        return false;
+        let side_king = if self.side == PieceColour::White {self.wking_idx} else {self.bking_idx};
+        self.is_defended(side_king)
     }
 
     pub fn get_legal_moves(&self) -> Vec<&Move> {
@@ -442,7 +457,7 @@ impl Position {
     }
 
     // sets enpassant movegen flag to Some(idx of pawn that can be captured), if the move is a double pawn push
-    fn set_en_passant_flag(&mut self, mv: &Move) -> () {
+    fn set_en_passant_flag(&mut self, mv: &Move) {
         if mv.move_type == MoveType::DoublePawnPush {
             self.movegen_flags.en_passant = Some(mv.to);
         } else {
@@ -450,7 +465,7 @@ impl Position {
         }
     }
 
-    fn set_castle_flags(&mut self, mv: &Move) -> () {
+    fn set_castle_flags(&mut self, mv: &Move) {
         match mv.from {
             WHITE_KING_START => {
                 self.movegen_flags.white_castle_long = false;
@@ -492,7 +507,7 @@ impl Position {
         }
     }
 
-    fn gen_defend_map(&mut self) -> () {
+    fn gen_defend_map(&mut self) {
         self.defend_map.clear();
         //let mut defend_map = DefendMap::new();
         for (i, s) in self.position.iter().enumerate() {
@@ -510,7 +525,7 @@ impl Position {
         // self.defend_map = defend_map;
     }
 
-    pub fn gen_maps(&mut self) -> () {
+    pub fn gen_maps(&mut self) {
         self.defend_map.clear();
         self.attack_map.clear();
 
@@ -612,7 +627,7 @@ impl Position {
     }
 
     pub fn notation_to_index(n: &str) -> usize {
-        let file: char = n.chars().nth(0).unwrap();
+        let file: char = n.chars().next().unwrap();
         let rank: char = n.chars().nth(1).unwrap();
         let rank_starts = [56, 48, 40, 32, 24, 16, 8, 0]; // 1st to 8th rank starting indexes
 
