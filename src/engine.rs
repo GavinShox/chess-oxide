@@ -151,6 +151,7 @@ fn get_piece_value(ptype: &PieceType) -> i32 {
         PieceType::Rook => 500,
         PieceType::Queen => 900,
         PieceType::King => 20000,
+        PieceType::None => panic!("None piece type"),
     }
 }
 
@@ -235,6 +236,7 @@ fn get_piece_pos_value(i: usize, piece: &Piece, is_endgame: bool) -> i32 {
         PieceType::Rook => ROOK_POS_VALUES[side_adjusted_idx],
         PieceType::Queen => QUEEN_POS_VALUES[side_adjusted_idx],
         PieceType::King => if is_endgame {KING_END_POS_VALUES[side_adjusted_idx]} else {KING_MIDDLE_POS_VALUES[side_adjusted_idx]},
+        PieceType::None => panic!("PieceType::None is not a valid piece type"),
     }
 }
 

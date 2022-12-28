@@ -29,7 +29,7 @@ pub const WHITE_KING_START: usize = 60;
 
 pub const ABOVE_BELOW: usize = 8; // 8 indexes from i is the square directly above/below in the pos64 array
 
-#[derive(Debug, PartialEq, Eq, Clone, Copy, Hash)]
+#[derive(Debug, PartialEq, Eq, Clone, Copy)]
 pub enum PieceType {
     Pawn,
     Knight,
@@ -37,27 +37,31 @@ pub enum PieceType {
     Rook,
     Queen,
     King,
+    None
 }
 
-#[derive(PartialEq, Eq, Debug, Clone, Copy, Hash)]
+#[derive(PartialEq, Eq, Debug, Clone, Copy)]
 pub enum PieceColour {
     White,
     Black,
+    None
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Piece {
     pub pcolour: PieceColour,
     pub ptype: PieceType,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Hash)]
+const NULL_PIECE: Piece = Piece { pcolour: PieceColour::None, ptype: PieceType::None };
+
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub enum Square {
     Piece(Piece),
     Empty,
 }
 
-#[derive(Debug, Clone, Hash)]
+#[derive(Debug, Clone)]
 pub struct MovegenFlags {
     pub white_castle_short: bool,
     pub white_castle_long: bool,
@@ -66,23 +70,24 @@ pub struct MovegenFlags {
     pub en_passant: Option<usize>,
 }
 
-#[derive(Debug, PartialEq, Clone, Copy, Hash)]
+#[derive(Debug, PartialEq, Clone, Copy)]
 pub struct Move {
+    pub piece: Piece,
     pub from: usize,
     pub to: usize,
     pub move_type: MoveType,
 }
 
 // from and to are out of bounds, just so this move cant be used as a move in new_position. It will panic instead of a silent  bug
-pub const NULL_MOVE: Move = Move { from: 255, to: 255, move_type: MoveType::None };
-#[derive(Debug, PartialEq, Eq, Clone, Copy, Hash)]
+pub const NULL_MOVE: Move = Move { piece: NULL_PIECE, from: 255, to: 255, move_type: MoveType::None };
+#[derive(Debug, PartialEq, Eq, Clone, Copy)]
 pub struct CastleMove {
     pub rook_from: usize,
     pub rook_to: usize,
     pub king_squares: (usize, usize, usize),
 }
 
-#[derive(Debug, PartialEq, Eq, Clone, Copy, Hash)]
+#[derive(Debug, PartialEq, Eq, Clone, Copy)]
 pub enum MoveType {
     EnPassant(usize),
     Promotion(PieceType),
@@ -99,10 +104,11 @@ pub trait MoveMap {
 }
 
 #[inline(always)]
-fn pawn_promotion(mv_map: &mut dyn MoveMap, i: usize, mv: i32) {
+fn pawn_promotion(mv_map: &mut dyn MoveMap, i: usize, piece: &Piece, mv: i32) {
     for ptype in PROMOTION_PIECE_TYPES {
         mv_map.add_move(
             &(Move {
+                piece: *piece,
                 from: i,
                 to: mv as usize,
                 move_type: MoveType::Promotion(ptype),
@@ -120,7 +126,8 @@ fn is_square_empty(pos: &position::Pos64, i: usize) -> bool {
 fn mb_get_pawn_push_offset(piece: &Piece) -> i32 {
     match piece.pcolour {
         PieceColour::White => -10,
-        PieceColour::Black => 10
+        PieceColour::Black => 10,
+        PieceColour::None => panic!("PieceColour::None is not a valid piece colour")
     }
 }
 
@@ -131,6 +138,7 @@ fn mb_get_pawn_attack_offset(piece: &Piece) -> [i32; 2] {
     match piece.pcolour {
         PieceColour::White => WHITE_ATTACK_OFFSET,
         PieceColour::Black => BLACK_ATTACK_OFFSET,
+        PieceColour::None => panic!("PieceColour::None is not a valid piece colour")
     }
 }
 
@@ -143,6 +151,7 @@ fn mb_get_offset(piece: &Piece) -> Offset {
         PieceType::Rook => ROOK_OFFSET,
         PieceType::Queen => QUEEN_KING_OFFSET,
         PieceType::King => QUEEN_KING_OFFSET,
+        PieceType::None => {panic!("PieceType::None is not a valid piece type");}
     }
 }
 
@@ -155,6 +164,7 @@ fn get_slide(piece: &Piece) -> bool {
         PieceType::Rook => true,
         PieceType::Queen => true,
         PieceType::King => false,
+        PieceType::None => {panic!("PieceType::None is not a valid piece type");}
     }
 }
 
@@ -162,7 +172,8 @@ fn get_slide(piece: &Piece) -> bool {
 fn pawn_is_promotion_square(i: i32, piece: &Piece) -> bool {
     match piece.pcolour {
         PieceColour::White => i <= 7,
-        PieceColour::Black => i >= 56
+        PieceColour::Black => i >= 56,
+        PieceColour::None => {panic!("PieceColour::None is not a valid piece colour");}
     }
 }
 
@@ -170,7 +181,8 @@ fn pawn_is_promotion_square(i: i32, piece: &Piece) -> bool {
 fn pawn_is_starting_rank(i: usize, piece: &Piece) -> bool {
     match piece.pcolour {
         PieceColour::White => i < 56 && i > 47,
-        PieceColour::Black => i < 16 && i > 7
+        PieceColour::Black => i < 16 && i > 7,
+        PieceColour::None => {panic!("PieceColour::None is not a valid piece colour");}
     }
 }
 
@@ -199,10 +211,11 @@ pub fn movegen(
                     // push mv if the square is empty
                     if is_square_empty(pos, mv as usize) {
                         if pawn_is_promotion_square(mv , piece) {
-                            pawn_promotion(mv_map, i, mv);
+                            pawn_promotion(mv_map, i, piece, mv);
                         } else {
                             mv_map.add_move(
                                 &(Move {
+                                    piece: *piece,
                                     from: i,
                                     to: mv as usize,
                                     move_type: mvtype,
@@ -243,11 +256,13 @@ pub fn movegen(
                 match mv_square {
                     Square::Piece(mv_square_piece) => {
                         if piece.pcolour != mv_square_piece.pcolour || defending {
-                            if pawn_is_promotion_square(mv, piece) {
-                                pawn_promotion(mv_map, i, mv);
+                            if pawn_is_promotion_square(mv, piece) && !defending {
+                                // no need to do this if defending, we can just do it once below regardless
+                                pawn_promotion(mv_map, i, piece, mv);
                             } else {
                                 mv_map.add_move(
                                     &(Move {
+                                        piece: *piece,
                                         from: i,
                                         to: mv as usize,
                                         move_type: MoveType::Capture,
@@ -261,6 +276,7 @@ pub fn movegen(
                         if defending {
                             mv_map.add_move(
                                 &(Move {
+                                    piece: *piece,
                                     from: i,
                                     to: mv as usize,
                                     move_type: MoveType::None, // not a real move, only a defensive one
@@ -284,6 +300,7 @@ pub fn movegen(
                     if mv_above >= 0 && is_square_empty(pos, mv_above as usize) {
                         mv_map.add_move(
                             &(Move {
+                                piece: *piece,
                                 from: i,
                                 to: mv_above as usize,
                                 move_type: MoveType::EnPassant(mv as usize),
@@ -313,6 +330,7 @@ pub fn movegen(
                         if piece.pcolour != mv_square_piece.pcolour || defending {
                             mv_map.add_move(
                                 &(Move {
+                                    piece: *piece,
                                     from: i,
                                     to: mv as usize,
                                     move_type: MoveType::Capture,
@@ -324,6 +342,7 @@ pub fn movegen(
                     Square::Empty => {
                         mv_map.add_move(
                             &(Move {
+                                piece: *piece,
                                 from: i,
                                 to: mv as usize,
                                 move_type: MoveType::Normal,
@@ -363,6 +382,7 @@ pub fn movegen(
             {
                 mv_map.add_move(
                     &(Move {
+                        piece: *piece,
                         from: i,
                         to: short_mv_to_idx,
                         move_type: MoveType::Castle(CastleMove {
@@ -390,6 +410,7 @@ pub fn movegen(
             {
                 mv_map.add_move(
                     &(Move {
+                        piece: *piece,
                         from: i,
                         to: long_mv_to_idx,
                         move_type: MoveType::Castle(CastleMove {
@@ -402,4 +423,82 @@ pub fn movegen(
             }
         }
     }
+}
+
+// TODO, maybe use this to generate defend map as well? but maybe it will affect performance
+// so short would be kept as a boolean flag maybe? Because attack and defend map is generated separetly.... 
+// TODO Maybe combine the generation of defend and attacking? by using if statement on different piece colours.
+// TODO FIXME TODO TODO ^^^^^ this sounds good TODO TODO for highlight extention
+pub fn movegen_in_check(
+    pos: &position::Pos64,
+    king_idx: usize,
+    king_colour: PieceColour,
+) -> bool{
+    for (i, s) in pos.iter().enumerate() {
+        match s {
+            Square::Piece(piece) => {
+                if piece.pcolour != king_colour {
+                    // Move gen for pawns
+                    if piece.ptype == PieceType::Pawn {
+                        // Defending moves for pawns
+                        let attack_offset = mb_get_pawn_attack_offset(piece);
+
+                        for j in attack_offset {
+                            let mv = mailbox::next_mailbox_number(i, j);
+                            if mv >= 0 {
+                                if mv as usize == king_idx {
+                                    return true;
+                                } else {
+                                    continue;
+                                }   
+                            }
+                        }
+                        
+                    } else {
+                        // move gen for other pieces
+                        for j in mb_get_offset(piece) {
+                            // end of offsets
+                            if j == 0 {
+                                break;
+                            }
+
+                            let mut mv = mailbox::next_mailbox_number(i, j);
+                            let mut slide_idx = j;
+
+                            while mv >= 0 {
+                                let mv_square = &pos[mv as usize];
+                                match mv_square {
+                                    Square::Piece(_) => {
+                                        if mv as usize == king_idx {
+                                            return true;
+                                        } else {
+                                            break; // break the slide after encountering a piece
+                                        }
+                                    }
+                                    Square::Empty => {
+                                        if mv as usize == king_idx {
+                                            return true;
+                                        } 
+                                    }
+                                }
+                                // is piece a sliding type
+                                if get_slide(piece) {
+                                    slide_idx += j;
+                                    mv = mailbox::next_mailbox_number(i, slide_idx);
+
+                                    continue;
+                                } else {
+                                    break;
+                                } // continue through rest of offsets
+                            }
+                        }
+                    }
+                } else {
+                    continue;
+                }
+            }
+            Square::Empty => {continue;},
+        }
+    }
+    false
 }
