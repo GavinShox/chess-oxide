@@ -1,6 +1,4 @@
-
 use std::{ rc::Rc, collections::HashMap };
-
 
 use crate::position::*;
 
@@ -14,7 +12,7 @@ pub trait Player {
 pub enum BoardStateError {
     IllegalMove,
     NullMove,
-    NoLegalMoves
+    NoLegalMoves,
 }
 
 #[derive(Debug, PartialEq, Eq)]
@@ -25,15 +23,15 @@ pub enum GameState {
     Repetition,
     FiftyMove,
     Active,
-}
+}// TODO make position struct private for simplicity in gui. or at least give functions to get the pieces on the board
 #[derive(Debug)]
 pub struct BoardState {
     pub position: Position,
     position_hash: u64,
-    move_count: u32,
+    pub move_count: u32,
     halfmove_count: u32,
-    side_to_move: PieceColour,
-    last_move: Move,
+    pub side_to_move: PieceColour,
+    pub last_move: Move,
     pub legal_moves: Vec<Move>,
     position_occurences: HashMap<PositionHash, u8>,
 }
@@ -44,7 +42,7 @@ impl BoardState {
         let position_hash: PositionHash = position.pos_hash();
         let side_to_move = position.side;
         // deref all legal moves, performance isn't as important here, so avoid lifetime specifiers to make things easier to look at
-        let legal_moves = position.get_legal_moves().into_iter().cloned().collect();
+        let legal_moves = position.get_legal_moves().into_iter().copied().collect();
         let mut position_occurences = HashMap::new();
         *position_occurences.entry(position_hash).or_insert(0) += 1;
         BoardState {
@@ -59,6 +57,10 @@ impl BoardState {
         }
     }
 
+    pub fn new_from_fen(fen: &str) -> Self {
+        todo!()
+    }
+
     pub fn next_state(&self, mv: &Move) -> Result<Self, BoardStateError> {
         if mv == &NULL_MOVE {
             return Err(BoardStateError::NullMove);
@@ -68,7 +70,7 @@ impl BoardState {
         }
 
         let current_game_state = self.get_gamestate();
-        
+
         if
             current_game_state == GameState::Checkmate ||
             current_game_state == GameState::Stalemate ||
@@ -76,17 +78,14 @@ impl BoardState {
             current_game_state == GameState::Repetition
         {
             return Err(BoardStateError::NoLegalMoves);
-        };
+        }
 
         let position = self.position.new_position(mv);
         let position_hash = position.pos_hash();
         let side_to_move = position.side;
         let last_move = *mv;
         // deref all legal moves
-        let legal_moves = position
-            .get_legal_moves()
-            .into_iter().copied()
-            .collect();
+        let legal_moves = position.get_legal_moves().into_iter().copied().collect();
 
         let move_count = if side_to_move == PieceColour::White {
             self.move_count + 1
@@ -118,7 +117,7 @@ impl BoardState {
     pub fn get_occurences_of_current_position(&self) -> u8 {
         *self.position_occurences.get(&self.position_hash).unwrap_or(&1)
     }
-
+    // TODO add check for insufficient material
     pub fn get_gamestate(&self) -> GameState {
         let legal_move_len = self.legal_moves.len();
         let is_in_check = self.position.is_in_check();
@@ -168,7 +167,17 @@ impl Board {
         todo!()
     }
 
-    pub fn make_move(&mut self) -> Result<GameState, BoardStateError> {
+    pub fn make_move(&mut self, mv: &Move) -> Result<GameState, BoardStateError> {
+        let next_state = self.current_state.next_state(mv)?;
+        self.current_state = Rc::new(next_state);
+        self.state_history.push(self.current_state.clone());
+
+        let game_state = self.current_state.get_gamestate();
+
+        Ok(game_state)
+    }
+
+    pub fn player_make_move(&mut self) -> Result<GameState, BoardStateError> {
         let current_player = if self.current_state.side_to_move == PieceColour::White {
             &self.white_player
         } else {
@@ -186,5 +195,8 @@ impl Board {
     }
     pub fn unmake_move(&mut self) -> Result<Rc<BoardState>, BoardStateError> {
         todo!()
+    }
+    pub fn get_gamestate(&self) -> GameState {
+        self.current_state.get_gamestate()
     }
 }

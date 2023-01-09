@@ -3,87 +3,113 @@ use rand::seq::SliceRandom;
 use std::cmp;
 use crate::movegen::*;
 
+const MIN: i32 = i32::MIN + 1;  // avoid int overflow when negating
+const MAX: i32 = i32::MAX;
+
 pub fn random_move(pos: &Position) -> &Move {
     pos.get_legal_moves().choose(&mut rand::thread_rng()).unwrap_or(&&NULL_MOVE)
 }
-
+// TODO SHould use board_state so it can factor in checkmate and stalemate easier
 pub fn choose_move(pos: &Position, depth: i32) -> &Move {
     // TODO add check if position is in endgame, for different evaluation
-    let mv = minimax(pos, depth, i32::MIN, i32::MAX, true, pos.side).1;
-        mv
-    
+    // let mv = minimax(pos, depth, i32::MIN, i32::MAX, true, pos.side).1;
+    //     mv
+    let mv = negamax(pos, depth, MIN, MAX, pos.side).1;
+    mv
     //*pos.get_legal_moves().choose(&mut rand::thread_rng()).unwrap_or_else(|| panic!("CHECKMATE"))
 }
 
+pub fn negamax(pos: &Position, depth: i32, mut alpha: i32, mut beta: i32, maxi_colour: PieceColour) -> (i32, &Move) {
+    let moves = pos.get_legal_moves();
+    //sort_moves(pos, &mut moves);
+    if depth == 0 || moves.is_empty() {
+        return (evaluate(pos, maxi_colour), &NULL_MOVE);
+    }
 
-pub fn sort_moves(pos: &Position, moves: &mut Vec<&Move>) {
-    let mut moves_c = moves.clone();
-    let mut move_scores: Vec<i32> = Vec::with_capacity(moves_c.len());
+    let mut best_move = moves[0];
 
-    for mv in &moves_c {
+    let mut max_eval = MIN;
+    for i in sort_moves_indexes(&moves) {
+        let mv = moves[i];
+        let child_pos = pos.new_position(mv);
+        let colour = if maxi_colour == PieceColour::White { PieceColour::Black } else { PieceColour::White };
+        let eval = -negamax(&child_pos, depth - 1, -beta, -alpha, colour).0;
+        if eval > max_eval {
+            max_eval = eval;
+            best_move = mv;
+        }
+        alpha = cmp::max(alpha, eval);
+        if beta <= alpha {
+            break;
+        }
+    }
+    (max_eval, best_move)
+}
+
+
+pub fn sort_moves_indexes(moves: &Vec<&Move>) -> Vec<usize> {
+    let mut move_scores: Vec<i32> = Vec::with_capacity(moves.len());
+    let mut move_indexes: Vec<usize> = (0..moves.len()).collect();
+
+    for mv in moves {
         let mut mv_score = 0;
-        let mv_from_square = pos.position[mv.from];
-        let mv_to_square = pos.position[mv.to];
-
-        let mv_from_piece = match &mv_from_square {
-            Square::Piece(p) => p,
-            Square::Empty => panic!(),
-        };
 
         // if mv is a capture
-        match mv_to_square {
-            Square::Piece(p) => {
-                mv_score += get_piece_value(&p.ptype) - get_piece_value(&mv_from_piece.ptype);
-            },
-            Square::Empty => {},
-        }
-
-        // if pawn promotion
         match mv.move_type {
+            MoveType::Capture => {
+                mv_score += get_piece_value(&mv.piece.ptype);
+            },
             MoveType::Promotion(promotion_type) => {
                 mv_score += get_piece_value(&promotion_type);
             },
-            _ => {}
+            _ => {},
         }
+
         move_scores.push(mv_score);
     }
-    let mut move_score_pairs = moves_c.iter().zip(move_scores.iter()).collect::<Vec<_>>();
-    move_score_pairs.sort_unstable_by(|a, b| a.1.cmp(b.1));
-    moves_c = move_score_pairs.into_iter().map(|(a, _)| *a).collect::<Vec<_>>();
-    *moves = moves_c;
+    let mut sorted_move_indexes = 
+        move_indexes
+        .iter()
+        .zip(move_scores.iter())
+        .collect::<Vec<_>>();
+
+    // sort the moves in descending order of scores
+    sorted_move_indexes.sort_unstable_by(|a, b| b.1.cmp(a.1));
+
+    sorted_move_indexes.into_iter().map(|a| *a.0).collect::<Vec<_>>()
 }
 
 pub fn minimax_captures(pos: &Position, mut alpha: i32, mut beta: i32, is_maxi: bool, maxi_colour: PieceColour) -> (i32, &Move) {
     let moves = pos.get_legal_moves();
-    let mut moves_captures = Vec::new();
-    for mv in moves {
-        if let Square::Piece(_) = pos.position[mv.to] {
-            moves_captures.push(mv);
-        }
-    }
-    if moves_captures.is_empty() {
-        return (evaluate(pos, maxi_colour), &NULL_MOVE);
-    }
-    let mut best_move = moves_captures[0];
+
+    let mut best_move = moves[0];
+
+
 
     if is_maxi {
+        let eval = evaluate(pos, maxi_colour);
+        if eval > alpha {
+            return (eval, &NULL_MOVE);
+        }
         let mut max_eval = i32::MIN;
-        for mv in moves_captures {
-            let child_pos = pos.new_position(mv);
-            let eval = minimax_captures(&child_pos, alpha, beta, false, maxi_colour).0;
-            if eval > max_eval {
-                max_eval = eval;
-                best_move = mv;
-            }
-            alpha = cmp::max(alpha, eval);
-            if beta <= alpha {
-                break;
+        for mv in moves {
+            if mv.move_type == MoveType::Capture {
+                let child_pos = pos.new_position(mv);
+                let eval = minimax_captures(&child_pos, alpha, beta, false, maxi_colour).0;
+                if eval > max_eval {
+                    max_eval = eval;
+                    best_move = mv;
+                }
+                alpha = cmp::max(alpha, eval);
+                if beta <= alpha {
+                    break;
+                }
             }
         }
         (max_eval, best_move)
     } else {
         let mut min_eval = i32::MAX;
-        for mv in moves_captures {
+        for mv in moves {
             let child_pos = pos.new_position(mv);
             let eval = minimax_captures(&child_pos, alpha, beta, true, maxi_colour).0;
             if eval < min_eval {
