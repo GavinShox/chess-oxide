@@ -86,7 +86,7 @@ fn main() {
     //let mut pos = Position::new_position_from_fen("r3k2r/Pppp1ppp/1b3nbN/nP6/BBP1P3/q4N2/Pp1P2PP/R2Q1RK1 w kq - 0 1");
     pos.print_board();
 
-    perft(&pos, 6);
+    perft(&pos, 5);
 
     //game_loop();
 }
@@ -101,7 +101,7 @@ struct EnginePlayer {
 
 impl Player for EnginePlayer {
     fn get_move(&self, board_state: &BoardState) -> Move {
-        *choose_move(&board_state.position, self.depth)
+        *choose_move(&board_state.position, self.depth).1
     }
 }
 

@@ -539,7 +539,7 @@ impl Position {
 
         result
     }
-
+    // TODO maybe consolidate all movegen fag updates into one place if possible?
     fn set_king_position(&mut self, mv: &Move) {
         if mv.piece.ptype == PieceType::King {
             if mv.piece.pcolour == PieceColour::White {
@@ -734,6 +734,7 @@ impl Position {
     }
 
     pub fn print_board(&self) {
+        //♔ 	♕ 	♖ 	♗ 	♘ 	♙ 	♚ 	♛ 	♜ 	♝ 	♞ 	♟ are these different from below? TODO
         let pawn = " ♙ ";
         let knight = " ♘ ";
         let bishop = " ♗ ";

@@ -10,16 +10,28 @@ use iced::theme::Svg;
 use iced::widget::Button;
 use iced::Alignment;
 use iced::alignment;
-use iced::widget::{Row, button, column, text, container, svg, Column, Text, Container, Scrollable};
+use iced::widget::row;
+use iced::widget::{
+    Row,
+    button,
+    column,
+    text,
+    container,
+    svg,
+    Column,
+    Text,
+    Container,
+    Scrollable,
+};
+
+use iced::widget::scrollable::*;
 use iced::Sandbox;
 use iced::Application;
 use iced::Settings;
 use iced::executor;
 use chess::*;
 
-
 const SQUARE_SIZE: u16 = 75;
-
 
 struct EnginePlayer {
     depth: i32,
@@ -27,10 +39,9 @@ struct EnginePlayer {
 
 impl Player for EnginePlayer {
     fn get_move(&self, board_state: &BoardState) -> Move {
-        *choose_move(&board_state.position, self.depth)
+        *choose_move(&board_state.position, self.depth).1
     }
 }
-
 
 struct RandomPlayer;
 impl Player for RandomPlayer {
@@ -47,7 +58,12 @@ struct HumanPlayer {
 impl board::Player for HumanPlayer {
     fn get_move(&self, board_state: &board::BoardState) -> movegen::Move {
         for mv in &board_state.legal_moves {
-            if self.from.is_some() && self.to.is_some() && mv.from == self.from.unwrap() && mv.to == self.to.unwrap() {
+            if
+                self.from.is_some() &&
+                self.to.is_some() &&
+                mv.from == self.from.unwrap() &&
+                mv.to == self.to.unwrap()
+            {
                 return *mv;
             }
         }
@@ -66,32 +82,31 @@ impl ChessSquare {
             idx,
             is_selected,
             last_move,
-            is_legal_move
+            is_legal_move,
         }
     }
 
     fn get_bg_colour(&self) -> iced::Color {
-        let mut dark_colour = iced::Color{r: 0.125, g: 0.57, b: 0.73, a: 1.0};
+        let mut dark_colour = iced::Color { r: 0.125, g: 0.57, b: 0.73, a: 1.0 };
         let mut light_colour = iced::Color::WHITE;
         if self.last_move.from == self.idx || self.last_move.to == self.idx {
-            dark_colour = iced::Color{r: 0.7, g: 0.5, b: 0.5, a: 1.0};
-            light_colour = iced::Color{r: 0.8, g: 0.5, b: 0.5, a: 1.0};
-        }
-        if self.is_selected {
-            dark_colour = iced::Color{r: 1.0, g: 0.5, b: 0.5, a: 1.0};
-            light_colour = iced::Color{r: 1.0, g: 0.5, b: 0.5, a: 1.0};
+            dark_colour = iced::Color { r: 0.5, g: 0.6, b: 0.7, a: 1.0 };
+            light_colour = iced::Color { r: 0.5, g: 0.6, b: 0.8, a: 1.0 };
         }
         if self.is_legal_move {
-            dark_colour = iced::Color{r: 1.0, g: 0.5, b: 0.5, a: 0.5};
-            light_colour = iced::Color{r: 1.0, g: 0.5, b: 0.5, a: 0.5};
+            dark_colour = iced::Color { r: 0.7, g: 0.5, b: 0.5, a: 1.0 };
+            light_colour = iced::Color { r: 0.8, g: 0.5, b: 0.5, a: 1.0 };
+        }
+        if self.is_selected {
+            dark_colour = iced::Color { r: 1.0, g: 0.5, b: 0.5, a: 1.0 };
+            light_colour = iced::Color { r: 1.0, g: 0.5, b: 0.5, a: 1.0 };
         }
         let rank = self.idx / 8;
         if rank % 2 == 0 {
-            return if self.idx % 2 == 0 {light_colour} else {dark_colour};
+            return if self.idx % 2 == 0 { light_colour } else { dark_colour };
         } else {
-            return if self.idx % 2 == 0 {dark_colour} else {light_colour};
+            return if self.idx % 2 == 0 { dark_colour } else { light_colour };
         }
-        
     }
 }
 
@@ -112,13 +127,11 @@ impl button::StyleSheet for ChessSquare {
             background: Some(iced::Background::Color(self.get_bg_colour())),
             border_radius: 0.0,
             border_width: 2.0,
-            border_color: iced::Color{a: 0.7, ..iced::Color::BLACK},
+            border_color: iced::Color { a: 0.7, ..iced::Color::BLACK },
             ..button::Appearance::default()
         }
     }
-
 }
-
 
 // TODO maybe make this a single widget focused on just the chessboard?
 struct ChessBoard {
@@ -127,15 +140,21 @@ struct ChessBoard {
     selected: Option<usize>,
     move_made: bool,
     players_move: bool,
-    game_state: board::GameState
+    game_state: board::GameState,
+    state_idx: usize,
+    engine_eval: f32,
+    scrollable_id: iced::widget::scrollable::Id
 }
-
 
 #[derive(Debug, Clone, Copy)]
 pub enum ChessBoardMessage {
     Select(usize),
     EngineMove,
-    Continue
+    Continue,
+    Previous,
+    Next,
+    GoStart,
+    GoEnd,
 }
 
 fn get_svg_path(square: &Square) -> String {
@@ -162,9 +181,7 @@ fn get_svg_path(square: &Square) -> String {
                         PieceType::King => {
                             format!("{}/resources/Chess_klt45.svg", env!("CARGO_MANIFEST_DIR"))
                         }
-                        PieceType::None => {
-                            "".to_owned()
-                        }
+                        PieceType::None => { "".to_owned() }
                     }
                 }
                 PieceColour::Black => {
@@ -187,25 +204,17 @@ fn get_svg_path(square: &Square) -> String {
                         PieceType::King => {
                             format!("{}/resources/Chess_kdt45.svg", env!("CARGO_MANIFEST_DIR"))
                         }
-                        PieceType::None => {
-                            "".to_owned()
-                        }
+                        PieceType::None => { "".to_owned() }
                     }
                 }
-                PieceColour::None => {
-                    "".to_owned()
-                }
+                PieceColour::None => { "".to_owned() }
             }
         }
-        Square::Empty => {
-            "".to_owned()
-        }
+        Square::Empty => { "".to_owned() }
     }
-
 }
 
-
-const ENGINE_DEPTH: i32 = 2;
+const ENGINE_DEPTH: i32 = 5;
 
 impl ChessBoard {
     fn get_gamestate_text(&self) -> String {
@@ -215,7 +224,7 @@ impl ChessBoard {
                 if self.players_move {
                     "Player's Move".to_owned()
                 } else {
-                    "Engine's Move".to_owned()
+                    "Engine Thinking...".to_owned()
                 }
             }
             board::GameState::Checkmate => {
@@ -225,25 +234,18 @@ impl ChessBoard {
                     "Checkmate - Player Wins".to_owned()
                 }
             }
-            board::GameState::Stalemate => {
-                "Draw - Stalemate".to_owned()
-            }
-            board::GameState::Repetition => {
-                "Draw - Repetition".to_owned()
-            }
-            board::GameState::FiftyMove => {
-                "Draw - Fifty Move Rule".to_owned()
-            }
+            board::GameState::Stalemate => { "Draw - Stalemate".to_owned() }
+            board::GameState::Repetition => { "Draw - Repetition".to_owned() }
+            board::GameState::FiftyMove => { "Draw - Fifty Move Rule".to_owned() }
             board::GameState::Check => {
                 if self.players_move {
                     "Check - Player's Move".to_owned()
                 } else {
-                    "Check - Engine's Move".to_owned()
+                    "Check - Engine Thinking...".to_owned()
                 }
             }
         }
     }
-    
 }
 #[derive(Debug, Clone, Copy, Default)]
 struct ChessBoardTheme;
@@ -254,13 +256,25 @@ impl container::StyleSheet for ChessBoardTheme {
         container::Appearance {
             border_radius: 0.0,
             border_width: 5.0,
-            
             border_color: iced::Color::BLACK,
             ..container::Appearance::default()
         }
     }
 }
 const PLAYER_COLOUR: PieceColour = PieceColour::White;
+
+
+struct ApplicationStyle;
+impl iced::application::StyleSheet for ApplicationStyle {
+    type Style = iced::Theme;
+
+    fn appearance(&self, style: &Self::Style) -> iced::application::Appearance {
+        iced::application::Appearance {
+            background_color: iced::Color::from_rgb8(112,128,144),
+            text_color: iced::Color::BLACK,
+        }
+    }
+}
 
 impl Application for ChessBoard {
     type Message = ChessBoardMessage;
@@ -269,21 +283,37 @@ impl Application for ChessBoard {
     type Flags = ();
 
     fn new(flags: ()) -> (Self, iced::Command<Self::Message>) {
-        let board = board::Board::new(Box::new(HumanPlayer{from: None, to: None}), Box::new(HumanPlayer{from: None, to: None}));
-        (Self {
-            board,
-            selected: None,
-            move_made: false,
-            players_move: true,
-            game_state: board::GameState::Active
-        }, iced::Command::none())
+        let board = board::Board::new(
+            Box::new(HumanPlayer { from: None, to: None }),
+            Box::new(HumanPlayer { from: None, to: None })
+        );
+        (
+            Self {
+                board,
+                selected: None,
+                move_made: false,
+                players_move: true,
+                game_state: board::GameState::Active,
+                state_idx: 0,
+                engine_eval: 0.0,
+                scrollable_id: iced::widget::scrollable::Id::new("history"),
+            },
+            Command::none()
+            // Command::perform(
+            //     async {},
+            //     |()| ChessBoardMessage::EngineMove
+            // )
+        )
     }
 
     fn title(&self) -> String {
-        String::from("Chess Oxide")
+        String::from("Chess Oxide Engine")
+    }
+    fn style(&self) -> <Self::Theme as iced::application::StyleSheet>::Style {
+        <Self::Theme as iced::application::StyleSheet>::Style::Custom(Box::new(ApplicationStyle))
     }
 
-    fn update(&mut self, message: Self::Message) -> iced::Command<Self::Message>{
+    fn update(&mut self, message: Self::Message) -> iced::Command<Self::Message> {
         match message {
             ChessBoardMessage::Select(idx) => {
                 if self.players_move {
@@ -293,6 +323,10 @@ impl Application for ChessBoard {
                         let from = self.selected.unwrap();
                         let to = idx;
                         self.selected = None;
+                        if from == to {
+                            return Command::none();
+                        }
+
                         if self.players_move {
                             let mut play_mv = NULL_MOVE;
                             for mv in self.board.current_state.legal_moves.iter() {
@@ -306,32 +340,70 @@ impl Application for ChessBoard {
                                 self.board.make_move(&play_mv);
                                 self.game_state = self.board.current_state.get_gamestate();
                                 self.players_move = false;
-                                return Command::perform(async {}, |()| ChessBoardMessage::EngineMove);
+                                self.state_idx += 1;
+                                return Command::perform(
+                                    async {},
+                                    |()| ChessBoardMessage::EngineMove
+                                );
                             } else {
                                 self.selected = Some(idx);
                             }
-    
                         }
                     }
                 }
-                
             }
             ChessBoardMessage::EngineMove => {
-                let engine_mv = *engine::choose_move(&self.board.current_state.position, ENGINE_DEPTH);
+                let engine_choice = engine::choose_move(
+                    &self.board.current_state.position,
+                    ENGINE_DEPTH
+                );
+                let engine_mv = *engine_choice.1;
+                self.engine_eval = if PLAYER_COLOUR == PieceColour::White {-engine_choice.0 as f32} else {engine_choice.0 as f32} ;
+
                 println!("Engine move: {:?}", engine_mv);
                 if engine_mv != NULL_MOVE {
                     self.board.make_move(&engine_mv);
                     self.players_move = true;
+                    self.state_idx += 1;
                 }
                 self.game_state = self.board.current_state.get_gamestate();
-            },
-            ChessBoardMessage::Continue => {},
+            }
+            ChessBoardMessage::Continue => {}
+            ChessBoardMessage::Previous => {
+                if self.state_idx > 0 {
+                    self.selected = None;
+                    self.state_idx -= 1;
+                    self.board.current_state = self.board.state_history[self.state_idx].clone();
+                    self.players_move = self.state_idx % 2 == 0;
+                    self.game_state = self.board.current_state.get_gamestate();
+                }
+            }
+            ChessBoardMessage::Next => {
+                if self.state_idx < self.board.state_history.len() - 1 {
+                    self.selected = None;
+                    self.state_idx += 1;
+                    self.board.current_state = self.board.state_history[self.state_idx].clone();
+                    self.players_move = self.state_idx % 2 == 0;
+                    self.game_state = self.board.current_state.get_gamestate();
+                }
+            }
+            ChessBoardMessage::GoStart => {
+                self.selected = None;
+                self.state_idx = 0;
+                self.board.current_state = self.board.state_history[self.state_idx].clone();
+                self.players_move = self.state_idx % 2 == 0;
+                self.game_state = self.board.current_state.get_gamestate();
+            }
+            ChessBoardMessage::GoEnd => {
+                self.selected = None;
+                self.state_idx = self.board.state_history.len() - 1;
+                self.board.current_state = self.board.state_history[self.state_idx].clone();
+                self.players_move = self.state_idx % 2 == 0;
+                self.game_state = self.board.current_state.get_gamestate();
+            }
         }
-
-
-        iced::Command::none()
+        iced::widget::scrollable::snap_to::<Self::Message>(self.scrollable_id.clone(), 100.0)
     }
-    
 
     fn view(&self) -> iced::Element<'_, Self::Message> {
         let mut chess_board = Column::new().spacing(0).align_items(Alignment::Center);
@@ -348,84 +420,144 @@ impl Application for ChessBoard {
         }
         for i in 0..64 {
             // only highlight players own pieces
-            let is_selected = if let Square::Piece(p) = self.board.current_state.position.position[i] {
-                if p.pcolour == PLAYER_COLOUR {
-                    self.selected.unwrap_or(i+1) == i
-                } else {
-                    false
-                }
+            let is_selected = if
+                let Square::Piece(p) = self.board.current_state.position.position[i]
+            {
+                if p.pcolour == PLAYER_COLOUR { self.selected.unwrap_or(i + 1) == i } else { false }
             } else {
                 false
             };
 
-
-            let svg = svg::Svg::from_path(get_svg_path(&self.board.current_state.position.position[i]));
-            
-            row = row.push(
-                Button::new(
-                    svg.style(iced::theme::Svg::Default)
-                    .width(iced::Length::Fill).height(iced::Length::Fill)
-
-                )
-                .on_press(ChessBoardMessage::Select(i))
+            let svg = svg::Svg::from_path(
+                get_svg_path(&self.board.current_state.position.position[i])
+            );
+            let mut square = Button::new(
+                svg
+                    .style(iced::theme::Svg::Default)
+                    .width(iced::Length::Fill)
+                    .height(iced::Length::Fill)
+            )
                 .width(iced::Length::Units(SQUARE_SIZE))
                 .height(iced::Length::Units(SQUARE_SIZE))
-                .style(iced::theme::Button::Custom(Box::new(ChessSquare::from(i, is_selected, self.board.current_state.last_move, legal_moves_selected.contains(&i)))))
+                .style(
+                    iced::theme::Button::Custom(
+                        Box::new(
+                            ChessSquare::from(
+                                i,
+                                is_selected,
+                                self.board.current_state.last_move,
+                                legal_moves_selected.contains(&i)
+                            )
+                        )
+                    )
+                );
+                // disable board if browsing history
+                if self.state_idx == self.board.state_history.len() - 1 {
+                    square = square.on_press(ChessBoardMessage::Select(i));
+
+                }
+            row = row.push(
+                square
             );
-            if (i+1) % 8 == 0 {
+            if (i + 1) % 8 == 0 {
                 chess_board = chess_board.push(row);
                 row = Row::new().spacing(0).align_items(Alignment::Center);
             }
         }
-        
+
         Container::new(
-            Row::new().push(
-                Column::new()
-                .push(Text::new(self.get_gamestate_text()).size(20))
-                .spacing(10)
-                .align_items(iced::Alignment::Center)
+            Row::new()
                 .push(
-                    Container::new(chess_board)
-                    .width(iced::Length::Shrink)
-                    .height(iced::Length::Shrink)
-                    .style(iced::theme::Container::Custom(Box::new(ChessBoardTheme)))
-                    .padding(5)
-                    .center_x()
-                    .center_y()    
-                )
-                .align_items(iced::Alignment::Center)
-                .spacing(10)
-            )
-            .spacing(20)
-            .push(
-                Scrollable::new(
-                    self.board.state_history
-                    .iter()
-                    .fold(Column::new(), |column, state| {
-                        column.push(
-                            Text::new(
-
-                                if state.side_to_move == PieceColour::Black && state.last_move != NULL_MOVE {
-                                    format!("{}.\n {}{}", state.move_count + 1, Position::index_to_notation(state.last_move.from), Position::index_to_notation(state.last_move.to))
-                                } else if state.side_to_move == PieceColour::White && state.last_move != NULL_MOVE {
-                                    format!("{}{}", Position::index_to_notation(state.last_move.from), Position::index_to_notation(state.last_move.to))
-                                } else {
-                                    String::from("Move History:")
-                                }
-                            )
+                    Column::new()
+                        .push(Text::new(self.get_gamestate_text()).size(26))
+                        .spacing(10)
+                        .push(Text::new(format!("Engine Evaluation: {}{}", if self.engine_eval > 0.0 {"+"} else {""},(self.engine_eval / 100.0))).size(20))
+                        .spacing(10)
+                        .align_items(iced::Alignment::Center)
+                        .push(
+                            Container::new(chess_board)
+                                .width(iced::Length::Shrink)
+                                .height(iced::Length::Shrink)
+                                .style(iced::theme::Container::Custom(Box::new(ChessBoardTheme)))
+                                .padding(5)
+                                .center_x()
+                                .center_y()
                         )
-                    })
+                        .align_items(iced::Alignment::Center)
+                        .spacing(10)
+                        .push(
+                            row!(
+                                Button::new("<<").on_press(ChessBoardMessage::GoStart),
+                                Button::new("<").on_press(ChessBoardMessage::Previous),
+                                Button::new(">").on_press(ChessBoardMessage::Next),
+                                Button::new(">>").on_press(ChessBoardMessage::GoEnd)
+                            ).spacing(5)
+                        )
                 )
-                .height(iced::Length::Units(SQUARE_SIZE * 8))
-            )
-            .align_items(Alignment::End)
-        )
-        .center_x()
-        .center_y()
-        .width(iced::Length::Fill)
-        .height(iced::Length::Fill)
-        .into()
+                .spacing(20)
+                .push(
+                    column!(
+                        Text::new("Move History: ").size(40),
+                        Scrollable::new(
+                            column!(
+                                
+                                self.board.state_history
+                                    .iter()
+                                    .fold(Column::new(), |column, state| {
+                                        column.push(
+                                            Text::new(
+                                                if
+                                                    state.side_to_move == PieceColour::Black &&
+                                                    state.last_move != NULL_MOVE
+                                                {
+                                                    format!(
+                                                        "{}.\n {}",
+                                                        state.move_count + 1,
+                                                        state.last_move_as_notation()
+                                                    )
+                                                } else if
+                                                    state.side_to_move == PieceColour::White &&
+                                                    state.last_move != NULL_MOVE
+                                                {
+                                                    state.last_move_as_notation()
 
+                                                } else {
+                                                    String::from("")
+                                                }
+                                            ).style(
+                                                // highlight current state
+                                                if
+                                                    Rc::ptr_eq(
+                                                        &self.board.state_history[self.state_idx],
+                                                        state
+                                                    )
+                                                {
+                                                    iced::theme::Text::Color(
+                                                        iced::Color::from_rgb(1.0, 0.0, 0.0)
+                                                    )
+                                                } else {
+                                                    iced::theme::Text::Default
+                                                }
+                                            ).size(24)
+                                        )
+
+                                    })
+                            )
+                            .padding(20)
+                            .width(iced::Length::Units(125))
+                            .align_items(iced::Alignment::Center)
+                        ).height(iced::Length::Units(SQUARE_SIZE * 8)).id(self.scrollable_id.clone()).scroller_width(1).scrollbar_width(1).scrollbar_margin(0)
+                    )
+                    .spacing(10)
+                    
+                )
+                .align_items(Alignment::End)
+        )
+            .center_x()
+            .center_y()
+            .width(iced::Length::Fill)
+            .height(iced::Length::Fill)
+            .into()
     }
 }
 fn main() -> iced::Result {
@@ -439,8 +571,10 @@ fn main() -> iced::Result {
         window: iced::window::Settings {
             //size: ((SQUARE_SIZE as u32 * 8) + 120, (SQUARE_SIZE as u32 * 8) + 100),
             resizable: true,
+            // icon: Some(iced::window::Icon::from_file(format!("{}/resources/chesslogo.png", env!("CARGO_MANIFEST_DIR"))).unwrap()),
             ..iced::window::Settings::default()
         },
+        
         ..Settings::default()
     })
 }

@@ -9,31 +9,48 @@ const MAX: i32 = i32::MAX;
 pub fn random_move(pos: &Position) -> &Move {
     pos.get_legal_moves().choose(&mut rand::thread_rng()).unwrap_or(&&NULL_MOVE)
 }
+
 // TODO SHould use board_state so it can factor in checkmate and stalemate easier
-pub fn choose_move(pos: &Position, depth: i32) -> &Move {
+pub fn choose_move(pos: &Position, depth: i32) -> (i32, &Move) {
     // TODO add check if position is in endgame, for different evaluation
-    // let mv = minimax(pos, depth, i32::MIN, i32::MAX, true, pos.side).1;
-    //     mv
-    let mv = negamax(pos, depth, MIN, MAX, pos.side).1;
-    mv
-    //*pos.get_legal_moves().choose(&mut rand::thread_rng()).unwrap_or_else(|| panic!("CHECKMATE"))
+    negamax_root(pos, depth, pos.side)
 }
 
-pub fn negamax(pos: &Position, depth: i32, mut alpha: i32, mut beta: i32, maxi_colour: PieceColour) -> (i32, &Move) {
-    let moves = pos.get_legal_moves();
-    //sort_moves(pos, &mut moves);
-    if depth == 0 || moves.is_empty() {
-        return (evaluate(pos, maxi_colour), &NULL_MOVE);
+pub fn quiescence(pos: &Position, depth: i32, mut alpha: i32, beta: i32, maxi_colour: PieceColour) -> i32 {
+    let mut max_eval = evaluate(pos, maxi_colour);
+    if max_eval >= beta || depth == 0 {
+        return max_eval;
     }
-
-    let mut best_move = moves[0];
-
-    let mut max_eval = MIN;
-    for i in sort_moves_indexes(&moves) {
+    alpha = cmp::max(alpha, max_eval);
+    let moves = pos.get_legal_moves().into_iter().filter(|mv| matches!(mv.move_type, MoveType::Capture(_))).collect::<Vec<_>>();
+    for i in sorted_move_indexes(&moves) {
         let mv = moves[i];
         let child_pos = pos.new_position(mv);
-        let colour = if maxi_colour == PieceColour::White { PieceColour::Black } else { PieceColour::White };
-        let eval = -negamax(&child_pos, depth - 1, -beta, -alpha, colour).0;
+        let eval = -quiescence(&child_pos, depth - 1, -beta, -alpha, !maxi_colour);
+        max_eval = cmp::max(max_eval, eval);
+        alpha = cmp::max(alpha, eval);
+        if beta <= alpha {
+            break;
+        }
+    }
+    max_eval
+}
+pub fn negamax_root(pos: &Position, depth: i32, maxi_colour: PieceColour) -> (i32, &Move) {
+    let moves = pos.get_legal_moves();
+    if moves.is_empty() && pos.is_in_check() {
+        return (if pos.side == maxi_colour {MIN} else {MAX}, &NULL_MOVE);  
+    } else if moves.is_empty() {
+        // stalemate
+        return (0, &NULL_MOVE); 
+    } 
+    let mut alpha = MIN;
+    let beta = MAX;
+    let mut best_move = moves[0];
+    let mut max_eval = MIN;
+    for i in sorted_move_indexes(&moves) {
+        let mv = moves[i];
+        let child_pos = pos.new_position(mv);
+        let eval = -negamax(&child_pos, depth - 1, -beta, -alpha, !maxi_colour);
         if eval > max_eval {
             max_eval = eval;
             best_move = mv;
@@ -45,9 +62,64 @@ pub fn negamax(pos: &Position, depth: i32, mut alpha: i32, mut beta: i32, maxi_c
     }
     (max_eval, best_move)
 }
+const QUIECENCE_DEPTH: i32 = 5;
+// todo maybe return depth reached for fastest checkmate
+pub fn negamax(pos: &Position, depth: i32, mut alpha: i32, beta: i32, maxi_colour: PieceColour) -> i32 {
+    let moves = pos.get_legal_moves();
+    //sort_moves(pos, &mut moves);
+    // TODO different checks for stalemate and checkmate. not sure if below works correctly, need to test
+    if moves.is_empty() && pos.is_in_check() {
+        return if pos.side == maxi_colour {MIN} else {MAX};  // checkmate TODO im not sure if min is the correct return here. maybe account for maxi_colour?
+    } else if moves.is_empty() {
+        return 0;  // stalemate
+    } else if depth == 0 {
+        return quiescence(pos, QUIECENCE_DEPTH, alpha, beta, maxi_colour);
+    }
+
+    let mut max_eval = MIN;
+    for i in sorted_move_indexes(&moves) {
+        let mv = moves[i];
+        let child_pos = pos.new_position(mv);
+        let colour = !maxi_colour;
+        let eval = -negamax(&child_pos, depth - 1, -beta, -alpha, colour);
+        if eval > max_eval {
+            max_eval = eval;
+        }
+        alpha = cmp::max(alpha, eval);
+        if beta <= alpha {
+            break;
+        }
+    }
+    max_eval
+}
+
+// pub fn quiescence_sort_move_indexes(moves: &[Move]) -> Vec<usize> {
+//     let mut move_scores: Vec<i32> = Vec::with_capacity(moves.len());
+//     let mut move_indexes: Vec<usize> = (0..moves.len()).collect();
+//     for mv in moves {
+//         let mut mv_score = 0;
+//         match mv.move_type {
+//             MoveType::Capture(capture_type) => {
+//                 mv_score += get_piece_value(&capture_type) - get_piece_value(&mv.piece.ptype);
+//             },
+//             _ => {},
+//         }
+//         move_scores.push(mv_score);
+//     }
+//     let mut sorted_move_indexes = 
+//         move_indexes
+//         .iter()
+//         .zip(move_scores.iter())
+//         .collect::<Vec<_>>();
+
+//     // sort the moves in descending order of scores
+//     sorted_move_indexes.sort_unstable_by(|a, b| b.1.cmp(a.1));
+
+//     sorted_move_indexes.into_iter().map(|a| *a.0).collect::<Vec<_>>()
+// }
 
 
-pub fn sort_moves_indexes(moves: &Vec<&Move>) -> Vec<usize> {
+pub fn sorted_move_indexes(moves: &[&Move]) -> Vec<usize> {
     let mut move_scores: Vec<i32> = Vec::with_capacity(moves.len());
     let mut move_indexes: Vec<usize> = (0..moves.len()).collect();
 
@@ -56,15 +128,17 @@ pub fn sort_moves_indexes(moves: &Vec<&Move>) -> Vec<usize> {
 
         // if mv is a capture
         match mv.move_type {
-            MoveType::Capture => {
-                mv_score += get_piece_value(&mv.piece.ptype);
+            MoveType::Capture(capture_type) => {
+                mv_score += get_piece_value(&capture_type) - get_piece_value(&mv.piece.ptype);
+                if mv_score < 0 {
+                    mv_score = 1;  // prioritise captures, even when capturing with a more valuable piece. After trades it could still be good
+                }
             },
             MoveType::Promotion(promotion_type) => {
                 mv_score += get_piece_value(&promotion_type);
             },
             _ => {},
         }
-
         move_scores.push(mv_score);
     }
     let mut sorted_move_indexes = 
@@ -78,97 +152,7 @@ pub fn sort_moves_indexes(moves: &Vec<&Move>) -> Vec<usize> {
 
     sorted_move_indexes.into_iter().map(|a| *a.0).collect::<Vec<_>>()
 }
-
-pub fn minimax_captures(pos: &Position, mut alpha: i32, mut beta: i32, is_maxi: bool, maxi_colour: PieceColour) -> (i32, &Move) {
-    let moves = pos.get_legal_moves();
-
-    let mut best_move = moves[0];
-
-
-
-    if is_maxi {
-        let eval = evaluate(pos, maxi_colour);
-        if eval > alpha {
-            return (eval, &NULL_MOVE);
-        }
-        let mut max_eval = i32::MIN;
-        for mv in moves {
-            if mv.move_type == MoveType::Capture {
-                let child_pos = pos.new_position(mv);
-                let eval = minimax_captures(&child_pos, alpha, beta, false, maxi_colour).0;
-                if eval > max_eval {
-                    max_eval = eval;
-                    best_move = mv;
-                }
-                alpha = cmp::max(alpha, eval);
-                if beta <= alpha {
-                    break;
-                }
-            }
-        }
-        (max_eval, best_move)
-    } else {
-        let mut min_eval = i32::MAX;
-        for mv in moves {
-            let child_pos = pos.new_position(mv);
-            let eval = minimax_captures(&child_pos, alpha, beta, true, maxi_colour).0;
-            if eval < min_eval {
-                min_eval = eval;
-                best_move = mv;
-            }
-            beta = cmp::min(beta, eval);
-            //std::mem::swap(&mut alpha, &mut beta);
-            if beta <= alpha {
-                break;
-            }
-        }
-        (min_eval, best_move)
-    }
-}
-
-pub fn minimax(pos: &Position, depth: i32, mut alpha: i32, mut beta: i32, is_maxi: bool, maxi_colour: PieceColour) -> (i32, &Move) {
-    let moves = pos.get_legal_moves();
-    //sort_moves(pos, &mut moves);
-    if depth == 0 || moves.is_empty() {
-        return (evaluate(pos, maxi_colour), &NULL_MOVE);
-    }
-
-    let mut best_move = moves[0];
-
-    if is_maxi {
-        let mut max_eval = i32::MIN;
-        for mv in moves {
-            let child_pos = pos.new_position(mv);
-            let eval = minimax(&child_pos, depth - 1, alpha, beta, false, maxi_colour).0;
-            if eval > max_eval {
-                max_eval = eval;
-                best_move = mv;
-            }
-            alpha = cmp::max(alpha, eval);
-            if beta <= alpha {
-                break;
-            }
-        }
-        (max_eval, best_move)
-    } else {
-        let mut min_eval = i32::MAX;
-        for mv in moves {
-            let child_pos = pos.new_position(mv);
-            let eval = minimax(&child_pos, depth - 1, alpha, beta, true, maxi_colour).0;
-            if eval < min_eval {
-                min_eval = eval;
-                best_move = mv;
-            }
-            beta = cmp::min(beta, eval);
-            //std::mem::swap(&mut alpha, &mut beta);
-            if beta <= alpha {
-                break;
-            }
-        }
-        (min_eval, best_move)
-    }
-}
-
+// values in centipawns
 fn get_piece_value(ptype: &PieceType) -> i32 {
     match ptype {
         PieceType::Pawn => 100,

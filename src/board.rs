@@ -57,8 +57,66 @@ impl BoardState {
         }
     }
 
-    pub fn new_from_fen(fen: &str) -> Self {
-        todo!()
+    pub fn from_fen(fen: &str) -> Self {
+        // TODO add move count and halfmove count
+        let position = Position::new_position_from_fen(fen);
+        let position_hash: PositionHash = position.pos_hash();
+        let side_to_move = position.side;
+        // deref all legal moves, performance isn't as important here, so avoid lifetime specifiers to make things easier to look at
+        let legal_moves = position.get_legal_moves().into_iter().copied().collect();
+        let mut position_occurences = HashMap::new();
+        *position_occurences.entry(position_hash).or_insert(0) += 1;
+        BoardState {
+            position,
+            move_count: 0,
+            halfmove_count: 0,
+            position_hash,
+            side_to_move,
+            last_move: NULL_MOVE,
+            legal_moves,
+            position_occurences,
+        }
+    }
+
+    pub fn last_move_as_notation(&self) -> String {
+        let notation_from = Position::index_to_notation(self.last_move.from);
+        let notation_to = Position::index_to_notation(self.last_move.to);
+
+        let get_piece_str = |ptype: PieceType| -> String {
+            match ptype {
+                PieceType::Pawn => notation_from.chars().next().unwrap().to_string(), // get pawns rank
+                PieceType::Knight => "N".to_string(),
+                PieceType::Bishop => "B".to_string(),
+                PieceType::Rook => "R".to_string(),
+                PieceType::Queen => "Q".to_string(),
+                PieceType::King => "K".to_string(),
+                PieceType::None => "".to_string(),
+            }
+        };
+
+        let piece_str = get_piece_str(self.last_move.piece.ptype);
+        
+        let notation = match self.last_move.move_type {
+            MoveType::EnPassant(ep) => format!("{}x{}", piece_str, Position::index_to_notation(ep)),
+            MoveType::Promotion(promotion_type) => format!("{}={}", notation_to, get_piece_str(promotion_type)),
+            MoveType::Castle(castle_move) => if castle_move.rook_from.abs_diff(castle_move.rook_to) == 3 {
+                "O-O-O".to_string()
+            } else {
+                "O-O".to_string()
+            },
+            MoveType::DoublePawnPush => notation_to,
+            MoveType::PawnPush => notation_to,
+            MoveType::Capture(_) => format!("{}x{}", piece_str, notation_to),
+            MoveType::Normal => format!("{}{}", piece_str, notation_to),
+            MoveType::None => "".to_string(),
+        };
+        return if self.get_gamestate() == GameState::Checkmate {
+            format!("{}#", notation)
+        } else if self.get_gamestate() == GameState::Check {
+            format!("{}+", notation)
+        } else {
+            notation
+        };
     }
 
     pub fn next_state(&self, mv: &Move) -> Result<Self, BoardStateError> {
@@ -96,7 +154,7 @@ impl BoardState {
         let halfmove_reset =
             mv.move_type == MoveType::PawnPush ||
             mv.move_type == MoveType::DoublePawnPush ||
-            mv.move_type == MoveType::Capture;
+            matches!(mv.move_type, MoveType::Capture(_));
         let halfmove_count = if halfmove_reset { 0 } else { self.halfmove_count + 1 };
 
         let mut position_occurences = self.position_occurences.clone();
@@ -151,6 +209,18 @@ impl Board {
     pub fn new(white_player: Box<dyn Player>, black_player: Box<dyn Player>) -> Self {
         let current_state = Rc::new(BoardState::new_starting());
 
+        let mut state_history: Vec<Rc<BoardState>> = Vec::new();
+        state_history.push(current_state.clone());
+
+        Board {
+            current_state,
+            state_history,
+            white_player,
+            black_player,
+        }
+    }
+    pub fn from_fen(fen: &str, white_player: Box<dyn Player>, black_player: Box<dyn Player>) -> Self {
+        let current_state = Rc::new(BoardState::from_fen(fen));
         let mut state_history: Vec<Rc<BoardState>> = Vec::new();
         state_history.push(current_state.clone());
 

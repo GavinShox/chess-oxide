@@ -28,7 +28,7 @@ fn get_all_legal_positions(
                 MoveType::Castle(_) => {
                     *castles += 1;
                 }
-                MoveType::Capture => {
+                MoveType::Capture(_) => {
                     *captures += 1;
                 }
                 _ => {}

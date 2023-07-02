@@ -54,6 +54,16 @@ pub enum PieceColour {
     Black,
     None,
 }
+impl core::ops::Not for PieceColour {
+    type Output = Self;
+    fn not(self) -> Self::Output {
+        match self {
+            PieceColour::White => PieceColour::Black,
+            PieceColour::Black => PieceColour::White,
+            PieceColour::None => PieceColour::None,
+        }
+    }
+}
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Piece {
@@ -98,7 +108,7 @@ pub enum MoveType {
     Castle(CastleMove),
     DoublePawnPush,
     PawnPush,
-    Capture,
+    Capture(PieceType),
     Normal,
     None, // used to represent null move, or moves that are only used in generating defend map, and are not actually possible to play
 }
@@ -278,7 +288,7 @@ pub fn movegen(
                                         piece: *piece,
                                         from: i,
                                         to: mv as usize,
-                                        move_type: MoveType::Capture,
+                                        move_type: MoveType::Capture(mv_square_piece.ptype),
                                     })
                                 );
                             }
@@ -346,7 +356,7 @@ pub fn movegen(
                                     piece: *piece,
                                     from: i,
                                     to: mv as usize,
-                                    move_type: MoveType::Capture,
+                                    move_type: MoveType::Capture(mv_square_piece.ptype),
                                 })
                             );
                         }
@@ -600,7 +610,7 @@ pub fn movegen_pos<'a>(
                                                     piece: *piece,
                                                     from: i,
                                                     to: mv as usize,
-                                                    move_type: MoveType::Capture,
+                                                    move_type: MoveType::Capture(mv_square_piece.ptype),
                                                 })
                                             );
                                         }
@@ -668,7 +678,7 @@ pub fn movegen_pos<'a>(
                                                 piece: *piece,
                                                 from: i,
                                                 to: mv as usize,
-                                                move_type: MoveType::Capture,
+                                                move_type: MoveType::Capture(mv_square_piece.ptype),
                                             })
                                         );
                                     }
