@@ -59,7 +59,7 @@ impl BoardState {
 
     pub fn from_fen(fen: &str) -> Self {
         // TODO add move count and halfmove count
-        let position = Position::new_position_from_fen(fen);
+        let position = Position::from_fen(fen);
         let position_hash: PositionHash = position.pos_hash();
         let side_to_move = position.side;
         // deref all legal moves, performance isn't as important here, so avoid lifetime specifiers to make things easier to look at

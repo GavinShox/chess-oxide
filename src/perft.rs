@@ -1,4 +1,4 @@
-use std::time::{Instant};
+use std::time::Instant;
 
 use crate::position::Position;
 use crate::movegen::*;
@@ -17,22 +17,22 @@ fn get_all_legal_positions(
         return;
     }
     for mv in moves {
-        if depth == 1 {
-            match mv.move_type {
-                MoveType::EnPassant(_) => {
-                    *en_passant += 1;
-                }
-                MoveType::Promotion(_) => {
-                    *promotions += 1;
-                }
-                MoveType::Castle(_) => {
-                    *castles += 1;
-                }
-                MoveType::Capture(_) => {
-                    *captures += 1;
-                }
-                _ => {}
+        match mv.move_type {
+            MoveType::EnPassant(_) => {
+                *en_passant += 1;
             }
+            MoveType::Promotion(_) => {
+                *promotions += 1;
+            }
+            MoveType::Castle(_) => {
+                *castles += 1;
+            }
+            MoveType::Capture(_) => {
+                *captures += 1;
+            }
+            _ => {}
+        }
+        if depth == 1 {
             *nodes += 1;
         } else {
             let p = pos.new_position(mv);

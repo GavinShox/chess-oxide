@@ -1,3 +1,9 @@
+use std::collections::HashMap;
+use static_init::dynamic;
+
+#[dynamic]
+static mut MAILBOX_CACHE: HashMap<(usize, i32), i32> = HashMap::new();
+
 // mailbox used to determine if a given move is legal. 
 // e.g. to move to the right, add 1 to the index. in a regular 
 // array of 64 pieces, this allows a piece to move from a8 to h7
@@ -38,6 +44,3 @@ pub fn next_mailbox_number(i: usize, j: i32) -> i32 {
     // }
     MAILBOX[(MAILBOX64[i] + j) as usize]
 }
-
-
-

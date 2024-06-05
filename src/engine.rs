@@ -1,19 +1,17 @@
 use crate::position::*;
-use rand::seq::SliceRandom;
 use std::cmp;
 use crate::movegen::*;
+use crate::board::*;
 
-const MIN: i32 = i32::MIN + 1;  // avoid int overflow when negating
-const MAX: i32 = i32::MAX;
+// avoid int overflows when operating on these values i.e. negating, +/- checkmate depth etc.
+const MIN: i32 = i32::MIN + 1000;  
+const MAX: i32 = i32::MAX - 1000;
 
-pub fn random_move(pos: &Position) -> &Move {
-    pos.get_legal_moves().choose(&mut rand::thread_rng()).unwrap_or(&&NULL_MOVE)
-}
 
 // TODO SHould use board_state so it can factor in checkmate and stalemate easier
-pub fn choose_move(pos: &Position, depth: i32) -> (i32, &Move) {
+pub fn choose_move<'a>(bs: &'a BoardState, depth: i32) -> (i32, &'a Move) {
     // TODO add check if position is in endgame, for different evaluation
-    negamax_root(pos, depth, pos.side)
+    negamax_root(bs, &bs.position, depth, bs.position.side)
 }
 
 pub fn quiescence(pos: &Position, depth: i32, mut alpha: i32, beta: i32, maxi_colour: PieceColour) -> i32 {
@@ -22,10 +20,10 @@ pub fn quiescence(pos: &Position, depth: i32, mut alpha: i32, beta: i32, maxi_co
         return max_eval;
     }
     alpha = cmp::max(alpha, max_eval);
-    let moves = pos.get_legal_moves().into_iter().filter(|mv| matches!(mv.move_type, MoveType::Capture(_))).collect::<Vec<_>>();
-    for i in sorted_move_indexes(&moves) {
+    let moves = pos.get_legal_moves();
+    for i in sorted_move_indexes(&moves, true) {
         let mv = moves[i];
-        let child_pos = pos.new_position(mv);
+        let child_pos = pos.new_position(&mv);
         let eval = -quiescence(&child_pos, depth - 1, -beta, -alpha, !maxi_colour);
         max_eval = cmp::max(max_eval, eval);
         alpha = cmp::max(alpha, eval);
@@ -35,25 +33,26 @@ pub fn quiescence(pos: &Position, depth: i32, mut alpha: i32, beta: i32, maxi_co
     }
     max_eval
 }
-pub fn negamax_root(pos: &Position, depth: i32, maxi_colour: PieceColour) -> (i32, &Move) {
+// &'a Move ref to legal move in Position legal_moves vector
+pub fn negamax_root<'a>(bs: &BoardState, pos: &'a Position, depth: i32, maxi_colour: PieceColour) -> (i32, &'a Move) {
     let moves = pos.get_legal_moves();
     if moves.is_empty() && pos.is_in_check() {
-        return (if pos.side == maxi_colour {MIN} else {MAX}, &NULL_MOVE);  
+        return (if pos.side == maxi_colour {MIN - depth} else {MAX + depth}, &NULL_MOVE);  
     } else if moves.is_empty() {
         // stalemate
         return (0, &NULL_MOVE); 
     } 
     let mut alpha = MIN;
     let beta = MAX;
-    let mut best_move = moves[0];
+    let mut best_move = &moves[0];
     let mut max_eval = MIN;
-    for i in sorted_move_indexes(&moves) {
-        let mv = moves[i];
+    for i in sorted_move_indexes(&moves, false) {
+        let mv = &moves[i];
         let child_pos = pos.new_position(mv);
-        let eval = -negamax(&child_pos, depth - 1, -beta, -alpha, !maxi_colour);
+        let eval = -negamax(bs, &child_pos, depth - 1, -beta, -alpha, !maxi_colour);
         if eval > max_eval {
             max_eval = eval;
-            best_move = mv;
+            best_move = &mv;
         }
         alpha = cmp::max(alpha, eval);
         if beta <= alpha {
@@ -62,14 +61,18 @@ pub fn negamax_root(pos: &Position, depth: i32, maxi_colour: PieceColour) -> (i3
     }
     (max_eval, best_move)
 }
-const QUIECENCE_DEPTH: i32 = 5;
+
+const QUIECENCE_DEPTH: i32 = 4;
+
 // todo maybe return depth reached for fastest checkmate
-pub fn negamax(pos: &Position, depth: i32, mut alpha: i32, beta: i32, maxi_colour: PieceColour) -> i32 {
+//todo maybe no need for BoardState here, only for root negamax?
+pub fn negamax(bs: &BoardState, pos: &Position, depth: i32, mut alpha: i32, beta: i32, maxi_colour: PieceColour) -> i32 {
     let moves = pos.get_legal_moves();
     //sort_moves(pos, &mut moves);
     // TODO different checks for stalemate and checkmate. not sure if below works correctly, need to test
     if moves.is_empty() && pos.is_in_check() {
-        return if pos.side == maxi_colour {MIN} else {MAX};  // checkmate TODO im not sure if min is the correct return here. maybe account for maxi_colour?
+        // 100 to avoid overflows //TODO definetely a less hacky solution. fix
+        return if pos.side == maxi_colour {MIN - depth} else {MAX  + depth};
     } else if moves.is_empty() {
         return 0;  // stalemate
     } else if depth == 0 {
@@ -77,11 +80,11 @@ pub fn negamax(pos: &Position, depth: i32, mut alpha: i32, beta: i32, maxi_colou
     }
 
     let mut max_eval = MIN;
-    for i in sorted_move_indexes(&moves) {
-        let mv = moves[i];
+    for i in sorted_move_indexes(&moves, false) {
+        let mv = &moves[i];
         let child_pos = pos.new_position(mv);
         let colour = !maxi_colour;
-        let eval = -negamax(&child_pos, depth - 1, -beta, -alpha, colour);
+        let eval = -negamax(bs, &child_pos, depth - 1, -beta, -alpha, colour);
         if eval > max_eval {
             max_eval = eval;
         }
@@ -119,11 +122,17 @@ pub fn negamax(pos: &Position, depth: i32, mut alpha: i32, beta: i32, maxi_colou
 // }
 
 
-pub fn sorted_move_indexes(moves: &[&Move]) -> Vec<usize> {
+pub fn sorted_move_indexes(moves: &[Move], captures_only: bool) -> Vec<usize> {
     let mut move_scores: Vec<i32> = Vec::with_capacity(moves.len());
     let mut move_indexes: Vec<usize> = (0..moves.len()).collect();
 
     for mv in moves {
+        // non captures = -1 so they can be filtered out
+        if captures_only && !matches!(mv.move_type, MoveType::Capture(_)) { 
+            move_scores.push(-1);
+            continue; 
+        }
+
         let mut mv_score = 0;
 
         // if mv is a capture
@@ -149,8 +158,8 @@ pub fn sorted_move_indexes(moves: &[&Move]) -> Vec<usize> {
 
     // sort the moves in descending order of scores
     sorted_move_indexes.sort_unstable_by(|a, b| b.1.cmp(a.1));
-
-    sorted_move_indexes.into_iter().map(|a| *a.0).collect::<Vec<_>>()
+    // filter out negative scores here
+    sorted_move_indexes.into_iter().filter(|&x| *x.1 >= 0).map(|a| *a.0).collect::<Vec<_>>()
 }
 // values in centipawns
 fn get_piece_value(ptype: &PieceType) -> i32 {

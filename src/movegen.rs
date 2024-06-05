@@ -211,6 +211,7 @@ fn pawn_is_starting_rank(i: usize, piece: &Piece) -> bool {
 
 // generates moves for the piece at index i, only checks legality regarding where pieces could possibly move to
 // doesnt account for king checks
+//TODO ^^ should it though? maybe i dunno
 pub fn movegen(
     pos: &position::Pos64,
     movegen_flags: &MovegenFlags,
@@ -457,7 +458,10 @@ pub fn movegen(
 // so short would be kept as a boolean flag maybe? Because attack and defend map is generated separetly....
 // TODO Maybe combine the generation of defend and attacking? by using if statement on different piece colours.
 // TODO FIXME TODO TODO ^^^^^ this sounds good TODO TODO for highlight extention
-pub fn movegen_in_check(pos: &position::Pos64, king_idx: usize, king_colour: PieceColour) -> bool {
+pub fn movegen_in_check(pos: &position::Pos64, king_idx: usize) -> bool {
+    let king_colour = if let Square::Piece(p) = pos[king_idx] {
+        p.pcolour
+    } else {panic!("king_idx does not contain a king....")}; // just give the correct value please and we dont need to panic
     for (i, s) in pos.iter().enumerate() {
         match s {
             Square::Piece(piece) => {

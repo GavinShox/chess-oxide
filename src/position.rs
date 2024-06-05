@@ -18,11 +18,6 @@ pub struct DefendMap([bool; 64]);
 #[derive(Debug, PartialEq, Clone)]
 pub struct AttackMap(Vec<Move>);
 
-pub struct PositionChange {
-    mv: Move,
-    org_movegen_flags: MovegenFlags,
-    org_to_square: Square,
-}
 impl AttackMap {
     fn new() -> Self {
         Self(Vec::new())
@@ -227,7 +222,7 @@ impl Position {
         new
     }
 
-    pub fn new_position_from_fen(fen: &str) -> Self {
+    pub fn from_fen(fen: &str) -> Self {
         let mut pos: Pos64 = [Square::Empty; 64];
         let fen_vec: Vec<&str> = fen.split(' ').collect();
 
@@ -444,101 +439,6 @@ impl Position {
         new_pos
     }
 
-    pub fn unmake_move(&mut self, position_change: PositionChange, legal_check: bool) {
-        self.position[position_change.mv.from] = Square::Piece(position_change.mv.piece);
-        self.position[position_change.mv.to] = position_change.org_to_square;
-        match position_change.mv.move_type {
-            MoveType::EnPassant(ep) => {
-                let ep_capture_colour = if position_change.mv.piece.pcolour == PieceColour::White {
-                    PieceColour::Black
-                } else {
-                    PieceColour::White
-                };
-                self.position[ep] = Square::Piece(Piece {
-                    ptype: PieceType::Pawn,
-                    pcolour: ep_capture_colour,
-                });
-            }
-            MoveType::Castle(castle_move) => {
-                self.position[castle_move.rook_from] = self.position[castle_move.rook_to];
-                self.position[castle_move.rook_to] = Square::Empty;
-            }
-            _ => {}
-        }
-        if position_change.mv.piece.ptype == PieceType::King {
-            if position_change.mv.piece.pcolour == PieceColour::White {
-                self.wking_idx = position_change.mv.from;
-            } else {
-                self.bking_idx = position_change.mv.from;
-            }
-        }
-        if !legal_check {
-            self.movegen_flags = position_change.org_movegen_flags.clone();
-            self.toggle_side();
-            self.gen_maps();
-        }
-    }
-
-    pub fn make_move(&mut self, mv: &Move, legal_check: bool) -> PositionChange {
-        let org_movegen_flags = self.movegen_flags.clone();
-        let org_to_square = self.position[mv.to];
-
-        if !legal_check {
-            self.set_en_passant_flag(mv);
-            self.set_castle_flags(mv);
-            self.set_king_position(mv);
-        }
-
-        // doing special move types first, to check if mv is a castling move, and return there first
-        match mv.move_type {
-            MoveType::EnPassant(ep_capture) => {
-                self.position[ep_capture] = Square::Empty;
-            }
-            MoveType::Castle(castle_mv) => {
-                self.position[castle_mv.rook_to] = self.position[castle_mv.rook_from];
-                self.position[castle_mv.rook_from] = Square::Empty;
-            }
-            MoveType::Promotion(ptype) => {
-                match &mut self.position[mv.from] {
-                    Square::Piece(p) => {
-                        p.ptype = ptype;
-                    }
-                    Square::Empty => {/* should never get here */}
-                }
-            }
-            _ => {}
-        }
-
-        self.position[mv.to] = self.position[mv.from];
-        self.position[mv.from] = Square::Empty;
-
-        if !legal_check {
-            self.toggle_side();
-            self.gen_maps();
-        }
-
-        PositionChange { mv: *mv, org_movegen_flags, org_to_square }
-    }
-
-    fn is_move_legal_nc(&mut self, mv: &Move) -> bool {
-        match mv.move_type {
-            MoveType::Castle(castle_mv) => {
-                // if any square the king moves from, through or to are defended, move isnt legal
-                return !(
-                    self.is_defended(castle_mv.king_squares.0) ||
-                    self.is_defended(castle_mv.king_squares.1) ||
-                    self.is_defended(castle_mv.king_squares.2)
-                );
-            }
-            _ => {}
-        }
-
-        let unmake_mv = self.make_move(mv, true);
-        let result = !self.is_in_check();
-        self.unmake_move(unmake_mv, true);
-
-        result
-    }
     // TODO maybe consolidate all movegen fag updates into one place if possible?
     fn set_king_position(&mut self, mv: &Move) {
         if mv.piece.ptype == PieceType::King {
@@ -563,8 +463,6 @@ impl Position {
         }
     }
 
-    // moves piece at i, to j, without changing side, to regen defend maps to determine if the move is legal
-    // legality here meaning would the move leave your king in check. Actual piece movement is done in movegen
     fn is_move_legal(&self, mv: &Move) -> bool {
         // TODO defend map only used for castling, so maybe look at where defend map is necessary
 
@@ -593,7 +491,7 @@ impl Position {
         test_pos.position[mv.to] = self.position[mv.from];
         test_pos.position[mv.from] = Square::Empty;
 
-        !test_pos.is_in_check()
+        !test_pos.is_in_check_legal_check()
     }
 
     fn toggle_side(&mut self) {
@@ -607,15 +505,17 @@ impl Position {
     pub fn is_defended(&self, i: usize) -> bool {
         self.defend_map.0[i]
     }
+    // TODO seperate functions that rely on maps and the leegal check ones that dont. One is an incomplete state and the other is complete
+    fn is_in_check_legal_check(&self) -> bool {
+        movegen_in_check(&self.position, self.get_king_idx())
+    }
+    fn get_king_idx(&self) -> usize {
+        if self.side == PieceColour::White { self.wking_idx } else { self.bking_idx }
+    }
 
     pub fn is_in_check(&self) -> bool {
-        let side_king = if self.side == PieceColour::White {
-            self.wking_idx
-        } else {
-            self.bking_idx
-        };
-        //self.is_defended(side_king)
-        movegen_in_check(&self.position, side_king, self.side)
+        self.is_defended(self.get_king_idx())
+        //movegen_in_check(&self.position, side_king, self.side)
         // for (i, s) in self.position.iter().enumerate() {
         //     match s {
         //         Square::Piece(p) => {
@@ -632,15 +532,16 @@ impl Position {
         // return false;
     }
 
-    pub fn get_legal_moves(&self) -> Vec<&Move> {
-        let mut legal_moves = Vec::new();
-        for mv in &self.attack_map.0 {
-            if self.is_move_legal(mv) {
-                legal_moves.push(mv);
-            }
-        }
+    pub fn get_legal_moves(&self) -> &Vec<Move> {
+        // let mut legal_moves = Vec::new();
+        // for mv in &self.attack_map.0 {
+        //     if self.is_move_legal(mv) {
+        //         legal_moves.push(mv);
+        //     }
+        // }
 
-        legal_moves
+        // legal_moves
+        &self.attack_map.0
     }
 
     // sets enpassant movegen flag to Some(idx of pawn that can be captured), if the move is a double pawn push
@@ -698,6 +599,7 @@ impl Position {
     pub fn gen_maps(&mut self) {
         self.defend_map.clear();
         self.attack_map.clear();
+        let mut attack_map = AttackMap::new();
         // movegen_pos(&self.position, &self.movegen_flags, self.side, &mut self.attack_map, &mut self.defend_map);
 
         for (i, s) in self.position.iter().enumerate() {
@@ -713,17 +615,7 @@ impl Position {
                             &mut self.defend_map
                         );
                     } else {
-                        // for mv in self.movegen(p, i, false, true) {
-                        //     self.attack_map.push(mv);
-                        // }
-                        movegen(
-                            &self.position,
-                            &self.movegen_flags,
-                            p,
-                            i,
-                            false,
-                            &mut self.attack_map
-                        );
+                        movegen(&self.position, &self.movegen_flags, p, i, false, &mut attack_map);
                     }
                 }
                 Square::Empty => {
@@ -731,10 +623,54 @@ impl Position {
                 }
             }
         }
+        // defend map has to be updated before we can check legal moves, but it is directly updsted above
+        // prune illegal moves
+        let mut legal_indexes = vec![true; self.attack_map.0.len()];
+        for (i, mv) in self.attack_map.0.iter().enumerate() {
+            legal_indexes[i] = self.is_move_legal(mv);
+        }
+        attack_map.0.retain(|&mv| self.is_move_legal(&mv));
+
+        self.attack_map = attack_map;
+    }
+
+    pub fn notation_to_index(n: &str) -> usize {
+        let file: char = n.chars().next().unwrap();
+        let rank: char = n.chars().nth(1).unwrap();
+        let rank_starts = [56, 48, 40, 32, 24, 16, 8, 0]; // 1st to 8th rank starting indexes
+
+        let file_offset = match file {
+            'a' => 0,
+            'b' => 1,
+            'c' => 2,
+            'd' => 3,
+            'e' => 4,
+            'f' => 5,
+            'g' => 6,
+            'h' => 7,
+            _ => 0,
+        };
+        file_offset + rank_starts[(rank.to_digit(10).unwrap() - 1) as usize]
+    }
+
+    pub fn index_to_notation(i: usize) -> String {
+        let file = match i % 8 {
+            0 => 'a',
+            1 => 'b',
+            2 => 'c',
+            3 => 'd',
+            4 => 'e',
+            5 => 'f',
+            6 => 'g',
+            7 => 'h',
+            _ => ' ',
+        };
+        let rank_num = 8 - i / 8;
+        let rank = char::from_digit(rank_num.try_into().unwrap(), 10).unwrap();
+        format!("{}{}", file, rank)
     }
 
     pub fn print_board(&self) {
-        //♔ 	♕ 	♖ 	♗ 	♘ 	♙ 	♚ 	♛ 	♜ 	♝ 	♞ 	♟ are these different from below? TODO
         let pawn = " ♙ ";
         let knight = " ♘ ";
         let bishop = " ♗ ";
@@ -817,41 +753,4 @@ impl Position {
             }
         }
     }
-
-    pub fn notation_to_index(n: &str) -> usize {
-        let file: char = n.chars().next().unwrap();
-        let rank: char = n.chars().nth(1).unwrap();
-        let rank_starts = [56, 48, 40, 32, 24, 16, 8, 0]; // 1st to 8th rank starting indexes
-
-        let file_offset = match file {
-            'a' => 0,
-            'b' => 1,
-            'c' => 2,
-            'd' => 3,
-            'e' => 4,
-            'f' => 5,
-            'g' => 6,
-            'h' => 7,
-            _ => 0,
-        };
-        file_offset + rank_starts[(rank.to_digit(10).unwrap() - 1) as usize]
-    }
-
-    pub fn index_to_notation(i: usize) -> String {
-        let file = match i % 8 {
-            0 => 'a',
-            1 => 'b',
-            2 => 'c',
-            3 => 'd',
-            4 => 'e',
-            5 => 'f',
-            6 => 'g',
-            7 => 'h',
-            _ => ' ',
-        };
-        let rank_num = 8 - (i / 8);
-        let rank = char::from_digit(rank_num.try_into().unwrap(), 10).unwrap();
-        format!("{}{}", file, rank)
-    }
-
 }
