@@ -24,7 +24,7 @@ pub enum GameState {
     FiftyMove,
     Active,
 }// TODO make position struct private for simplicity in gui. or at least give functions to get the pieces on the board
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct BoardState {
     pub position: Position,
     position_hash: u64,

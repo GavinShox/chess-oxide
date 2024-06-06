@@ -4,8 +4,11 @@
 // #[global_allocator]
 // static GLOBAL: jemallocator::Jemalloc = jemallocator::Jemalloc;
 
+use std::{cell::RefCell, rc::Rc, sync::{Arc, Mutex}};
+
 use board::Player;
 use chess::PieceType;
+use movegen::NULL_MOVE;
 
 mod board;
 mod engine;
@@ -107,9 +110,9 @@ impl Player for HumanPlayer {
     
 }
 
-type PieceUI = slint_generatedBoard::Piece_UI;
-type PieceColourUI = slint_generatedBoard::PieceColour_UI;
-type PieceTypeUI = slint_generatedBoard::PieceType_UI;
+type PieceUI = slint_generatedBoard_UI::Piece_UI;
+type PieceColourUI = slint_generatedBoard_UI::PieceColour_UI;
+type PieceTypeUI = slint_generatedBoard_UI::PieceType_UI;
 
 fn ui_convert_piece(piece: movegen::Piece) -> PieceUI {
     match piece.pcolour {
@@ -135,24 +138,71 @@ fn ui_convert_piece(piece: movegen::Piece) -> PieceUI {
     }
 }
 
+fn make_engine_move(board: Arc<Rc<RefCell<board::Board>>>) {
+    let mut b = board.borrow_mut();
+    let mv = EnginePlayer { depth: 4 }.get_move(&b.current_state);
+    b.make_move(&mv);
+}
+
 fn main() -> Result<(), slint::PlatformError> {
-    use slint::Model;
 
     let white_player = HumanPlayer;
     let black_player = EnginePlayer { depth: 4 };
-    let mut board = board::Board::new(Box::new(white_player), Box::new(black_player));    
+    let mut board = Arc::new(Mutex::new(board::Board::new(Box::new(white_player), Box::new(black_player))));    
     
-    let ui: Board = Board::new().unwrap();
-    let mut ui_position: Vec<PieceUI> = vec![];
+    
+    let ui = Board_UI::new().unwrap();
+    let ui_weak_new_game = ui.as_weak();
+    let ui_weak_refresh_position = ui.as_weak();
+    let ui_weak_make_move = ui.as_weak();
+    let ui_weak_engine_make_move = ui.as_weak();
 
-    for s in board.current_state.position.position {
-        match s {
-            movegen::Square::Piece(p) => ui_position.push(ui_convert_piece(p)),
-            movegen::Square::Empty => ui_position.push(ui_convert_piece(movegen::NULL_PIECE))
+    let board_new_game = board.clone();
+    let board_refresh_position = board.clone();
+    let board_make_move = board.clone();
+    let board_engine_make_move = board.clone();
+
+    ui.on_new_game(move || {
+        let ui = ui_weak_new_game.upgrade().unwrap();
+        let white_player = HumanPlayer;
+        let black_player = EnginePlayer { depth: 4 };
+        *board_new_game.lock().unwrap() = board::Board::new(Box::new(white_player), Box::new(black_player));    
+        ui.invoke_refresh_position();
+    });
+
+    ui.on_refresh_position(move || {
+        let ui = ui_weak_refresh_position.upgrade().unwrap();
+        let mut ui_position: Vec<PieceUI> = vec![];
+        for s in board_refresh_position.lock().unwrap().current_state.position.position {
+            match s {
+                movegen::Square::Piece(p) => ui_position.push(ui_convert_piece(p)),
+                movegen::Square::Empty => ui_position.push(ui_convert_piece(movegen::NULL_PIECE))
+            }
         }
-    }
-    let pos = std::rc::Rc::new(slint::VecModel::from(ui_position));
-    ui.set_position(pos.into());
+        let pos = std::rc::Rc::new(slint::VecModel::from(ui_position));
+        ui.set_position(pos.into());
+    });
     
+    ui.on_make_move(move || {
+        let ui = ui_weak_make_move.upgrade().unwrap();
+
+        let from = ui.get_selected_from_square();
+        let to = ui.get_selected_to_square();
+        let mut legal_mv: movegen::Move = NULL_MOVE;
+
+        for mv in board_make_move.lock().unwrap().current_state.legal_moves.clone() {
+            if mv.from as i32 == from && mv.to as i32 == to {
+                legal_mv = mv;
+            }
+        }
+        board_make_move.lock().unwrap().make_move(&legal_mv);
+    });
+
+    ui.on_engine_make_move(move || {
+        let ui = ui_weak_engine_make_move.upgrade().unwrap();
+        board_engine_make_move.lock().unwrap().player_make_move();
+    });
+    
+    ui.invoke_refresh_position();
     ui.run()
 }
