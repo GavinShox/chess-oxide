@@ -1,8 +1,13 @@
+use core::fmt;
 use std::{ rc::Rc, collections::HashMap };
 
+use crate::engine;
 use crate::position::*;
-
 use crate::movegen::*;
+use crate::engine::*;
+use crate::movegen::MoveType::*;
+
+
 
 pub trait Player {
     fn get_move(&self, _: &BoardState) -> Move;
@@ -24,6 +29,19 @@ pub enum GameState {
     FiftyMove,
     Active,
 }// TODO make position struct private for simplicity in gui. or at least give functions to get the pieces on the board
+impl fmt::Display for GameState {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let state_str = match self {
+            GameState::Check => "Check",
+            GameState::Checkmate => "Checkmate",
+            GameState::Stalemate => "Stalemate",
+            GameState::Repetition => "Repetition",
+            GameState::FiftyMove => "Fifty Move Draw",
+            GameState::Active => "",
+        };
+        write!(f, "{}", state_str)
+    }
+}
 #[derive(Debug, Clone)]
 pub struct BoardState {
     pub position: Position,
@@ -198,37 +216,35 @@ impl BoardState {
     }
 }
 
+use std::marker::Send;
+
+#[derive(Debug)]
 pub struct Board {
-    pub current_state: Rc<BoardState>,
-    pub state_history: Vec<Rc<BoardState>>,
-    pub white_player: Box<dyn Player>,
-    pub black_player: Box<dyn Player>,
+    pub current_state: BoardState,
+    pub state_history: Vec<BoardState>,
 }
 
-impl Board {
-    pub fn new(white_player: Box<dyn Player>, black_player: Box<dyn Player>) -> Self {
-        let current_state = Rc::new(BoardState::new_starting());
 
-        let mut state_history: Vec<Rc<BoardState>> = Vec::new();
+impl Board {
+    pub fn new() -> Self {
+        let current_state = BoardState::new_starting();
+
+        let mut state_history: Vec<BoardState> = Vec::new();
         state_history.push(current_state.clone());
 
         Board {
             current_state,
             state_history,
-            white_player,
-            black_player,
         }
     }
-    pub fn from_fen(fen: &str, white_player: Box<dyn Player>, black_player: Box<dyn Player>) -> Self {
-        let current_state = Rc::new(BoardState::from_fen(fen));
-        let mut state_history: Vec<Rc<BoardState>> = Vec::new();
+    pub fn from_fen(fen: &str) -> Self {
+        let current_state = BoardState::from_fen(fen);
+        let mut state_history: Vec<BoardState> = Vec::new();
         state_history.push(current_state.clone());
 
         Board {
             current_state,
             state_history,
-            white_player,
-            black_player,
         }
     }
     pub fn branch(&self, _branch_state: Rc<BoardState>) -> Self {
@@ -239,7 +255,7 @@ impl Board {
 
     pub fn make_move(&mut self, mv: &Move) -> Result<GameState, BoardStateError> {
         let next_state = self.current_state.next_state(mv)?;
-        self.current_state = Rc::new(next_state);
+        self.current_state = next_state;
         self.state_history.push(self.current_state.clone());
 
         let game_state = self.current_state.get_gamestate();
@@ -247,25 +263,17 @@ impl Board {
         Ok(game_state)
     }
 
-    pub fn player_make_move(&mut self) -> Result<GameState, BoardStateError> {
-        let current_player = if self.current_state.side_to_move == PieceColour::White {
-            &self.white_player
-        } else {
-            &self.black_player
-        };
-        let mv = current_player.get_move(&self.current_state);
-        let next_state = self.current_state.next_state(&mv)?;
+    pub fn make_engine_move(&mut self, depth: i32) -> Result<GameState, BoardStateError> {
+        let engine_move = engine::choose_move(&self.current_state, depth);
+        let mv = *engine_move.1;
 
-        self.current_state = Rc::new(next_state);
-        self.state_history.push(self.current_state.clone());
-
-        let game_state = self.current_state.get_gamestate();
-
-        Ok(game_state)
+        self.make_move(&mv)
     }
+
     pub fn unmake_move(&mut self) -> Result<Rc<BoardState>, BoardStateError> {
         todo!()
     }
+
     pub fn get_gamestate(&self) -> GameState {
         self.current_state.get_gamestate()
     }

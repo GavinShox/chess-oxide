@@ -5,19 +5,7 @@
 // static GLOBAL: jemallocator::Jemalloc = jemallocator::Jemalloc;
 
 use std::{cell::RefCell, rc::Rc, sync::{Arc, Mutex}};
-
-use board::Player;
-use chess::PieceType;
-use movegen::NULL_MOVE;
-
-mod board;
-mod engine;
-mod movegen;
-mod position;
-mod mailbox;
-mod perft;
-mod test;
-
+use chess::*;
 // use std::{ io };
 // use std::time::{ Instant };
 
@@ -92,63 +80,37 @@ mod test;
 
 slint::include_modules!();
 
-struct EnginePlayer {
-    depth: i32
-}
-impl board::Player for EnginePlayer {
-    fn get_move(&self, bstate: &board::BoardState) -> movegen::Move {
-        *engine::choose_move(bstate, 4).1
-    }
-    
-}
-
-struct HumanPlayer;
-impl Player for HumanPlayer {
-    fn get_move(&self, bstate: &board::BoardState) -> movegen::Move {
-        movegen::NULL_MOVE
-    }
-    
-}
-
 type PieceUI = slint_generatedBoard_UI::Piece_UI;
 type PieceColourUI = slint_generatedBoard_UI::PieceColour_UI;
 type PieceTypeUI = slint_generatedBoard_UI::PieceType_UI;
 
-fn ui_convert_piece(piece: movegen::Piece) -> PieceUI {
+fn ui_convert_piece(piece: chess::Piece) -> PieceUI {
     match piece.pcolour {
-        movegen::PieceColour::White => match piece.ptype {
-            movegen::PieceType::Pawn => PieceUI {piece_colour: PieceColourUI::White, piece_type: PieceTypeUI::Pawn},
-            movegen::PieceType::Knight => PieceUI {piece_colour: PieceColourUI::White, piece_type: PieceTypeUI::Knight},
-            movegen::PieceType::Bishop => PieceUI {piece_colour: PieceColourUI::White, piece_type: PieceTypeUI::Bishop},
-            movegen::PieceType::Rook => PieceUI {piece_colour: PieceColourUI::White, piece_type: PieceTypeUI::Rook},
-            movegen::PieceType::Queen => PieceUI {piece_colour: PieceColourUI::White, piece_type: PieceTypeUI::Queen},
-            movegen::PieceType::King => PieceUI {piece_colour: PieceColourUI::White, piece_type: PieceTypeUI::King},
-            movegen::PieceType::None => PieceUI {piece_colour: PieceColourUI::None, piece_type: PieceTypeUI::None},
+        chess::PieceColour::White => match piece.ptype {
+            chess::PieceType::Pawn => PieceUI {piece_colour: PieceColourUI::White, piece_type: PieceTypeUI::Pawn},
+            chess::PieceType::Bishop => PieceUI {piece_colour: PieceColourUI::White, piece_type: PieceTypeUI::Bishop},
+            chess::PieceType::Knight => PieceUI {piece_colour: PieceColourUI::White, piece_type: PieceTypeUI::Knight},
+            chess::PieceType::Rook => PieceUI {piece_colour: PieceColourUI::White, piece_type: PieceTypeUI::Rook},
+            chess::PieceType::Queen => PieceUI {piece_colour: PieceColourUI::White, piece_type: PieceTypeUI::Queen},
+            chess::PieceType::King => PieceUI {piece_colour: PieceColourUI::White, piece_type: PieceTypeUI::King},
+            chess::PieceType::None => PieceUI {piece_colour: PieceColourUI::None, piece_type: PieceTypeUI::None},
         },
-        movegen::PieceColour::Black => match piece.ptype {
-            movegen::PieceType::Pawn => PieceUI {piece_colour: PieceColourUI::Black, piece_type: PieceTypeUI::Pawn},
-            movegen::PieceType::Knight => PieceUI {piece_colour: PieceColourUI::Black, piece_type: PieceTypeUI::Knight},
-            movegen::PieceType::Bishop => PieceUI {piece_colour: PieceColourUI::Black, piece_type: PieceTypeUI::Bishop},
-            movegen::PieceType::Rook => PieceUI {piece_colour: PieceColourUI::Black, piece_type: PieceTypeUI::Rook},
-            movegen::PieceType::Queen => PieceUI {piece_colour: PieceColourUI::Black, piece_type: PieceTypeUI::Queen},
-            movegen::PieceType::King => PieceUI {piece_colour: PieceColourUI::Black, piece_type: PieceTypeUI::King},
-            movegen::PieceType::None => PieceUI {piece_colour: PieceColourUI::None, piece_type: PieceTypeUI::None},
+        chess::PieceColour::Black => match piece.ptype {
+            chess::PieceType::Pawn => PieceUI {piece_colour: PieceColourUI::Black, piece_type: PieceTypeUI::Pawn},
+            chess::PieceType::Knight => PieceUI {piece_colour: PieceColourUI::Black, piece_type: PieceTypeUI::Knight},
+            chess::PieceType::Bishop => PieceUI {piece_colour: PieceColourUI::Black, piece_type: PieceTypeUI::Bishop},
+            chess::PieceType::Rook => PieceUI {piece_colour: PieceColourUI::Black, piece_type: PieceTypeUI::Rook},
+            chess::PieceType::Queen => PieceUI {piece_colour: PieceColourUI::Black, piece_type: PieceTypeUI::Queen},
+            chess::PieceType::King => PieceUI {piece_colour: PieceColourUI::Black, piece_type: PieceTypeUI::King},
+            chess::PieceType::None => PieceUI {piece_colour: PieceColourUI::None, piece_type: PieceTypeUI::None},
         },
-        movegen::PieceColour::None => PieceUI {piece_colour: PieceColourUI::None, piece_type: PieceTypeUI::None}
+        chess::PieceColour::None => PieceUI {piece_colour: PieceColourUI::None, piece_type: PieceTypeUI::None}
     }
-}
-
-fn make_engine_move(board: Arc<Rc<RefCell<board::Board>>>) {
-    let mut b = board.borrow_mut();
-    let mv = EnginePlayer { depth: 4 }.get_move(&b.current_state);
-    b.make_move(&mv);
 }
 
 fn main() -> Result<(), slint::PlatformError> {
 
-    let white_player = HumanPlayer;
-    let black_player = EnginePlayer { depth: 4 };
-    let mut board = Arc::new(Mutex::new(board::Board::new(Box::new(white_player), Box::new(black_player))));    
+    let mut board = Arc::new(Mutex::new(board::Board::new()));    
     
     
     let ui = Board_UI::new().unwrap();
@@ -164,9 +126,7 @@ fn main() -> Result<(), slint::PlatformError> {
 
     ui.on_new_game(move || {
         let ui = ui_weak_new_game.upgrade().unwrap();
-        let white_player = HumanPlayer;
-        let black_player = EnginePlayer { depth: 4 };
-        *board_new_game.lock().unwrap() = board::Board::new(Box::new(white_player), Box::new(black_player));    
+        *board_new_game.lock().unwrap() = board::Board::new();    
         ui.invoke_refresh_position();
     });
 
@@ -175,8 +135,8 @@ fn main() -> Result<(), slint::PlatformError> {
         let mut ui_position: Vec<PieceUI> = vec![];
         for s in board_refresh_position.lock().unwrap().current_state.position.position {
             match s {
-                movegen::Square::Piece(p) => ui_position.push(ui_convert_piece(p)),
-                movegen::Square::Empty => ui_position.push(ui_convert_piece(movegen::NULL_PIECE))
+                chess::Square::Piece(p) => ui_position.push(ui_convert_piece(p)),
+                chess::Square::Empty => ui_position.push(ui_convert_piece(chess::NULL_PIECE))
             }
         }
         let pos = std::rc::Rc::new(slint::VecModel::from(ui_position));
@@ -188,7 +148,7 @@ fn main() -> Result<(), slint::PlatformError> {
 
         let from = ui.get_selected_from_square();
         let to = ui.get_selected_to_square();
-        let mut legal_mv: movegen::Move = NULL_MOVE;
+        let mut legal_mv: chess::Move = NULL_MOVE;
 
         for mv in board_make_move.lock().unwrap().current_state.legal_moves.clone() {
             if mv.from as i32 == from && mv.to as i32 == to {
@@ -199,8 +159,16 @@ fn main() -> Result<(), slint::PlatformError> {
     });
 
     ui.on_engine_make_move(move || {
-        let ui = ui_weak_engine_make_move.upgrade().unwrap();
-        board_engine_make_move.lock().unwrap().player_make_move();
+        let ui = ui_weak_engine_make_move.clone();
+        let mut bmem: Arc<Mutex<Board>> = board_engine_make_move.clone();
+
+        std::thread::spawn(move || {
+            bmem.lock().unwrap().make_engine_move(4);
+            slint::invoke_from_event_loop(move || {
+                ui.upgrade().unwrap().invoke_refresh_position();
+                ui.upgrade().unwrap().set_engine_made_move(true);
+            });
+        });
     });
     
     ui.invoke_refresh_position();

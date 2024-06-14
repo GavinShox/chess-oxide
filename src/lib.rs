@@ -1,7 +1,7 @@
 pub mod board;
-pub mod engine;
-pub mod movegen;
-pub mod position;
+mod engine;
+mod movegen;
+mod position;
 mod mailbox;
 pub mod perft;
 
