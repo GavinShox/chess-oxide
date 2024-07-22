@@ -143,7 +143,7 @@ fn main() -> Result<(), slint::PlatformError> {
         ui.set_position(pos.into());
     });
     
-    ui.on_make_move(move || {
+    ui.on_make_move(move || -> bool{
         let ui = ui_weak_make_move.upgrade().unwrap();
 
         let from = ui.get_selected_from_square();
@@ -155,7 +155,14 @@ fn main() -> Result<(), slint::PlatformError> {
                 legal_mv = mv;
             }
         }
-        board_make_move.lock().unwrap().make_move(&legal_mv);
+        match board_make_move.lock().unwrap().make_move(&legal_mv) {
+            Ok(_) => {
+                return true;
+            }
+            Err(_) => {
+                return false;
+            }
+        }
     });
 
     ui.on_engine_make_move(move || {

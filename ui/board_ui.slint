@@ -87,14 +87,14 @@ export component Board_UI inherits Window {
     in-out property <PieceColour-UI> player-colour;
 
     callback new-game();
-    callback make-move();
+    callback make-move() -> bool;
     callback engine-make-move();
     callback refresh-position();
     
     VerticalLayout {
 
         game-info := Text {
-            text: "Player's move";
+            text: "";
             horizontal-alignment: center;
             font-size: 20px;
         }
@@ -119,14 +119,16 @@ export component Board_UI inherits Window {
                         if root.selected-from-square == -1 {
                             root.selected-from-square = square.index;
                         }
-                        else if root.selected-from-square >= 0 && root.selected-to-square == -1{
+                        else if root.selected-from-square >= 0 && root.selected-to-square == -1 {
                             root.selected-to-square = square.index;
-                            root.make-move();
-                            root.refresh-position();
+                            if root.make-move() == true { // side effect makes move but only returns true if move is valid
+                                root.refresh-position();
 
-                            root.engine-made-move = false;
-                            root.engine-make-move();
-
+                                root.engine-made-move = false;
+                                root.engine-make-move();
+                            }
+                            
+                            // reset variables even if move was invalid
                             root.selected-from-square = -1;
                             root.selected-to-square = -1;
                         }
