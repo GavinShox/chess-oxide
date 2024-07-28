@@ -2,7 +2,6 @@
 name = "chess"
 version = "0.1.0"
 edition = "2021"
-build = "build.rs"
 
 [lib]
 name = "chess"
@@ -21,10 +20,6 @@ path = "src/lib.rs"
 [dependencies]
 rand = "0.8.5"
 static_init = "1.0.3"
-slint = "1.7"
-
-[build-dependencies]
-slint-build = "1.6"
 
 [profile.release]
 debug = true
