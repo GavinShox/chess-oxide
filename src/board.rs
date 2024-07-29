@@ -214,6 +214,14 @@ impl BoardState {
             GameState::Active
         }
     }
+
+    pub fn get_pos64(&self) -> &Pos64 {
+        &self.position.position
+    }
+
+    pub fn is_in_check(&self) -> bool {
+        self.position.is_in_check()
+    }
 }
 
 use std::marker::Send;

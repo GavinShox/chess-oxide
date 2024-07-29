@@ -9,22 +9,22 @@ const MAX: i32 = i32::MAX - 1000;
 
 
 // TODO SHould use board_state so it can factor in checkmate and stalemate easier
-pub fn choose_move<'a>(bs: &'a BoardState, depth: i32) -> (i32, &'a Move) {
+pub fn choose_move(bs: &BoardState, depth: i32) -> (i32, &Move) {
     // TODO add check if position is in endgame, for different evaluation
-    negamax_root(bs, &bs.position, depth, bs.position.side)
+    negamax_root(bs, depth, bs.side_to_move)
 }
 
-pub fn quiescence(pos: &Position, depth: i32, mut alpha: i32, beta: i32, maxi_colour: PieceColour) -> i32 {
-    let mut max_eval = evaluate(pos, maxi_colour);
+pub fn quiescence(bs: &BoardState, depth: i32, mut alpha: i32, beta: i32, maxi_colour: PieceColour) -> i32 {
+    let mut max_eval = evaluate(bs, maxi_colour);
     if max_eval >= beta || depth == 0 {
         return max_eval;
     }
     alpha = cmp::max(alpha, max_eval);
-    let moves = pos.get_legal_moves();
+    let moves = &bs.legal_moves;
     for i in sorted_move_indexes(&moves, true) {
         let mv = moves[i];
-        let child_pos = pos.new_position(&mv);
-        let eval = -quiescence(&child_pos, depth - 1, -beta, -alpha, !maxi_colour);
+        let child_bs = bs.next_state(&mv).unwrap();
+        let eval = -quiescence(&child_bs, depth - 1, -beta, -alpha, !maxi_colour);
         max_eval = cmp::max(max_eval, eval);
         alpha = cmp::max(alpha, eval);
         if beta <= alpha {
@@ -34,22 +34,21 @@ pub fn quiescence(pos: &Position, depth: i32, mut alpha: i32, beta: i32, maxi_co
     max_eval
 }
 // &'a Move ref to legal move in Position legal_moves vector
-pub fn negamax_root<'a>(bs: &BoardState, pos: &'a Position, depth: i32, maxi_colour: PieceColour) -> (i32, &'a Move) {
-    let moves = pos.get_legal_moves();
-    if moves.is_empty() && pos.is_in_check() {
-        return (if pos.side == maxi_colour {MIN - depth} else {MAX + depth}, &NULL_MOVE);  
-    } else if moves.is_empty() {
+pub fn negamax_root(bs: &BoardState, depth: i32, maxi_colour: PieceColour) -> (i32, &Move) {
+    if bs.legal_moves.is_empty() && bs.is_in_check() {
+        return (if bs.side_to_move == maxi_colour {MIN - depth} else {MAX + depth}, &NULL_MOVE);  
+    } else if bs.legal_moves.is_empty() || bs.get_occurences_of_current_position() == 3 {
         // stalemate
         return (0, &NULL_MOVE); 
     } 
     let mut alpha = MIN;
     let beta = MAX;
-    let mut best_move = &moves[0];
+    let mut best_move = &bs.legal_moves[0];
     let mut max_eval = MIN;
-    for i in sorted_move_indexes(&moves, false) {
-        let mv = &moves[i];
-        let child_pos = pos.new_position(mv);
-        let eval = -negamax(bs, &child_pos, depth - 1, -beta, -alpha, !maxi_colour);
+    for i in sorted_move_indexes(&bs.legal_moves, false) {
+        let mv = &bs.legal_moves[i];
+        let child_bs = bs.next_state(mv).unwrap();
+        let eval = -negamax(&child_bs, depth - 1, -beta, -alpha, !maxi_colour);
         if eval > max_eval {
             max_eval = eval;
             best_move = &mv;
@@ -66,25 +65,24 @@ const QUIECENCE_DEPTH: i32 = 4;
 
 // todo maybe return depth reached for fastest checkmate
 //todo maybe no need for BoardState here, only for root negamax?
-pub fn negamax(bs: &BoardState, pos: &Position, depth: i32, mut alpha: i32, beta: i32, maxi_colour: PieceColour) -> i32 {
-    let moves = pos.get_legal_moves();
+pub fn negamax(bs: &BoardState, depth: i32, mut alpha: i32, beta: i32, maxi_colour: PieceColour) -> i32 {
     //sort_moves(pos, &mut moves);
     // TODO different checks for stalemate and checkmate. not sure if below works correctly, need to test
-    if moves.is_empty() && pos.is_in_check() {
+    if bs.legal_moves.is_empty() && bs.is_in_check() {
         // 100 to avoid overflows //TODO definetely a less hacky solution. fix
-        return if pos.side == maxi_colour {MIN - depth} else {MAX  + depth};
-    } else if moves.is_empty() {
+        return if bs.side_to_move == maxi_colour {MIN - depth} else {MAX  + depth};
+    } else if bs.legal_moves.is_empty() || bs.get_occurences_of_current_position() == 3{
         return 0;  // stalemate
     } else if depth == 0 {
-        return quiescence(pos, QUIECENCE_DEPTH, alpha, beta, maxi_colour);
+        return quiescence(bs, QUIECENCE_DEPTH, alpha, beta, maxi_colour);
     }
 
     let mut max_eval = MIN;
-    for i in sorted_move_indexes(&moves, false) {
-        let mv = &moves[i];
-        let child_pos = pos.new_position(mv);
+    for i in sorted_move_indexes(&bs.legal_moves, false) {
+        let mv = &bs.legal_moves[i];
+        let child_bs = bs.next_state(mv).unwrap();
         let colour = !maxi_colour;
-        let eval = -negamax(bs, &child_pos, depth - 1, -beta, -alpha, colour);
+        let eval = -negamax(&child_bs, depth - 1, -beta, -alpha, colour);
         if eval > max_eval {
             max_eval = eval;
         }
@@ -124,7 +122,7 @@ pub fn negamax(bs: &BoardState, pos: &Position, depth: i32, mut alpha: i32, beta
 
 pub fn sorted_move_indexes(moves: &[Move], captures_only: bool) -> Vec<usize> {
     let mut move_scores: Vec<i32> = Vec::with_capacity(moves.len());
-    let mut move_indexes: Vec<usize> = (0..moves.len()).collect();
+    let move_indexes: Vec<usize> = (0..moves.len()).collect();
 
     for mv in moves {
         // non captures = -1 so they can be filtered out
@@ -260,10 +258,11 @@ fn get_piece_pos_value(i: usize, piece: &Piece, is_endgame: bool) -> i32 {
 }
 
 // adapted piece eval scores from here -> https://www.chessprogramming.org/Simplified_Evaluation_Function
-pub fn evaluate(pos: &Position, maxi_colour: PieceColour) -> i32 {
+pub fn evaluate(bs: &BoardState, maxi_colour: PieceColour) -> i32 {
     let mut w_eval: i32 = 0;
     let mut b_eval: i32 = 0;
-    for (i, s) in pos.position.iter().enumerate() {
+    //tTODO add getter function for position
+    for (i, s) in bs.get_pos64().iter().enumerate() {
         match s {
             Square::Empty => { continue; }
             Square::Piece(p) => {
