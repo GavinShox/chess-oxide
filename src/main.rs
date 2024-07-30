@@ -133,9 +133,9 @@ fn main() -> Result<(), slint::PlatformError> {
     ui.on_refresh_position(move || {
         let ui = ui_weak_refresh_position.upgrade().unwrap();
         let mut ui_position: Vec<PieceUI> = vec![];
-        for s in board_refresh_position.lock().unwrap().current_state.position.position {
+        for s in board_refresh_position.lock().unwrap().current_state.get_pos64() {
             match s {
-                chess::Square::Piece(p) => ui_position.push(ui_convert_piece(p)),
+                chess::Square::Piece(p) => ui_position.push(ui_convert_piece(*p)),
                 chess::Square::Empty => ui_position.push(ui_convert_piece(chess::NULL_PIECE))
             }
         }

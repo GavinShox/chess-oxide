@@ -44,7 +44,7 @@ impl fmt::Display for GameState {
 }
 #[derive(Debug, Clone)]
 pub struct BoardState {
-    pub position: Position,
+    position: Position,
     position_hash: u64,
     pub move_count: u32,
     halfmove_count: u32,
