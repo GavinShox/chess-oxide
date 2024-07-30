@@ -3,3 +3,4 @@
 .vscode
 perf.*
 flamegraph.svg
+.VSCodeCounter
