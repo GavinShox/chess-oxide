@@ -44,13 +44,13 @@ impl fmt::Display for GameState {
 }
 #[derive(Debug, Clone)]
 pub struct BoardState {
-    position: Position,
-    position_hash: u64,
-    pub move_count: u32,
-    halfmove_count: u32,
     pub side_to_move: PieceColour,
     pub last_move: Move,
     pub legal_moves: Vec<Move>,
+    position: Position,
+    position_hash: u64,
+    move_count: u32,
+    halfmove_count: u32,
     position_occurences: HashMap<PositionHash, u8>,
 }
 
@@ -85,13 +85,13 @@ impl BoardState {
         let mut position_occurences = HashMap::new();
         *position_occurences.entry(position_hash).or_insert(0) += 1;
         BoardState {
+            side_to_move,
+            last_move: NULL_MOVE,
+            legal_moves,
             position,
             move_count: 0,
             halfmove_count: 0,
             position_hash,
-            side_to_move,
-            last_move: NULL_MOVE,
-            legal_moves,
             position_occurences,
         }
     }
@@ -179,13 +179,13 @@ impl BoardState {
         *position_occurences.entry(position_hash).or_insert(0) += 1;
 
         Ok(Self {
+            side_to_move,
+            last_move,
+            legal_moves,
             position,
             position_hash,
             move_count,
             halfmove_count,
-            side_to_move,
-            last_move,
-            legal_moves,
             position_occurences,
         })
     }
@@ -224,7 +224,6 @@ impl BoardState {
     }
 }
 
-use std::marker::Send;
 
 #[derive(Debug)]
 pub struct Board {
