@@ -4,9 +4,6 @@ use std::{ rc::Rc, collections::HashMap };
 use crate::engine;
 use crate::position::*;
 use crate::movegen::*;
-use crate::engine::*;
-use crate::movegen::MoveType::*;
-
 
 
 pub trait Player {
@@ -28,7 +25,7 @@ pub enum GameState {
     Repetition,
     FiftyMove,
     Active,
-}// TODO make position struct private for simplicity in gui. or at least give functions to get the pieces on the board
+}
 impl fmt::Display for GameState {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let state_str = match self {
