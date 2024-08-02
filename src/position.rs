@@ -1,9 +1,12 @@
+use core::fmt;
 use core::panic;
+use std::error::Error;
 use rand::Rng;
 
 use static_init::dynamic;
 
 use crate::movegen::*;
+use crate::util;
 
 #[dynamic]
 static ZOBRIST_HASH_TABLE: ZobristHashTable = ZobristHashTable::new();
@@ -218,189 +221,6 @@ impl Position {
             wking_idx: 60,
             bking_idx: 4,
         };
-        new.gen_maps();
-        new
-    }
-
-    // TODO MOVE TO BOARDSTATE STRUCT, MAKES NO SENSE TO BE IMPLEMENTED HERE TODO
-    pub fn from_fen(fen: &str) -> Self {
-        let mut pos: Pos64 = [Square::Empty; 64];
-        let fen_vec: Vec<&str> = fen.split(' ').collect();
-
-        // first field of FEN defines the piece positions
-        let mut rank_start_idx = 0;
-        for rank in fen_vec[0].split('/') {
-            let mut i = 0;
-            for c in rank.chars() {
-                let mut square = Square::Empty;
-                match c {
-                    'p' => {
-                        square = Square::Piece(Piece {
-                            pcolour: PieceColour::Black,
-                            ptype: PieceType::Pawn,
-                        });
-                    }
-                    'P' => {
-                        square = Square::Piece(Piece {
-                            pcolour: PieceColour::White,
-                            ptype: PieceType::Pawn,
-                        });
-                    }
-                    'r' => {
-                        square = Square::Piece(Piece {
-                            pcolour: PieceColour::Black,
-                            ptype: PieceType::Rook,
-                        });
-                    }
-                    'R' => {
-                        square = Square::Piece(Piece {
-                            pcolour: PieceColour::White,
-                            ptype: PieceType::Rook,
-                        });
-                    }
-                    'n' => {
-                        square = Square::Piece(Piece {
-                            pcolour: PieceColour::Black,
-                            ptype: PieceType::Knight,
-                        });
-                    }
-                    'N' => {
-                        square = Square::Piece(Piece {
-                            pcolour: PieceColour::White,
-                            ptype: PieceType::Knight,
-                        });
-                    }
-                    'b' => {
-                        square = Square::Piece(Piece {
-                            pcolour: PieceColour::Black,
-                            ptype: PieceType::Bishop,
-                        });
-                    }
-                    'B' => {
-                        square = Square::Piece(Piece {
-                            pcolour: PieceColour::White,
-                            ptype: PieceType::Bishop,
-                        });
-                    }
-                    'q' => {
-                        square = Square::Piece(Piece {
-                            pcolour: PieceColour::Black,
-                            ptype: PieceType::Queen,
-                        });
-                    }
-                    'Q' => {
-                        square = Square::Piece(Piece {
-                            pcolour: PieceColour::White,
-                            ptype: PieceType::Queen,
-                        });
-                    }
-                    'k' => {
-                        square = Square::Piece(Piece {
-                            pcolour: PieceColour::Black,
-                            ptype: PieceType::King,
-                        });
-                    }
-                    'K' => {
-                        square = Square::Piece(Piece {
-                            pcolour: PieceColour::White,
-                            ptype: PieceType::King,
-                        });
-                    }
-                    x if x.is_ascii_digit() => {
-                        for _ in 0..x.to_digit(10).unwrap() {
-                            pos[i + rank_start_idx] = Square::Empty;
-                            i += 1;
-                        }
-                        continue; // skip the below square assignment for pieces
-                    }
-                    other => {
-                        panic!("invalid char in first field: {}", other);
-                    }
-                }
-                pos[i + rank_start_idx] = square;
-                i += 1;
-            }
-            rank_start_idx += 8; // next rank
-        }
-
-        // second filed of FEN defines which side it is to move, either 'w' or 'b'
-        let mut side = PieceColour::White;
-        match fen_vec[1] {
-            "w" => {/* already set as white */}
-            "b" => {
-                side = PieceColour::Black;
-            }
-            other => {
-                panic!("invalid second field: {}", other);
-            }
-        }
-
-        // initialise movegen flags for the next two FEN fields
-        let mut movegen_flags = MovegenFlags {
-            white_castle_short: false,
-            white_castle_long: false,
-            black_castle_short: false,
-            black_castle_long: false,
-            en_passant: None,
-        };
-
-        // third field of FEN defines castling flags
-        for c in fen_vec[2].chars() {
-            match c {
-                'q' => {
-                    movegen_flags.black_castle_long = true;
-                }
-                'Q' => {
-                    movegen_flags.white_castle_long = true;
-                }
-                'k' => {
-                    movegen_flags.black_castle_short = true;
-                }
-                'K' => {
-                    movegen_flags.white_castle_short = true;
-                }
-                '-' => {}
-                other => panic!("invalid char in third field: {}", other),
-            }
-        }
-
-        // fourth field of FEN defines en passant flag, it gives notation of the square the pawn jumped over
-        if fen_vec[3] != "-" {
-            let ep_mv_idx = Self::notation_to_index(fen_vec[3]);
-            // in our struct however, we store the idx of the pawn to be captured
-            let ep_flag = if side == PieceColour::White {
-                ep_mv_idx + ABOVE_BELOW
-            } else {
-                ep_mv_idx - ABOVE_BELOW
-            };
-            movegen_flags.en_passant = Some(ep_flag);
-        }
-
-        // Last two fields not used here, as the 50 move rule isnt calculated in Position struct
-
-        let mut new = Self {
-            position: pos,
-            side,
-            movegen_flags,
-            defend_map: DefendMap::new(),
-            attack_map: AttackMap::new(),
-            wking_idx: 0,
-            bking_idx: 0,
-        };
-        for (i, s) in new.position.iter().enumerate() {
-            match s {
-                Square::Piece(p) => {
-                    if p.ptype == PieceType::King {
-                        if p.pcolour == PieceColour::White {
-                            new.wking_idx = i;
-                        } else {
-                            new.bking_idx = i;
-                        }
-                    }
-                }
-                Square::Empty => {}
-            }
-        }
         new.gen_maps();
         new
     }
@@ -635,40 +455,191 @@ impl Position {
         self.attack_map = attack_map;
     }
 
-    pub fn notation_to_index(n: &str) -> usize {
-        let file: char = n.chars().next().unwrap();
-        let rank: char = n.chars().nth(1).unwrap();
-        let rank_starts = [56, 48, 40, 32, 24, 16, 8, 0]; // 1st to 8th rank starting indexes
+    // partial implementation of the FEN format, last 2 fields are not used here
+    // OK => returns completed Position struct and the parsed FEN fields
+    // Err => returns the error message
+    pub fn from_fen_partial_impl(fen: &str) -> Result<(Self, Vec<&str>), Box<dyn Error>>{
+        let mut pos: Pos64 = [Square::Empty; 64];
+        let fen_vec: Vec<&str> = fen.split(' ').collect();
 
-        let file_offset = match file {
-            'a' => 0,
-            'b' => 1,
-            'c' => 2,
-            'd' => 3,
-            'e' => 4,
-            'f' => 5,
-            'g' => 6,
-            'h' => 7,
-            _ => 0,
-        };
-        file_offset + rank_starts[(rank.to_digit(10).unwrap() - 1) as usize]
-    }
+        // first field of FEN defines the piece positions
+        let mut rank_start_idx = 0;
+        for rank in fen_vec[0].split('/') {
+            let mut i = 0;
+            for c in rank.chars() {
+                let mut square = Square::Empty;
+                match c {
+                    'p' => {
+                        square = Square::Piece(Piece {
+                            pcolour: PieceColour::Black,
+                            ptype: PieceType::Pawn,
+                        });
+                    }
+                    'P' => {
+                        square = Square::Piece(Piece {
+                            pcolour: PieceColour::White,
+                            ptype: PieceType::Pawn,
+                        });
+                    }
+                    'r' => {
+                        square = Square::Piece(Piece {
+                            pcolour: PieceColour::Black,
+                            ptype: PieceType::Rook,
+                        });
+                    }
+                    'R' => {
+                        square = Square::Piece(Piece {
+                            pcolour: PieceColour::White,
+                            ptype: PieceType::Rook,
+                        });
+                    }
+                    'n' => {
+                        square = Square::Piece(Piece {
+                            pcolour: PieceColour::Black,
+                            ptype: PieceType::Knight,
+                        });
+                    }
+                    'N' => {
+                        square = Square::Piece(Piece {
+                            pcolour: PieceColour::White,
+                            ptype: PieceType::Knight,
+                        });
+                    }
+                    'b' => {
+                        square = Square::Piece(Piece {
+                            pcolour: PieceColour::Black,
+                            ptype: PieceType::Bishop,
+                        });
+                    }
+                    'B' => {
+                        square = Square::Piece(Piece {
+                            pcolour: PieceColour::White,
+                            ptype: PieceType::Bishop,
+                        });
+                    }
+                    'q' => {
+                        square = Square::Piece(Piece {
+                            pcolour: PieceColour::Black,
+                            ptype: PieceType::Queen,
+                        });
+                    }
+                    'Q' => {
+                        square = Square::Piece(Piece {
+                            pcolour: PieceColour::White,
+                            ptype: PieceType::Queen,
+                        });
+                    }
+                    'k' => {
+                        square = Square::Piece(Piece {
+                            pcolour: PieceColour::Black,
+                            ptype: PieceType::King,
+                        });
+                    }
+                    'K' => {
+                        square = Square::Piece(Piece {
+                            pcolour: PieceColour::White,
+                            ptype: PieceType::King,
+                        });
+                    }
+                    x if x.is_ascii_digit() => {
+                        for _ in 0..x.to_digit(10).unwrap() {
+                            pos[i + rank_start_idx] = Square::Empty;
+                            i += 1;
+                        }
+                        continue; // skip the below square assignment for pieces
+                    }
+                    other => {
+                        let s = format!("invalid char in first field: {}", other)
+                    }
+                }
+                pos[i + rank_start_idx] = square;
+                i += 1;
+            }
+            rank_start_idx += 8; // next rank
+        }
 
-    pub fn index_to_notation(i: usize) -> String {
-        let file = match i % 8 {
-            0 => 'a',
-            1 => 'b',
-            2 => 'c',
-            3 => 'd',
-            4 => 'e',
-            5 => 'f',
-            6 => 'g',
-            7 => 'h',
-            _ => ' ',
+        // second filed of FEN defines which side it is to move, either 'w' or 'b'
+        let mut side = PieceColour::White;
+        match fen_vec[1] {
+            "w" => {/* already set as white */}
+            "b" => {
+                side = PieceColour::Black;
+            }
+            other => {
+                panic!("invalid second field: {}", other);
+            }
+        }
+
+        // initialise movegen flags for the next two FEN fields
+        let mut movegen_flags = MovegenFlags {
+            white_castle_short: false,
+            white_castle_long: false,
+            black_castle_short: false,
+            black_castle_long: false,
+            en_passant: None,
         };
-        let rank_num = 8 - i / 8;
-        let rank = char::from_digit(rank_num.try_into().unwrap(), 10).unwrap();
-        format!("{}{}", file, rank)
+
+        // third field of FEN defines castling flags
+        for c in fen_vec[2].chars() {
+            match c {
+                'q' => {
+                    movegen_flags.black_castle_long = true;
+                }
+                'Q' => {
+                    movegen_flags.white_castle_long = true;
+                }
+                'k' => {
+                    movegen_flags.black_castle_short = true;
+                }
+                'K' => {
+                    movegen_flags.white_castle_short = true;
+                }
+                '-' => {}
+                other => return Err("invalid char in third field: {}", other),
+            }
+        }
+
+        // fourth field of FEN defines en passant flag, it gives notation of the square the pawn jumped over
+        if fen_vec[3] != "-" {
+            let ep_mv_idx = util::notation_to_index(fen_vec[3]);
+            // in our struct however, we store the idx of the pawn to be captured
+            let ep_flag = if side == PieceColour::White {
+                ep_mv_idx + ABOVE_BELOW
+            } else {
+                ep_mv_idx - ABOVE_BELOW
+            };
+            movegen_flags.en_passant = Some(ep_flag);
+        }
+
+        // Last two fields not used here, as they are out of scope of this struct.
+        // Function is extended in BoardState struct
+
+        let mut new = Self {
+            position: pos,
+            side,
+            movegen_flags,
+            defend_map: DefendMap::new(),
+            attack_map: AttackMap::new(),
+            wking_idx: 0,
+            bking_idx: 0,
+        };
+        for (i, s) in new.position.iter().enumerate() {
+            match s {
+                Square::Piece(p) => {
+                    if p.ptype == PieceType::King {
+                        if p.pcolour == PieceColour::White {
+                            new.wking_idx = i;
+                        } else {
+                            new.bking_idx = i;
+                        }
+                    }
+                }
+                Square::Empty => {}
+            }
+        }
+        new.gen_maps();
+
+        Ok((new, fen_vec))
     }
 
     pub fn print_board(&self) {
