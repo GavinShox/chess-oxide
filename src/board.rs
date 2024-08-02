@@ -4,17 +4,12 @@ use std::{ rc::Rc, collections::HashMap };
 use crate::engine;
 use crate::position::*;
 use crate::movegen::*;
-
+use crate::util;
+use crate::errors::BoardStateError;
+use crate::errors::FenParseError;
 
 pub trait Player {
     fn get_move(&self, _: &BoardState) -> Move;
-}
-
-#[derive(Debug)]
-pub enum BoardStateError {
-    IllegalMove,
-    NullMove,
-    NoLegalMoves,
 }
 
 #[derive(Debug, PartialEq, Eq)]
@@ -73,16 +68,16 @@ impl BoardState {
         }
     }
 
-    pub fn from_fen(fen: &str) -> Self {
+    pub fn from_fen(fen: &str) -> Result<Self, FenParseError> {
         // TODO add move count and halfmove count
-        let position = Position::from_fen(fen);
+        let (position, fen_vec) = Position::from_fen_partial_impl(fen)?;
         let position_hash: PositionHash = position.pos_hash();
         let side_to_move = position.side;
         // deref all legal moves, performance isn't as important here, so avoid lifetime specifiers to make things easier to look at
         let legal_moves = position.get_legal_moves().into_iter().copied().collect();
         let mut position_occurences = HashMap::new();
         *position_occurences.entry(position_hash).or_insert(0) += 1;
-        BoardState {
+        Ok(BoardState {
             side_to_move,
             last_move: NULL_MOVE,
             legal_moves,
@@ -91,7 +86,7 @@ impl BoardState {
             halfmove_count: 0,
             position_hash,
             position_occurences,
-        }
+        })
     }
 
     pub fn as_fen(&self) -> String {
@@ -99,8 +94,8 @@ impl BoardState {
     }
 
     pub fn last_move_as_notation(&self) -> String {
-        let notation_from = Position::index_to_notation(self.last_move.from);
-        let notation_to = Position::index_to_notation(self.last_move.to);
+        let notation_from = util::index_to_notation(self.last_move.from);
+        let notation_to = util::index_to_notation(self.last_move.to);
 
         let get_piece_str = |ptype: PieceType| -> String {
             match ptype {
@@ -117,7 +112,7 @@ impl BoardState {
         let piece_str = get_piece_str(self.last_move.piece.ptype);
         
         let notation = match self.last_move.move_type {
-            MoveType::EnPassant(ep) => format!("{}x{}", piece_str, Position::index_to_notation(ep)),
+            MoveType::EnPassant(ep) => format!("{}x{}", piece_str, util::index_to_notation(ep)),
             MoveType::Promotion(promotion_type) => format!("{}={}", notation_to, get_piece_str(promotion_type)),
             MoveType::Castle(castle_move) => if castle_move.rook_from.abs_diff(castle_move.rook_to) == 3 {
                 "O-O-O".to_string()
@@ -141,10 +136,10 @@ impl BoardState {
 
     pub fn next_state(&self, mv: &Move) -> Result<Self, BoardStateError> {
         if mv == &NULL_MOVE {
-            return Err(BoardStateError::NullMove);
+            return Err(BoardStateError::NullMove("&NULL_MOVE was passed as an argument to BoardState::next_state()".to_string()));
         }
         if !self.legal_moves.contains(mv) {
-            return Err(BoardStateError::IllegalMove);
+            return Err(BoardStateError::IllegalMove(format!("{:?} is not a legal move", mv)));
         }
 
         let current_game_state = self.get_gamestate();
@@ -246,15 +241,15 @@ impl Board {
             state_history,
         }
     }
-    pub fn from_fen(fen: &str) -> Self {
-        let current_state = BoardState::from_fen(fen);
+    pub fn from_fen(fen: &str) -> Result<Self, FenParseError> {
+        let current_state = BoardState::from_fen(fen)?;
         let mut state_history: Vec<BoardState> = Vec::new();
         state_history.push(current_state.clone());
 
-        Board {
+        Ok(Board {
             current_state,
             state_history,
-        }
+        })
     }
     pub fn branch(&self, _branch_state: Rc<BoardState>) -> Self {
         // TODO, clone from specific state in state_history. Will probably need to store data differently like position_occurences

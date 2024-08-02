@@ -7,6 +7,7 @@ use static_init::dynamic;
 
 use crate::movegen::*;
 use crate::util;
+use crate::errors::FenParseError;
 
 #[dynamic]
 static ZOBRIST_HASH_TABLE: ZobristHashTable = ZobristHashTable::new();
@@ -458,7 +459,7 @@ impl Position {
     // partial implementation of the FEN format, last 2 fields are not used here
     // OK => returns completed Position struct and the parsed FEN fields
     // Err => returns the error message
-    pub fn from_fen_partial_impl(fen: &str) -> Result<(Self, Vec<&str>), Box<dyn Error>>{
+    pub fn from_fen_partial_impl(fen: &str) -> Result<(Self, Vec<&str>), FenParseError>{
         let mut pos: Pos64 = [Square::Empty; 64];
         let fen_vec: Vec<&str> = fen.split(' ').collect();
 
@@ -549,7 +550,7 @@ impl Position {
                         continue; // skip the below square assignment for pieces
                     }
                     other => {
-                        let s = format!("invalid char in first field: {}", other)
+                        return Err(FenParseError(format!("Invalid char in first field: {}", other)));
                     }
                 }
                 pos[i + rank_start_idx] = square;
@@ -566,7 +567,7 @@ impl Position {
                 side = PieceColour::Black;
             }
             other => {
-                panic!("invalid second field: {}", other);
+                return Err(FenParseError(format!("Invalid second field: {}", other)));
             }
         }
 
@@ -595,10 +596,11 @@ impl Position {
                     movegen_flags.white_castle_short = true;
                 }
                 '-' => {}
-                other => return Err("invalid char in third field: {}", other),
+                other => return Err(FenParseError(format!("Invalid char in third field: {}", other))),
             }
         }
 
+        // TODO maybe error checking required here?
         // fourth field of FEN defines en passant flag, it gives notation of the square the pawn jumped over
         if fen_vec[3] != "-" {
             let ep_mv_idx = util::notation_to_index(fen_vec[3]);
