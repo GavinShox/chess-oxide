@@ -1,5 +1,5 @@
-use crate::position::*;
 use std::cmp;
+
 use crate::movegen::*;
 use crate::board::*;
 
@@ -8,7 +8,6 @@ const MIN: i32 = i32::MIN + 1000;
 const MAX: i32 = i32::MAX - 1000;
 
 
-// TODO SHould use board_state so it can factor in checkmate and stalemate easier
 pub fn choose_move(bs: &BoardState, depth: i32) -> (i32, &Move) {
     // TODO add check if position is in endgame, for different evaluation
     negamax_root(bs, depth, bs.side_to_move)

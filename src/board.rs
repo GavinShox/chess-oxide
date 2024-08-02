@@ -26,6 +26,7 @@ pub enum GameState {
     FiftyMove,
     Active,
 }
+// String representation of GameState
 impl fmt::Display for GameState {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let state_str = match self {
@@ -91,6 +92,10 @@ impl BoardState {
             position_hash,
             position_occurences,
         }
+    }
+
+    pub fn as_fen(&self) -> String {
+        todo!()
     }
 
     pub fn last_move_as_notation(&self) -> String {

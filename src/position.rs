@@ -222,6 +222,7 @@ impl Position {
         new
     }
 
+    // TODO MOVE TO BOARDSTATE STRUCT, MAKES NO SENSE TO BE IMPLEMENTED HERE TODO
     pub fn from_fen(fen: &str) -> Self {
         let mut pos: Pos64 = [Square::Empty; 64];
         let fen_vec: Vec<&str> = fen.split(' ').collect();
