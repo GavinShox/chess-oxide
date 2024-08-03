@@ -1,3 +1,4 @@
+// TODO Add error handling for invalid str and usizes
 pub fn notation_to_index(n: &str) -> usize {
     let file: char = n.chars().next().unwrap();
     let rank: char = n.chars().nth(1).unwrap();

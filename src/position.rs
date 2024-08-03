@@ -1,6 +1,4 @@
-use core::fmt;
 use core::panic;
-use std::error::Error;
 use rand::Rng;
 
 use static_init::dynamic;
@@ -324,7 +322,7 @@ impl Position {
         };
     }
 
-    pub fn is_defended(&self, i: usize) -> bool {
+    fn is_defended(&self, i: usize) -> bool {
         self.defend_map.0[i]
     }
     // TODO seperate functions that rely on maps and the leegal check ones that dont. One is an incomplete state and the other is complete
@@ -418,7 +416,7 @@ impl Position {
         }
     }
 
-    pub fn gen_maps(&mut self) {
+    fn gen_maps(&mut self) {
         self.defend_map.clear();
         self.attack_map.clear();
         let mut attack_map = AttackMap::new();
@@ -462,6 +460,11 @@ impl Position {
     pub fn from_fen_partial_impl(fen: &str) -> Result<(Self, Vec<&str>), FenParseError>{
         let mut pos: Pos64 = [Square::Empty; 64];
         let fen_vec: Vec<&str> = fen.split(' ').collect();
+
+        // check if the FEN string has the correct number of fields
+        if fen_vec.len() != 6 {
+            return Err(FenParseError(format!("Invalid number of fields in FEN string: {}. Expected 6", fen_vec.len())));
+        }
 
         // first field of FEN defines the piece positions
         let mut rank_start_idx = 0;
@@ -567,7 +570,7 @@ impl Position {
                 side = PieceColour::Black;
             }
             other => {
-                return Err(FenParseError(format!("Invalid second field: {}", other)));
+                return Err(FenParseError(format!("Invalid second field: {}. Expected 'w' or 'b'", other)));
             }
         }
 
@@ -600,10 +603,15 @@ impl Position {
             }
         }
 
-        // TODO maybe error checking required here?
         // fourth field of FEN defines en passant flag, it gives notation of the square the pawn jumped over
         if fen_vec[3] != "-" {
             let ep_mv_idx = util::notation_to_index(fen_vec[3]);
+
+            // error if index is out of bounds. FEN defines the index behind the pawn that moved, so valid indexes are only 16->47 (excluded top and bottom two ranks)
+            if ep_mv_idx < 16 || ep_mv_idx > 47 {
+                return Err(FenParseError(format!("Invalid en passant square: {}. Index is out of bounds", fen_vec[3])));
+            }
+
             // in our struct however, we store the idx of the pawn to be captured
             let ep_flag = if side == PieceColour::White {
                 ep_mv_idx + ABOVE_BELOW
@@ -622,8 +630,8 @@ impl Position {
             movegen_flags,
             defend_map: DefendMap::new(),
             attack_map: AttackMap::new(),
-            wking_idx: 0,
-            bking_idx: 0,
+            wking_idx: 0, // value set in below for loop
+            bking_idx: 0, // value set in below for loop
         };
         for (i, s) in new.pos64.iter().enumerate() {
             match s {

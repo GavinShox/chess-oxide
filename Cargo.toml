@@ -21,6 +21,7 @@ path = "src/lib.rs"
 [dependencies]
 rand = "0.8.5"
 static_init = "1.0.3"
+log = "0.4"
 slint = "1.7"
 
 [build-dependencies]

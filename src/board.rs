@@ -69,7 +69,6 @@ impl BoardState {
     }
 
     pub fn from_fen(fen: &str) -> Result<Self, FenParseError> {
-        // TODO add move count and halfmove count
         let (position, fen_vec) = Position::from_fen_partial_impl(fen)?;
         let position_hash: PositionHash = position.pos_hash();
         let side_to_move = position.side;
@@ -77,13 +76,18 @@ impl BoardState {
         let legal_moves = position.get_legal_moves().into_iter().copied().collect();
         let mut position_occurences = HashMap::new();
         *position_occurences.entry(position_hash).or_insert(0) += 1;
+        
+        // handle the final two fields of the FEN vector
+        let Ok(halfmove_count) = fen_vec[4].parse::<u32>() else { return Err(FenParseError(format!("Error parsing halfmove count: {}", fen_vec[4]))) };
+        let Ok(move_count) = fen_vec[5].parse::<u32>() else { return Err(FenParseError(format!("Error parsing move count: {}", fen_vec[5]))) };
+
         Ok(BoardState {
             side_to_move,
             last_move: NULL_MOVE,
             legal_moves,
             position,
-            move_count: 0,
-            halfmove_count: 0,
+            move_count,
+            halfmove_count,
             position_hash,
             position_occurences,
         })
@@ -150,7 +154,7 @@ impl BoardState {
             current_game_state == GameState::FiftyMove ||
             current_game_state == GameState::Repetition
         {
-            return Err(BoardStateError::NoLegalMoves);
+            return Err(BoardStateError::NoLegalMoves(current_game_state));
         }
 
         let position = self.position.new_position(mv);

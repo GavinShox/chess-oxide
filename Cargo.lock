@@ -679,6 +679,7 @@ dependencies = [
 name = "chess"
 version = "0.1.0"
 dependencies = [
+ "log",
  "rand",
  "slint",
  "slint-build",

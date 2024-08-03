@@ -1,11 +1,13 @@
 use std::error;
 use std::fmt;
 
+use crate::GameState;
+
 #[derive(Debug)]
 pub enum BoardStateError {
     IllegalMove(String),
     NullMove(String),
-    NoLegalMoves,
+    NoLegalMoves(GameState),
 }
 
 impl fmt::Display for BoardStateError {
@@ -13,7 +15,7 @@ impl fmt::Display for BoardStateError {
         match self {
             BoardStateError::IllegalMove(s) => write!(f, "Illegal move: {}", s),
             BoardStateError::NullMove(s) => write!(f, "Null move: {}", s),
-            BoardStateError::NoLegalMoves => write!(f, "No legal moves"),
+            BoardStateError::NoLegalMoves(gs) => write!(f, "No legal moves: GameState -> {}", gs),
         }
     }
 }
