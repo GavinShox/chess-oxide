@@ -56,7 +56,7 @@ impl MoveMap for AttackMap {
 
 #[derive(Debug, Clone)]
 pub struct Position {
-    pub position: Pos64,
+    pub pos64: Pos64,
     pub side: PieceColour,
     pub movegen_flags: MovegenFlags,
     defend_map: DefendMap, // map of squares opposite colour is defending
@@ -139,7 +139,7 @@ impl ZobristHashTable {
 impl Position {
     pub fn pos_hash(&self) -> PositionHash {
         let mut hash = 0;
-        for (i, s) in self.position.iter().enumerate() {
+        for (i, s) in self.pos64.iter().enumerate() {
             match s {
                 Square::Piece(p) => {
                     hash ^= ZOBRIST_HASH_TABLE.get_piece_hash(p, i);
@@ -214,7 +214,7 @@ impl Position {
         let side = PieceColour::White;
 
         let mut new = Self {
-            position: pos,
+            pos64: pos,
             side,
             movegen_flags,
             defend_map: DefendMap::new(),
@@ -236,14 +236,14 @@ impl Position {
         match mv.move_type {
             MoveType::EnPassant(ep_capture) => {
                 // en passant, 'to' square is different from the captured square
-                new_pos.position[ep_capture] = Square::Empty;
+                new_pos.pos64[ep_capture] = Square::Empty;
             }
             MoveType::Castle(castle_mv) => {
-                new_pos.position[castle_mv.rook_to] = new_pos.position[castle_mv.rook_from];
-                new_pos.position[castle_mv.rook_from] = Square::Empty;
+                new_pos.pos64[castle_mv.rook_to] = new_pos.pos64[castle_mv.rook_from];
+                new_pos.pos64[castle_mv.rook_from] = Square::Empty;
             }
             MoveType::Promotion(ptype) => {
-                match &mut new_pos.position[mv.from] {
+                match &mut new_pos.pos64[mv.from] {
                     Square::Piece(p) => {
                         p.ptype = ptype;
                     }
@@ -253,8 +253,8 @@ impl Position {
             _ => {}
         }
 
-        new_pos.position[mv.to] = new_pos.position[mv.from];
-        new_pos.position[mv.from] = Square::Empty;
+        new_pos.pos64[mv.to] = new_pos.pos64[mv.from];
+        new_pos.pos64[mv.from] = Square::Empty;
 
         new_pos.toggle_side();
         new_pos.gen_maps();
@@ -274,7 +274,7 @@ impl Position {
     // clone function for is_move_legal. Avoids expensive clone attack map
     fn test_clone(&self) -> Self {
         Self {
-            position: self.position,
+            pos64: self.pos64,
             side: self.side,
             movegen_flags: self.movegen_flags,
             defend_map: self.defend_map,
@@ -307,11 +307,11 @@ impl Position {
         test_pos.set_king_position(mv);
 
         if let MoveType::EnPassant(ep_capture) = mv.move_type {
-            test_pos.position[ep_capture] = Square::Empty;
+            test_pos.pos64[ep_capture] = Square::Empty;
         }
 
-        test_pos.position[mv.to] = self.position[mv.from];
-        test_pos.position[mv.from] = Square::Empty;
+        test_pos.pos64[mv.to] = self.pos64[mv.from];
+        test_pos.pos64[mv.from] = Square::Empty;
 
         !test_pos.is_in_check_legal_check()
     }
@@ -329,7 +329,7 @@ impl Position {
     }
     // TODO seperate functions that rely on maps and the leegal check ones that dont. One is an incomplete state and the other is complete
     fn is_in_check_legal_check(&self) -> bool {
-        movegen_in_check(&self.position, self.get_king_idx())
+        movegen_in_check(&self.pos64, self.get_king_idx())
     }
     fn get_king_idx(&self) -> usize {
         if self.side == PieceColour::White { self.wking_idx } else { self.bking_idx }
@@ -424,12 +424,12 @@ impl Position {
         let mut attack_map = AttackMap::new();
         // movegen_pos(&self.position, &self.movegen_flags, self.side, &mut self.attack_map, &mut self.defend_map);
 
-        for (i, s) in self.position.iter().enumerate() {
+        for (i, s) in self.pos64.iter().enumerate() {
             match s {
                 Square::Piece(p) => {
                     if p.pcolour != self.side {
                         movegen(
-                            &self.position,
+                            &self.pos64,
                             &self.movegen_flags,
                             p,
                             i,
@@ -437,7 +437,7 @@ impl Position {
                             &mut self.defend_map
                         );
                     } else {
-                        movegen(&self.position, &self.movegen_flags, p, i, false, &mut attack_map);
+                        movegen(&self.pos64, &self.movegen_flags, p, i, false, &mut attack_map);
                     }
                 }
                 Square::Empty => {
@@ -617,7 +617,7 @@ impl Position {
         // Function is extended in BoardState struct
 
         let mut new = Self {
-            position: pos,
+            pos64: pos,
             side,
             movegen_flags,
             defend_map: DefendMap::new(),
@@ -625,7 +625,7 @@ impl Position {
             wking_idx: 0,
             bking_idx: 0,
         };
-        for (i, s) in new.position.iter().enumerate() {
+        for (i, s) in new.pos64.iter().enumerate() {
             match s {
                 Square::Piece(p) => {
                     if p.ptype == PieceType::King {
@@ -659,7 +659,7 @@ impl Position {
         let bknight = " ♞ ";
         let bpawn = " ♟︎ ";
 
-        for (num, j) in self.position.iter().enumerate() {
+        for (num, j) in self.pos64.iter().enumerate() {
             match j {
                 Square::Piece(p) => {
                     match p.pcolour {

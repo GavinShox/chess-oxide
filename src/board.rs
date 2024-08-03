@@ -213,7 +213,7 @@ impl BoardState {
     }
 
     pub fn get_pos64(&self) -> &Pos64 {
-        &self.position.position
+        &self.position.pos64
     }
 
     pub fn is_in_check(&self) -> bool {
