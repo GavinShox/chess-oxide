@@ -471,7 +471,7 @@ impl Position {
         for rank in fen_vec[0].split('/') {
             let mut i = 0;
             for c in rank.chars() {
-                let mut square = Square::Empty;
+                let square: Square;
                 match c {
                     'p' => {
                         square = Square::Piece(Piece {

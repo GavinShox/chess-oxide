@@ -93,7 +93,7 @@ impl BoardState {
         })
     }
 
-    pub fn as_fen(&self) -> String {
+    pub fn to_fen(&self) -> String {
         todo!()
     }
 
