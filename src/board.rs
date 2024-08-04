@@ -219,8 +219,8 @@ impl BoardState {
     }
 
     // gamestates that are draws
-    pub fn gamestate_is_draw(&self) -> bool {
-        matches!(self.get_gamestate(), GameState::Stalemate | GameState::FiftyMove | GameState::Repetition | GameState::InsufficientMaterial)
+    pub fn gamestate_is_draw(&self, gamestate: GameState) -> bool {
+        matches!(gamestate, GameState::Stalemate | GameState::FiftyMove | GameState::Repetition | GameState::InsufficientMaterial)
     }
 
     pub fn get_pos64(&self) -> &Pos64 {
