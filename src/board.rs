@@ -19,6 +19,7 @@ pub enum GameState {
     Stalemate,
     Repetition,
     FiftyMove,
+    InsufficientMaterial,
     Active,
 }
 // String representation of GameState
@@ -30,6 +31,7 @@ impl fmt::Display for GameState {
             GameState::Stalemate => "Stalemate",
             GameState::Repetition => "Repetition",
             GameState::FiftyMove => "Fifty Move Draw",
+            GameState::InsufficientMaterial => "Insufficient Material",
             GameState::Active => "",
         };
         write!(f, "{}", state_str)
@@ -170,10 +172,7 @@ impl BoardState {
             self.move_count
         };
 
-        let halfmove_reset =
-            mv.move_type == MoveType::PawnPush ||
-            mv.move_type == MoveType::DoublePawnPush ||
-            matches!(mv.move_type, MoveType::Capture(_));
+        let halfmove_reset = matches!(mv.move_type, MoveType::PawnPush | MoveType::DoublePawnPush | MoveType::Capture(_));
         let halfmove_count = if halfmove_reset { 0 } else { self.halfmove_count + 1 };
 
         let mut position_occurences = self.position_occurences.clone();
@@ -211,9 +210,17 @@ impl BoardState {
             GameState::Repetition
         } else if is_in_check {
             GameState::Check
+        } else if false { //placeholder
+            // check for insufficient material TODO
+            GameState::InsufficientMaterial
         } else {
             GameState::Active
         }
+    }
+
+    // gamestates that are draws
+    pub fn gamestate_is_draw(&self) -> bool {
+        matches!(self.get_gamestate(), GameState::Stalemate | GameState::FiftyMove | GameState::Repetition | GameState::InsufficientMaterial)
     }
 
     pub fn get_pos64(&self) -> &Pos64 {

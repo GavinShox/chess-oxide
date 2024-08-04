@@ -652,6 +652,10 @@ impl Position {
         Ok((new, fen_vec))
     }
 
+    pub fn to_fen_partial_impl(&self) -> String {
+        todo!()
+    }
+
     pub fn print_board(&self) {
         let pawn = " ♙ ";
         let knight = " ♘ ";
