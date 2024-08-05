@@ -52,7 +52,7 @@ fn ui_convert_piece(piece: chess::Piece) -> PieceUI {
 
 fn main() -> Result<(), slint::PlatformError> {
     // board::Board::from_fen("8/8/8/5R2/8/P1P3PP/P2QPP2/k5K1 b - - 0 1"
-    let mut board = Arc::new(Mutex::new(board::Board::new()));    
+    let board = Arc::new(Mutex::new(board::Board::new()));    
     
     
     let ui = Board_UI::new().unwrap();
@@ -109,7 +109,7 @@ fn main() -> Result<(), slint::PlatformError> {
 
     ui.on_engine_make_move(move || {
         let ui = ui_weak_engine_make_move.clone();
-        let mut bmem: Arc<Mutex<Board>> = board_engine_make_move.clone();
+        let bmem: Arc<Mutex<Board>> = board_engine_make_move.clone();
 
         std::thread::spawn(move || {
             bmem.lock().unwrap().make_engine_move(4);
