@@ -11,12 +11,12 @@ pub const ROOK_OFFSET: Offset = [-10, -1, 1, 10, 0, 0, 0, 0];
 pub const QUEEN_KING_OFFSET: Offset = [-11, -10, -9, -1, 1, 9, 10, 11];
 
 pub const PROMOTION_PIECE_TYPES: [PieceType; 4] = [
-    PieceType::Queen,
-    PieceType::Rook,
-    PieceType::Bishop,
     PieceType::Knight,
+    PieceType::Bishop,
+    PieceType::Rook,
+    PieceType::Queen,
 ];
-
+    
 // starting indexes for castling logic
 // TODO refactor castling logic so its not hardcoded, to allow for fischer random positions
 pub const LONG_BLACK_ROOK_START: usize = 0;
