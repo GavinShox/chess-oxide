@@ -58,12 +58,14 @@ pub fn negamax_root(bs: &BoardState, depth: i32, maxi_colour: PieceColour) -> (i
             break;
         }
     }
-    println!("Best move: {:?}, eval: {}", best_move, max_eval);
+    unsafe { println!("NODES: {}, PRUNES  {}", NODES, PRUNES); }
+
     (max_eval, best_move)
 }
 
 const QUIECENCE_DEPTH: i32 = 4;
-static mut COUNTER: usize = 0;
+static mut NODES: usize = 0;
+static mut PRUNES: usize = 0;
 
 //todo maybe no need for BoardState here, only for root negamax?
 pub fn negamax(bs: &BoardState, depth: i32, mut alpha: i32, beta: i32, maxi_colour: PieceColour, root_depth: i32) -> i32 {
@@ -80,15 +82,16 @@ pub fn negamax(bs: &BoardState, depth: i32, mut alpha: i32, beta: i32, maxi_colo
         let mv = &bs.legal_moves[i];
         let child_bs = bs.next_state(mv).unwrap();
         eval = cmp::max(-negamax(&child_bs, depth - 1, -beta, -alpha, !maxi_colour, root_depth + 1), eval);
-        alpha = cmp::max(alpha, eval);
+
         if beta <= alpha {
-            println!("PRUNED");
+            unsafe {
+                PRUNES += 1;
+            };
             break;
         }
     }
     unsafe {
-        COUNTER += 1;
-        println!("NODE: {} eval: {} @ depth: {} @ root_depth: {}", COUNTER, eval, depth, root_depth);
+        NODES += 1;
     };
     eval
 }
