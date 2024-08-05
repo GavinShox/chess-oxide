@@ -96,7 +96,11 @@ impl BoardState {
     }
 
     pub fn to_fen(&self) -> String {
-        todo!()
+        // final two fields of the FEN string, halfmove count and move count
+        let mut fen_str = self.position.to_fen_partial_impl();
+        fen_str.push_str(&format!("{} {}", self.halfmove_count, self.move_count));
+    
+        fen_str
     }
 
     pub fn last_move_as_notation(&self) -> String {
@@ -262,6 +266,11 @@ impl Board {
             state_history,
         })
     }
+
+    pub fn to_fen(&self) -> String {
+        self.current_state.to_fen()
+    }
+
     pub fn branch(&self, _branch_state: Rc<BoardState>) -> Self {
         // TODO, clone from specific state in state_history. Will probably need to store data differently like position_occurences
         // probably will have to go through all position hashes after the branch node, and remove occurences one by one

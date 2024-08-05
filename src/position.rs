@@ -653,6 +653,115 @@ impl Position {
     }
 
     pub fn to_fen_partial_impl(&self) -> String {
-        todo!()
+        let mut fen_str = String::new();
+        
+        let mut empty_count: i32 = 0;
+
+        for (idx, sq) in self.pos64.iter().enumerate() {
+            match sq {
+                Square::Piece(p) => {
+
+                    if empty_count > 0 {
+                        fen_str.push_str(empty_count.to_string().as_str());
+                        empty_count = 0;
+                    }
+
+                    match p.ptype {
+                        PieceType::Pawn => {
+                            match p.pcolour {
+                                PieceColour::White => fen_str.push('P'),
+                                PieceColour::Black => fen_str.push('p'),
+                                _ => unreachable!()
+                            }
+                        }
+                        PieceType::Knight => {
+                            match p.pcolour {
+                                PieceColour::White => fen_str.push('N'),
+                                PieceColour::Black => fen_str.push('n'),
+                                _ => unreachable!()
+                            }
+                        }
+                        PieceType::Bishop => {
+                            match p.pcolour {
+                                PieceColour::White => fen_str.push('B'),
+                                PieceColour::Black => fen_str.push('b'),
+                                _ => unreachable!()
+                            }
+                        }
+                        PieceType::Rook => {
+                            match p.pcolour {
+                                PieceColour::White => fen_str.push('R'),
+                                PieceColour::Black => fen_str.push('r'),
+                                _ => unreachable!()
+                            }
+                        }
+                        PieceType::Queen => {
+                            match p.pcolour {
+                                PieceColour::White => fen_str.push('Q'),
+                                PieceColour::Black => fen_str.push('q'),
+                                _ => unreachable!()
+                            }
+                        }
+                        PieceType::King => {
+                            match p.pcolour {
+                                PieceColour::White => fen_str.push('K'),
+                                PieceColour::Black => fen_str.push('k'),
+                                _ => unreachable!()
+                            }
+                        }
+                        PieceType::None => unreachable!(),
+                    }
+                }
+                Square::Empty => empty_count += 1,
+            }
+
+            if (idx + 1) % 8 == 0 && idx != 63 {
+                if empty_count > 0 {
+                    fen_str.push_str(empty_count.to_string().as_str());
+                    empty_count = 0;
+                }
+                fen_str.push('/');
+            }
+            
+        }
+        fen_str.push(' ');
+
+        match self.side {
+            PieceColour::White => fen_str.push('w'),
+            PieceColour::Black => fen_str.push('b'),
+            _ => unreachable!()
+        }
+        fen_str.push(' ');
+
+        if self.movegen_flags.white_castle_short {
+            fen_str.push('K');
+        }
+        if self.movegen_flags.white_castle_long {
+            fen_str.push('Q');
+        }
+        if self.movegen_flags.black_castle_short {
+            fen_str.push('k');
+        }
+        if self.movegen_flags.black_castle_long {
+            fen_str.push('q');
+        }
+        fen_str.push(' ');
+
+        match self.movegen_flags.en_passant {
+            Some(idx) => {
+                if self.side == PieceColour::White {
+                    fen_str.push_str(util::index_to_notation(idx - ABOVE_BELOW).as_str());
+                } else {
+                    fen_str.push_str(util::index_to_notation(idx + ABOVE_BELOW).as_str());
+                }
+            }
+            None => {
+                fen_str.push('-');
+            }
+        }
+        fen_str.push(' ');
+
+        // last two fields implemented in BoardState
+        fen_str
     }
 }
