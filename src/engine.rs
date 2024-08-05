@@ -25,7 +25,7 @@ pub fn quiescence(bs: &BoardState, depth: i32, mut alpha: i32, beta: i32, maxi_c
         let child_bs = bs.next_state(&mv).unwrap();
         let eval = -quiescence(&child_bs, depth - 1, -beta, -alpha, !maxi_colour);
         max_eval = cmp::max(max_eval, eval);
-        alpha = cmp::max(alpha, eval);
+        alpha = cmp::max(alpha, max_eval);
         if beta <= alpha {
             break;
         }
@@ -34,9 +34,9 @@ pub fn quiescence(bs: &BoardState, depth: i32, mut alpha: i32, beta: i32, maxi_c
 }
 
 pub fn negamax_root(bs: &BoardState, depth: i32, maxi_colour: PieceColour) -> (i32, &Move) {
-    if matches!(bs.get_gamestate(), GameState::Checkmate) {
+    if bs.is_in_check() && bs.legal_moves.is_empty() {
         return (if bs.side_to_move == maxi_colour {MIN} else {MAX}, &NULL_MOVE);  
-    } else if bs.gamestate_is_draw(bs.get_gamestate()) {
+    } else if bs.legal_moves.is_empty() || bs.get_occurences_of_current_position() == 3 {
         // stalemate
         return (0, &NULL_MOVE); 
     } 
@@ -58,42 +58,45 @@ pub fn negamax_root(bs: &BoardState, depth: i32, maxi_colour: PieceColour) -> (i
             break;
         }
     }
-    // unsafe { println!("NODES: {}, PRUNES  {}", NODES, PRUNES); }
+    unsafe { println!("NODES: {}, PRUNES  {}", NODES, PRUNES); }
 
     (max_eval, best_move)
 }
 
 const QUIECENCE_DEPTH: i32 = 4;
-// static mut NODES: usize = 0;
-// static mut PRUNES: usize = 0;
+static mut NODES: usize = 0;
+static mut PRUNES: usize = 0;
 
 //todo maybe no need for BoardState here, only for root negamax?
 pub fn negamax(bs: &BoardState, depth: i32, mut alpha: i32, beta: i32, maxi_colour: PieceColour, root_depth: i32) -> i32 {
-    if matches!(bs.get_gamestate(), GameState::Checkmate) {
+    if bs.is_in_check() && bs.legal_moves.is_empty() {
         return if bs.side_to_move == maxi_colour {MIN + root_depth} else {MAX  - root_depth};
-    } else if bs.gamestate_is_draw(bs.get_gamestate()) {
+    } else if bs.legal_moves.is_empty() || bs.get_occurences_of_current_position() == 3 {
         return 0;  // stalemate
     } else if depth == 0 {
         return quiescence(bs, QUIECENCE_DEPTH, alpha, beta, maxi_colour);
     }
 
-    let mut eval = MIN;
+    let mut max_eval = MIN;
     for i in sorted_move_indexes(&bs.legal_moves, false) {
         let mv = &bs.legal_moves[i];
         let child_bs = bs.next_state(mv).unwrap();
-        eval = cmp::max(-negamax(&child_bs, depth - 1, -beta, -alpha, !maxi_colour, root_depth + 1), eval);
-
+        let eval = -negamax(&child_bs, depth - 1, -beta, -alpha, !maxi_colour, root_depth + 1);
+        if eval > max_eval {
+            max_eval = eval;
+        }
+        alpha = cmp::max(alpha, max_eval);
         if beta <= alpha {
-            // unsafe {
-            //     PRUNES += 1;
-            // };
+            unsafe {
+                PRUNES += 1;
+            };
             break;
         }
     }
-    // unsafe {
-    //     NODES += 1;
-    // };
-    eval
+    unsafe {
+        NODES += 1;
+    };
+    max_eval
 }
 
 // pub fn quiescence_sort_move_indexes(moves: &[Move]) -> Vec<usize> {
