@@ -75,12 +75,13 @@ pub fn perft(pos: &Position, depth: i32) -> u64 {
         "Perft at depth {} (took {:?} to complete):",
         depth, duration
     );
-    println!("Nodes: {}", nodes);
-    println!("Move types breakdown: ");
-    println!("Promotions: {}", promotions);
-    println!("Castles: {}", castles);
-    println!("En Passant: {}", castles);
-    println!("Captures: {}", captures);
+    println!(" - Nodes: {}", nodes);
+    println!(" - Move types breakdown: ");
+    println!(" - Promotions: {}", promotions);
+    println!(" - Castles: {}", castles);
+    println!(" - En Passant: {}", castles);
+    println!(" - Captures: {}", captures);
+    println!();
 
     nodes
 }

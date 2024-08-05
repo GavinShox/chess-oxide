@@ -60,7 +60,7 @@ impl BoardState {
         *position_occurences.entry(position_hash).or_insert(0) += 1;
         BoardState {
             position,
-            move_count: 0,
+            move_count: 1, // movecount starts at 1
             halfmove_count: 0,
             position_hash,
             side_to_move,
@@ -79,19 +79,42 @@ impl BoardState {
         let mut position_occurences = HashMap::new();
         *position_occurences.entry(position_hash).or_insert(0) += 1;
 
-        // handle the final two fields of the FEN vector
-        let Ok(halfmove_count) = fen_vec[4].parse::<u32>() else {
+        // default values for move count and halfmove count if not provided see <https://www.talkchess.com/forum3/viewtopic.php?f=7&t=79627>
+        let halfmove_count: u32;
+        let move_count: u32;
+        if fen_vec.len() == 4 {
+            halfmove_count = 0;
+            move_count = 1;
+        } else if fen_vec.len() > 4 && fen_vec.len() <= 6 {
+            halfmove_count = match fen_vec[4].parse::<u32>() {
+                Ok(halfmove_count) => halfmove_count,
+                Err(_) => {
+                    return Err(FenParseError(format!(
+                        "Error parsing halfmove count: {}",
+                        fen_vec[4]
+                    )));
+                }
+            };
+            if fen_vec.len() == 6 {
+                move_count = match fen_vec[5].parse::<u32>() {
+                    Ok(move_count) => move_count,
+                    Err(_) => {
+                        return Err(FenParseError(format!(
+                            "Error parsing halfmove count: {}",
+                            fen_vec[5]
+                        )));
+                    }
+                }
+            } else {
+                move_count = 1;
+            }
+        } else {
+            // only accept either both fields are provided or neither are
             return Err(FenParseError(format!(
-                "Error parsing halfmove count: {}",
-                fen_vec[4]
+                "Invalid number of fields in FEN string: {}, expected at least 4, last two optional",
+                fen_vec.len()
             )));
-        };
-        let Ok(move_count) = fen_vec[5].parse::<u32>() else {
-            return Err(FenParseError(format!(
-                "Error parsing move count: {}",
-                fen_vec[5]
-            )));
-        };
+        }
 
         Ok(BoardState {
             side_to_move,

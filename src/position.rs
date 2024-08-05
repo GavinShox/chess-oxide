@@ -525,10 +525,10 @@ impl Position {
         let mut pos: Pos64 = [Square::Empty; 64];
         let fen_vec: Vec<&str> = fen.split(' ').collect();
 
-        // check if the FEN string has the correct number of fields
-        if fen_vec.len() != 6 {
+        // check if the FEN string has the correct number of fields, accept the last two as optional with default values given in BoardState
+        if fen_vec.len() < 4 {
             return Err(FenParseError(format!(
-                "Invalid number of fields in FEN string: {}. Expected 6",
+                "Invalid number of fields in FEN string: {}. Expected at least 4",
                 fen_vec.len()
             )));
         }
@@ -811,6 +811,13 @@ impl Position {
         }
         if self.movegen_flags.black_castle_long {
             fen_str.push('q');
+        }
+        if !(self.movegen_flags.white_castle_short
+            || self.movegen_flags.white_castle_long
+            || self.movegen_flags.black_castle_short
+            || self.movegen_flags.black_castle_long)
+        {
+            fen_str.push('-');
         }
         fen_str.push(' ');
 

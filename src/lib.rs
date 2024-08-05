@@ -5,7 +5,7 @@ mod mailbox;
 mod movegen;
 pub mod perft;
 mod position;
+pub mod test;
 mod util;
-//pub mod test;
 
 pub use {board::*, movegen::*, perft::*, position::*};
