@@ -6,6 +6,8 @@ use crate::board::*;
 // avoid int overflows when operating on these values i.e. negating, +/- checkmate depth etc.
 const MIN: i32 = i32::MIN + 1000;  
 const MAX: i32 = i32::MAX - 1000;
+const QUIECENCE_DEPTH: i32 = 4;
+
 
 
 pub fn choose_move(bs: &BoardState, depth: i32) -> (i32, &Move) {
@@ -58,14 +60,9 @@ pub fn negamax_root(bs: &BoardState, depth: i32, maxi_colour: PieceColour) -> (i
             break;
         }
     }
-    unsafe { println!("NODES: {}, PRUNES  {}", NODES, PRUNES); }
 
     (max_eval, best_move)
 }
-
-const QUIECENCE_DEPTH: i32 = 4;
-static mut NODES: usize = 0;
-static mut PRUNES: usize = 0;
 
 //todo maybe no need for BoardState here, only for root negamax?
 pub fn negamax(bs: &BoardState, depth: i32, mut alpha: i32, beta: i32, maxi_colour: PieceColour, root_depth: i32) -> i32 {
@@ -87,15 +84,9 @@ pub fn negamax(bs: &BoardState, depth: i32, mut alpha: i32, beta: i32, maxi_colo
         }
         alpha = cmp::max(alpha, max_eval);
         if beta <= alpha {
-            unsafe {
-                PRUNES += 1;
-            };
             break;
         }
     }
-    unsafe {
-        NODES += 1;
-    };
     max_eval
 }
 

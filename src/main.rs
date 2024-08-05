@@ -1,5 +1,5 @@
 // #![allow(warnings)]
-#![allow(unused_must_use)]
+//#![allow(unused_must_use)]
 
 // #[global_allocator]
 // static GLOBAL: jemallocator::Jemalloc = jemallocator::Jemalloc;
@@ -112,11 +112,11 @@ fn main() -> Result<(), slint::PlatformError> {
         let bmem: Arc<Mutex<Board>> = board_engine_make_move.clone();
 
         std::thread::spawn(move || {
-            bmem.lock().unwrap().make_engine_move(4);
+            bmem.lock().unwrap().make_engine_move(4).unwrap();
             slint::invoke_from_event_loop(move || {
                 ui.upgrade().unwrap().invoke_refresh_position();
                 ui.upgrade().unwrap().set_engine_made_move(true);
-            });
+            }).unwrap();
         });
     });
     

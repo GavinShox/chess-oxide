@@ -38,6 +38,7 @@ pub fn index_to_notation(i: usize) -> String {
     format!("{}{}", file, rank)
 }
 
+#[allow(dead_code)]
 pub fn print_board(bs: &BoardState) {
     let pawn = " ♙ ";
     let knight = " ♘ ";
