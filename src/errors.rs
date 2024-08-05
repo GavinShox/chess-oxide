@@ -22,7 +22,6 @@ impl fmt::Display for BoardStateError {
 
 impl error::Error for BoardStateError {}
 
-
 #[derive(Debug)]
 pub struct FenParseError(pub String);
 

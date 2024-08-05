@@ -16,7 +16,7 @@ pub const PROMOTION_PIECE_TYPES: [PieceType; 4] = [
     PieceType::Rook,
     PieceType::Queen,
 ];
-    
+
 // starting indexes for castling logic
 // TODO refactor castling logic so its not hardcoded, to allow for fischer random positions
 pub const LONG_BLACK_ROOK_START: usize = 0;
@@ -26,8 +26,10 @@ pub const SHORT_WHITE_ROOK_START: usize = 63;
 pub const BLACK_KING_START: usize = 4;
 pub const WHITE_KING_START: usize = 60;
 
-
-pub const NULL_PIECE: Piece = Piece { pcolour: PieceColour::None, ptype: PieceType::None };
+pub const NULL_PIECE: Piece = Piece {
+    pcolour: PieceColour::None,
+    ptype: PieceType::None,
+};
 // from and to are out of bounds
 pub const NULL_MOVE: Move = Move {
     piece: NULL_PIECE,
@@ -35,7 +37,6 @@ pub const NULL_MOVE: Move = Move {
     to: usize::MAX,
     move_type: MoveType::None,
 };
-
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
 pub enum PieceType {
@@ -126,7 +127,7 @@ fn pawn_promotion(mv_map: &mut dyn MoveMap, i: usize, piece: &Piece, mv: i32) {
                 from: i,
                 to: mv as usize,
                 move_type: MoveType::Promotion(ptype),
-            })
+            }),
         );
     }
 }
@@ -153,7 +154,7 @@ fn mb_get_pawn_attack_offset(piece: &Piece) -> [i32; 2] {
     match piece.pcolour {
         PieceColour::White => WHITE_ATTACK_OFFSET,
         PieceColour::Black => BLACK_ATTACK_OFFSET,
-        PieceColour::None => unreachable!()
+        PieceColour::None => unreachable!(),
     }
 }
 
@@ -218,7 +219,7 @@ pub fn movegen(
     piece: &Piece,
     i: usize,
     defending: bool,
-    mv_map: &mut dyn MoveMap
+    mv_map: &mut dyn MoveMap,
 ) {
     // Move gen for pawns
     if piece.ptype == PieceType::Pawn {
@@ -243,7 +244,7 @@ pub fn movegen(
                                     from: i,
                                     to: mv as usize,
                                     move_type: mvtype,
-                                })
+                                }),
                             );
                         }
                         true
@@ -290,7 +291,7 @@ pub fn movegen(
                                         from: i,
                                         to: mv as usize,
                                         move_type: MoveType::Capture(mv_square_piece.ptype),
-                                    })
+                                    }),
                                 );
                             }
                         }
@@ -304,7 +305,7 @@ pub fn movegen(
                                     from: i,
                                     to: mv as usize,
                                     move_type: MoveType::None, // not a real move, only a defensive one
-                                })
+                                }),
                             );
                         }
                     }
@@ -328,7 +329,7 @@ pub fn movegen(
                                 from: i,
                                 to: mv_above as usize,
                                 move_type: MoveType::EnPassant(mv as usize),
-                            })
+                            }),
                         );
                     }
                 } else {
@@ -358,7 +359,7 @@ pub fn movegen(
                                     from: i,
                                     to: mv as usize,
                                     move_type: MoveType::Capture(mv_square_piece.ptype),
-                                })
+                                }),
                             );
                         }
                         break; // break the slide after encountering a piece
@@ -370,7 +371,7 @@ pub fn movegen(
                                 from: i,
                                 to: mv as usize,
                                 move_type: MoveType::Normal,
-                            })
+                            }),
                         );
                     }
                 }
@@ -388,26 +389,23 @@ pub fn movegen(
     }
 
     // finally, movegen for castling
-    if
-        piece.ptype == PieceType::King &&
-        !defending &&
-        ((piece.pcolour == PieceColour::White && i == WHITE_KING_START) ||
-            (piece.pcolour == PieceColour::Black && i == BLACK_KING_START))
+    if piece.ptype == PieceType::King
+        && !defending
+        && ((piece.pcolour == PieceColour::White && i == WHITE_KING_START)
+            || (piece.pcolour == PieceColour::Black && i == BLACK_KING_START))
     {
         // no need to check mailbox, or check if an index is out of bounds
         // as we check that the king is on its starting square
 
-        if
-            (piece.pcolour == PieceColour::White && movegen_flags.white_castle_short) ||
-            (piece.pcolour == PieceColour::Black && movegen_flags.black_castle_short)
+        if (piece.pcolour == PieceColour::White && movegen_flags.white_castle_short)
+            || (piece.pcolour == PieceColour::Black && movegen_flags.black_castle_short)
         {
             let short_mv_through_idx = i + 1;
             let short_mv_to_idx = i + 2;
             let short_rook_start_idx = i + 3;
             let short_rook_end_idx = short_mv_through_idx;
-            if
-                matches!(&pos[short_mv_through_idx], Square::Empty) &&
-                matches!(&pos[short_mv_to_idx], Square::Empty)
+            if matches!(&pos[short_mv_through_idx], Square::Empty)
+                && matches!(&pos[short_mv_to_idx], Square::Empty)
             {
                 mv_map.add_move(
                     &(Move {
@@ -419,23 +417,21 @@ pub fn movegen(
                             rook_to: short_rook_end_idx,
                             king_squares: (i, short_mv_through_idx, short_mv_to_idx),
                         }),
-                    })
+                    }),
                 );
             }
         }
-        if
-            (piece.pcolour == PieceColour::White && movegen_flags.white_castle_long) ||
-            (piece.pcolour == PieceColour::Black && movegen_flags.black_castle_long)
+        if (piece.pcolour == PieceColour::White && movegen_flags.white_castle_long)
+            || (piece.pcolour == PieceColour::Black && movegen_flags.black_castle_long)
         {
             let long_mv_through_idx = i - 1;
             let long_mv_to_idx = i - 2;
             let long_mv_past_idx = i - 3; // sqaure not in kings path but still needs to be empty for rook
             let long_rook_start_idx = i - 4;
             let long_rook_end_idx = long_mv_through_idx;
-            if
-                matches!(&pos[long_mv_through_idx], Square::Empty) &&
-                matches!(&pos[long_mv_to_idx], Square::Empty) &&
-                matches!(&pos[long_mv_past_idx], Square::Empty)
+            if matches!(&pos[long_mv_through_idx], Square::Empty)
+                && matches!(&pos[long_mv_to_idx], Square::Empty)
+                && matches!(&pos[long_mv_past_idx], Square::Empty)
             {
                 mv_map.add_move(
                     &(Move {
@@ -447,7 +443,7 @@ pub fn movegen(
                             rook_to: long_rook_end_idx,
                             king_squares: (i, long_mv_through_idx, long_mv_to_idx),
                         }),
-                    })
+                    }),
                 );
             }
         }
@@ -461,7 +457,9 @@ pub fn movegen(
 pub fn movegen_in_check(pos: &position::Pos64, king_idx: usize) -> bool {
     let king_colour = if let Square::Piece(p) = pos[king_idx] {
         p.pcolour
-    } else {panic!("king_idx does not contain a king....")}; // just give the correct value please and we dont need to panic
+    } else {
+        panic!("king_idx does not contain a king....")
+    }; // just give the correct value please and we dont need to panic
     for (i, s) in pos.iter().enumerate() {
         match s {
             Square::Piece(piece) => {
@@ -537,13 +535,19 @@ pub fn movegen_pos<'a>(
     movegen_flags: &MovegenFlags,
     attacking_side: PieceColour,
     attack_map: &'a mut dyn MoveMap,
-    defend_map: &'a mut dyn MoveMap
+    defend_map: &'a mut dyn MoveMap,
 ) {
     for (i, s) in pos.iter().enumerate() {
         match s {
-            Square::Empty => { continue; }
+            Square::Empty => {
+                continue;
+            }
             Square::Piece(piece) => {
-                let mv_map = if piece.pcolour == attacking_side { &mut *attack_map } else { &mut *defend_map };
+                let mv_map = if piece.pcolour == attacking_side {
+                    &mut *attack_map
+                } else {
+                    &mut *defend_map
+                };
                 let defending = piece.pcolour != attacking_side;
                 // Move gen for pawns
                 if piece.ptype == PieceType::Pawn {
@@ -568,7 +572,7 @@ pub fn movegen_pos<'a>(
                                                 from: i,
                                                 to: mv as usize,
                                                 move_type: mvtype,
-                                            })
+                                            }),
                                         );
                                     }
                                     true
@@ -614,8 +618,10 @@ pub fn movegen_pos<'a>(
                                                     piece: *piece,
                                                     from: i,
                                                     to: mv as usize,
-                                                    move_type: MoveType::Capture(mv_square_piece.ptype),
-                                                })
+                                                    move_type: MoveType::Capture(
+                                                        mv_square_piece.ptype,
+                                                    ),
+                                                }),
                                             );
                                         }
                                     }
@@ -629,7 +635,7 @@ pub fn movegen_pos<'a>(
                                                 from: i,
                                                 to: mv as usize,
                                                 move_type: MoveType::None, // not a real move, only a defensive one
-                                            })
+                                            }),
                                         );
                                     }
                                 }
@@ -645,7 +651,8 @@ pub fn movegen_pos<'a>(
                             let mv = mailbox::next_mailbox_number(i, j);
                             if mv == (en_passant_mv as i32) {
                                 // check if square above this is empty
-                                let mv_above = mailbox::next_mailbox_number(mv as usize, push_offset);
+                                let mv_above =
+                                    mailbox::next_mailbox_number(mv as usize, push_offset);
                                 if mv_above >= 0 && is_square_empty(pos, mv_above as usize) {
                                     mv_map.add_move(
                                         &(Move {
@@ -653,7 +660,7 @@ pub fn movegen_pos<'a>(
                                             from: i,
                                             to: mv_above as usize,
                                             move_type: MoveType::EnPassant(mv as usize),
-                                        })
+                                        }),
                                     );
                                 }
                             } else {
@@ -683,7 +690,7 @@ pub fn movegen_pos<'a>(
                                                 from: i,
                                                 to: mv as usize,
                                                 move_type: MoveType::Capture(mv_square_piece.ptype),
-                                            })
+                                            }),
                                         );
                                     }
                                     break; // break the slide after encountering a piece
@@ -695,7 +702,7 @@ pub fn movegen_pos<'a>(
                                             from: i,
                                             to: mv as usize,
                                             move_type: MoveType::Normal,
-                                        })
+                                        }),
                                     );
                                 }
                             }
@@ -713,26 +720,23 @@ pub fn movegen_pos<'a>(
                 }
 
                 // finally, movegen for castling
-                if
-                    piece.ptype == PieceType::King &&
-                    !defending &&
-                    ((piece.pcolour == PieceColour::White && i == WHITE_KING_START) ||
-                        (piece.pcolour == PieceColour::Black && i == BLACK_KING_START))
+                if piece.ptype == PieceType::King
+                    && !defending
+                    && ((piece.pcolour == PieceColour::White && i == WHITE_KING_START)
+                        || (piece.pcolour == PieceColour::Black && i == BLACK_KING_START))
                 {
                     // no need to check mailbox, or check if an index is out of bounds
                     // as we check that the king is on its starting square
 
-                    if
-                        (piece.pcolour == PieceColour::White && movegen_flags.white_castle_short) ||
-                        (piece.pcolour == PieceColour::Black && movegen_flags.black_castle_short)
+                    if (piece.pcolour == PieceColour::White && movegen_flags.white_castle_short)
+                        || (piece.pcolour == PieceColour::Black && movegen_flags.black_castle_short)
                     {
                         let short_mv_through_idx = i + 1;
                         let short_mv_to_idx = i + 2;
                         let short_rook_start_idx = i + 3;
                         let short_rook_end_idx = short_mv_through_idx;
-                        if
-                            matches!(&pos[short_mv_through_idx], Square::Empty) &&
-                            matches!(&pos[short_mv_to_idx], Square::Empty)
+                        if matches!(&pos[short_mv_through_idx], Square::Empty)
+                            && matches!(&pos[short_mv_to_idx], Square::Empty)
                         {
                             mv_map.add_move(
                                 &(Move {
@@ -744,23 +748,21 @@ pub fn movegen_pos<'a>(
                                         rook_to: short_rook_end_idx,
                                         king_squares: (i, short_mv_through_idx, short_mv_to_idx),
                                     }),
-                                })
+                                }),
                             );
                         }
                     }
-                    if
-                        (piece.pcolour == PieceColour::White && movegen_flags.white_castle_long) ||
-                        (piece.pcolour == PieceColour::Black && movegen_flags.black_castle_long)
+                    if (piece.pcolour == PieceColour::White && movegen_flags.white_castle_long)
+                        || (piece.pcolour == PieceColour::Black && movegen_flags.black_castle_long)
                     {
                         let long_mv_through_idx = i - 1;
                         let long_mv_to_idx = i - 2;
                         let long_mv_past_idx = i - 3; // sqaure not in kings path but still needs to be empty for rook
                         let long_rook_start_idx = i - 4;
                         let long_rook_end_idx = long_mv_through_idx;
-                        if
-                            matches!(&pos[long_mv_through_idx], Square::Empty) &&
-                            matches!(&pos[long_mv_to_idx], Square::Empty) &&
-                            matches!(&pos[long_mv_past_idx], Square::Empty)
+                        if matches!(&pos[long_mv_through_idx], Square::Empty)
+                            && matches!(&pos[long_mv_to_idx], Square::Empty)
+                            && matches!(&pos[long_mv_past_idx], Square::Empty)
                         {
                             mv_map.add_move(
                                 &(Move {
@@ -772,14 +774,12 @@ pub fn movegen_pos<'a>(
                                         rook_to: long_rook_end_idx,
                                         king_squares: (i, long_mv_through_idx, long_mv_to_idx),
                                     }),
-                                })
+                                }),
                             );
                         }
                     }
                 }
             }
         }
-    
     }
-    
 }

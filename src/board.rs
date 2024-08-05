@@ -1,12 +1,12 @@
 use core::fmt;
-use std::{ rc::Rc, collections::HashMap };
+use std::{collections::HashMap, rc::Rc};
 
 use crate::engine;
-use crate::position::*;
-use crate::movegen::*;
-use crate::util;
 use crate::errors::BoardStateError;
 use crate::errors::FenParseError;
+use crate::movegen::*;
+use crate::position::*;
+use crate::util;
 
 pub trait Player {
     fn get_move(&self, _: &BoardState) -> Move;
@@ -78,10 +78,20 @@ impl BoardState {
         let legal_moves = position.get_legal_moves().into_iter().copied().collect();
         let mut position_occurences = HashMap::new();
         *position_occurences.entry(position_hash).or_insert(0) += 1;
-        
+
         // handle the final two fields of the FEN vector
-        let Ok(halfmove_count) = fen_vec[4].parse::<u32>() else { return Err(FenParseError(format!("Error parsing halfmove count: {}", fen_vec[4]))) };
-        let Ok(move_count) = fen_vec[5].parse::<u32>() else { return Err(FenParseError(format!("Error parsing move count: {}", fen_vec[5]))) };
+        let Ok(halfmove_count) = fen_vec[4].parse::<u32>() else {
+            return Err(FenParseError(format!(
+                "Error parsing halfmove count: {}",
+                fen_vec[4]
+            )));
+        };
+        let Ok(move_count) = fen_vec[5].parse::<u32>() else {
+            return Err(FenParseError(format!(
+                "Error parsing move count: {}",
+                fen_vec[5]
+            )));
+        };
 
         Ok(BoardState {
             side_to_move,
@@ -99,7 +109,7 @@ impl BoardState {
         // final two fields of the FEN string, halfmove count and move count
         let mut fen_str = self.position.to_fen_partial_impl();
         fen_str.push_str(&format!("{} {}", self.halfmove_count, self.move_count));
-    
+
         fen_str
     }
 
@@ -120,15 +130,19 @@ impl BoardState {
         };
 
         let piece_str = get_piece_str(self.last_move.piece.ptype);
-        
+
         let notation = match self.last_move.move_type {
             MoveType::EnPassant(ep) => format!("{}x{}", piece_str, util::index_to_notation(ep)),
-            MoveType::Promotion(promotion_type) => format!("{}={}", notation_to, get_piece_str(promotion_type)),
-            MoveType::Castle(castle_move) => if castle_move.rook_from.abs_diff(castle_move.rook_to) == 3 {
-                "O-O-O".to_string()
-            } else {
-                "O-O".to_string()
-            },
+            MoveType::Promotion(promotion_type) => {
+                format!("{}={}", notation_to, get_piece_str(promotion_type))
+            }
+            MoveType::Castle(castle_move) => {
+                if castle_move.rook_from.abs_diff(castle_move.rook_to) == 3 {
+                    "O-O-O".to_string()
+                } else {
+                    "O-O".to_string()
+                }
+            }
             MoveType::DoublePawnPush => notation_to,
             MoveType::PawnPush => notation_to,
             MoveType::Capture(_) => format!("{}x{}", piece_str, notation_to),
@@ -146,19 +160,23 @@ impl BoardState {
 
     pub fn next_state(&self, mv: &Move) -> Result<Self, BoardStateError> {
         if mv == &NULL_MOVE {
-            return Err(BoardStateError::NullMove("&NULL_MOVE was passed as an argument to BoardState::next_state()".to_string()));
+            return Err(BoardStateError::NullMove(
+                "&NULL_MOVE was passed as an argument to BoardState::next_state()".to_string(),
+            ));
         }
         if !self.legal_moves.contains(mv) {
-            return Err(BoardStateError::IllegalMove(format!("{:?} is not a legal move", mv)));
+            return Err(BoardStateError::IllegalMove(format!(
+                "{:?} is not a legal move",
+                mv
+            )));
         }
 
         let current_game_state = self.get_gamestate();
 
-        if
-            current_game_state == GameState::Checkmate ||
-            current_game_state == GameState::Stalemate ||
-            current_game_state == GameState::FiftyMove ||
-            current_game_state == GameState::Repetition
+        if current_game_state == GameState::Checkmate
+            || current_game_state == GameState::Stalemate
+            || current_game_state == GameState::FiftyMove
+            || current_game_state == GameState::Repetition
         {
             return Err(BoardStateError::NoLegalMoves(current_game_state));
         }
@@ -176,8 +194,15 @@ impl BoardState {
             self.move_count
         };
 
-        let halfmove_reset = matches!(mv.move_type, MoveType::PawnPush | MoveType::DoublePawnPush | MoveType::Capture(_));
-        let halfmove_count = if halfmove_reset { 0 } else { self.halfmove_count + 1 };
+        let halfmove_reset = matches!(
+            mv.move_type,
+            MoveType::PawnPush | MoveType::DoublePawnPush | MoveType::Capture(_)
+        );
+        let halfmove_count = if halfmove_reset {
+            0
+        } else {
+            self.halfmove_count + 1
+        };
 
         let mut position_occurences = self.position_occurences.clone();
         *position_occurences.entry(position_hash).or_insert(0) += 1;
@@ -195,9 +220,13 @@ impl BoardState {
     }
 
     pub fn get_occurences_of_current_position(&self) -> u8 {
-        *self.position_occurences.get(&self.position_hash).unwrap_or(&1)
+        *self
+            .position_occurences
+            .get(&self.position_hash)
+            .unwrap_or(&1)
     }
     // TODO add check for insufficient material
+    // TODO improve performance for use in engine.rs
     pub fn get_gamestate(&self) -> GameState {
         let legal_move_len = self.legal_moves.len();
         let is_in_check = self.position.is_in_check();
@@ -214,7 +243,8 @@ impl BoardState {
             GameState::Repetition
         } else if is_in_check {
             GameState::Check
-        } else if false { //placeholder
+        } else if false {
+            //placeholder
             // check for insufficient material TODO
             GameState::InsufficientMaterial
         } else {
@@ -224,7 +254,13 @@ impl BoardState {
 
     // gamestates that are draws
     pub fn gamestate_is_draw(&self, gamestate: GameState) -> bool {
-        matches!(gamestate, GameState::Stalemate | GameState::FiftyMove | GameState::Repetition | GameState::InsufficientMaterial)
+        matches!(
+            gamestate,
+            GameState::Stalemate
+                | GameState::FiftyMove
+                | GameState::Repetition
+                | GameState::InsufficientMaterial
+        )
     }
 
     pub fn get_pos64(&self) -> &Pos64 {
@@ -236,13 +272,11 @@ impl BoardState {
     }
 }
 
-
 #[derive(Debug)]
 pub struct Board {
     pub current_state: BoardState,
     pub state_history: Vec<BoardState>,
 }
-
 
 impl Board {
     pub fn new() -> Self {

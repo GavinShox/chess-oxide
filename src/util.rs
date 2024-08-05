@@ -1,5 +1,5 @@
+use crate::movegen::{PieceColour, PieceType, Square};
 use crate::BoardState;
-use crate::movegen::{Square, PieceColour, PieceType};
 
 // TODO Add error handling for invalid str and usizes
 pub fn notation_to_index(n: &str) -> usize {
@@ -56,61 +56,55 @@ pub fn print_board(bs: &BoardState) {
 
     for (num, j) in bs.get_pos64().iter().enumerate() {
         match j {
-            Square::Piece(p) => {
-                match p.pcolour {
-                    PieceColour::White => {
-                        match p.ptype {
-                            PieceType::Pawn => {
-                                print!("{}", pawn);
-                            }
-                            PieceType::Knight => {
-                                print!("{}", knight);
-                            }
-                            PieceType::Bishop => {
-                                print!("{}", bishop);
-                            }
-                            PieceType::Rook => {
-                                print!("{}", rook);
-                            }
-                            PieceType::Queen => {
-                                print!("{}", queen);
-                            }
-                            PieceType::King => {
-                                print!("{}", king);
-                            }
-                            PieceType::None => {
-                                print!(" - ");
-                            }
-                        }
+            Square::Piece(p) => match p.pcolour {
+                PieceColour::White => match p.ptype {
+                    PieceType::Pawn => {
+                        print!("{}", pawn);
                     }
-                    PieceColour::Black => {
-                        match p.ptype {
-                            PieceType::Pawn => {
-                                print!("{}", bpawn);
-                            }
-                            PieceType::Knight => {
-                                print!("{}", bknight);
-                            }
-                            PieceType::Bishop => {
-                                print!("{}", bbishop);
-                            }
-                            PieceType::Rook => {
-                                print!("{}", brook);
-                            }
-                            PieceType::Queen => {
-                                print!("{}", bqueen);
-                            }
-                            PieceType::King => {
-                                print!("{}", bking);
-                            }
-                            PieceType::None => {
-                                print!(" - ");
-                            }
-                        }
+                    PieceType::Knight => {
+                        print!("{}", knight);
                     }
-                    PieceColour::None => {}
-                }
-            }
+                    PieceType::Bishop => {
+                        print!("{}", bishop);
+                    }
+                    PieceType::Rook => {
+                        print!("{}", rook);
+                    }
+                    PieceType::Queen => {
+                        print!("{}", queen);
+                    }
+                    PieceType::King => {
+                        print!("{}", king);
+                    }
+                    PieceType::None => {
+                        print!(" - ");
+                    }
+                },
+                PieceColour::Black => match p.ptype {
+                    PieceType::Pawn => {
+                        print!("{}", bpawn);
+                    }
+                    PieceType::Knight => {
+                        print!("{}", bknight);
+                    }
+                    PieceType::Bishop => {
+                        print!("{}", bbishop);
+                    }
+                    PieceType::Rook => {
+                        print!("{}", brook);
+                    }
+                    PieceType::Queen => {
+                        print!("{}", bqueen);
+                    }
+                    PieceType::King => {
+                        print!("{}", bking);
+                    }
+                    PieceType::None => {
+                        print!(" - ");
+                    }
+                },
+                PieceColour::None => {}
+            },
             Square::Empty => {
                 print!(" - ");
             }
