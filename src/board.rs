@@ -80,12 +80,10 @@ impl BoardState {
         *position_occurences.entry(position_hash).or_insert(0) += 1;
 
         // default values for move count and halfmove count if not provided see <https://www.talkchess.com/forum3/viewtopic.php?f=7&t=79627>
-        let halfmove_count: u32;
-        let move_count: u32;
-        if fen_vec.len() == 4 {
-            halfmove_count = 0;
-            move_count = 1;
-        } else if fen_vec.len() > 4 && fen_vec.len() <= 6 {
+        let mut halfmove_count: u32 = 0;
+        let mut move_count: u32 = 1;
+
+        if fen_vec.len() == 5 || fen_vec.len() == 6 {
             halfmove_count = match fen_vec[4].parse::<u32>() {
                 Ok(halfmove_count) => halfmove_count,
                 Err(_) => {
@@ -95,6 +93,7 @@ impl BoardState {
                     )));
                 }
             };
+
             if fen_vec.len() == 6 {
                 move_count = match fen_vec[5].parse::<u32>() {
                     Ok(move_count) => move_count,
@@ -105,17 +104,8 @@ impl BoardState {
                         )));
                     }
                 }
-            } else {
-                move_count = 1;
             }
-        } else {
-            // only accept either both fields are provided or neither are
-            return Err(FenParseError(format!(
-                "Invalid number of fields in FEN string: {}, expected at least 4, last two optional",
-                fen_vec.len()
-            )));
         }
-
         Ok(BoardState {
             side_to_move,
             last_move: NULL_MOVE,
