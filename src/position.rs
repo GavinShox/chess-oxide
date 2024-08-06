@@ -526,9 +526,9 @@ impl Position {
         let fen_vec: Vec<&str> = fen.split(' ').collect();
 
         // check if the FEN string has the correct number of fields, accept the last two as optional with default values given in BoardState
-        if fen_vec.len() < 4 {
+        if fen_vec.len() < 4 || fen_vec.len() > 6 {
             return Err(FenParseError(format!(
-                "Invalid number of fields in FEN string: {}. Expected at least 4",
+                "Invalid number of fields in FEN string: {}. Expected at least 4, max 6",
                 fen_vec.len()
             )));
         }

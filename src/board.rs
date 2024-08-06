@@ -83,7 +83,7 @@ impl BoardState {
         let mut halfmove_count: u32 = 0;
         let mut move_count: u32 = 1;
 
-        if fen_vec.len() == 5 || fen_vec.len() == 6 {
+        if fen_vec.len() >= 5 {
             halfmove_count = match fen_vec[4].parse::<u32>() {
                 Ok(halfmove_count) => halfmove_count,
                 Err(_) => {
