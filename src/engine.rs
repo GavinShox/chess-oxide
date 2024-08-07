@@ -1,12 +1,39 @@
 use std::cmp;
+use std::collections::HashMap;
 
 use crate::board::*;
 use crate::movegen::*;
+use crate::PositionHash;
 
 // avoid int overflows when operating on these values i.e. negating, +/- checkmate depth etc.
 const MIN: i32 = i32::MIN + 1000;
 const MAX: i32 = i32::MAX - 1000;
 const QUIECENCE_DEPTH: i32 = 4;
+
+enum BoundType {
+    Exact,
+    Lower,
+    Upper,
+}
+
+struct TranspositionTable {
+    table: HashMap<PositionHash, (BoundType, i32, i32, Move)>
+}
+impl TranspositionTable {
+    fn new() -> Self {
+        TranspositionTable {
+            table: HashMap::new()
+        }
+    }
+
+    fn insert(&mut self, hash: PositionHash, bound_type: BoundType, depth: i32, eval: i32, best_move: Move) {
+        self.table.insert(hash, (bound_type, depth, eval, best_move));
+    }
+    
+    fn get(&self, hash: PositionHash) -> Option<&(BoundType, i32, i32, Move)> {
+        self.table.get(&hash)
+    }
+}
 
 pub fn choose_move(bs: &BoardState, depth: i32) -> (i32, &Move) {
     // TODO add check if position is in endgame, for different evaluation
