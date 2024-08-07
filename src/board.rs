@@ -289,6 +289,7 @@ impl BoardState {
 pub struct Board {
     pub current_state: BoardState,
     pub state_history: Vec<BoardState>,
+    transposition_table: engine::TranspositionTable,
 }
 
 impl Board {
@@ -298,9 +299,12 @@ impl Board {
         let mut state_history: Vec<BoardState> = Vec::new();
         state_history.push(current_state.clone());
 
+        let transposition_table = engine::TranspositionTable::new();
+
         Board {
             current_state,
             state_history,
+            transposition_table
         }
     }
     pub fn from_fen(fen: &str) -> Result<Self, FenParseError> {
@@ -308,9 +312,12 @@ impl Board {
         let mut state_history: Vec<BoardState> = Vec::new();
         state_history.push(current_state.clone());
 
+        let transposition_table = engine::TranspositionTable::new();
+
         Ok(Board {
             current_state,
             state_history,
+            transposition_table
         })
     }
 
@@ -335,7 +342,7 @@ impl Board {
     }
 
     pub fn make_engine_move(&mut self, depth: i32) -> Result<GameState, BoardStateError> {
-        let engine_move = engine::choose_move(&self.current_state, depth);
+        let engine_move = engine::choose_move(&self.current_state, depth, &mut self.transposition_table);
         let mv = *engine_move.1;
 
         self.make_move(&mv)

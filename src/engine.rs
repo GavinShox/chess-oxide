@@ -10,17 +10,19 @@ const MIN: i32 = i32::MIN + 1000;
 const MAX: i32 = i32::MAX - 1000;
 const QUIECENCE_DEPTH: i32 = 4;
 
+#[derive(Debug)]
 enum BoundType {
     Exact,
     Lower,
     Upper,
 }
 
-struct TranspositionTable {
+#[derive(Debug)]
+pub struct TranspositionTable {
     table: HashMap<PositionHash, (BoundType, i32, i32)>
 }
 impl TranspositionTable {
-    fn new() -> Self {
+    pub fn new() -> Self {
         TranspositionTable {
             table: HashMap::new()
         }
