@@ -115,7 +115,7 @@ impl ZobristHashTable {
                 PieceType::Queen => 4,
                 PieceType::King => 5,
                 PieceType::None => {
-                    panic!("PieceType::None in get_piece_idx()")
+                    unreachable!("PieceType::None in get_piece_idx()")
                 }
             },
             PieceColour::Black => match piece.ptype {
@@ -126,11 +126,11 @@ impl ZobristHashTable {
                 PieceType::Queen => 10,
                 PieceType::King => 11,
                 PieceType::None => {
-                    panic!("PieceType::None in get_piece_idx()")
+                    unreachable!("PieceType::None in get_piece_idx()")
                 }
             },
             PieceColour::None => {
-                panic!("PieceColour::None in get_piece_idx()")
+                unreachable!("PieceColour::None in get_piece_idx()")
             }
         }
     }
