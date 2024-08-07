@@ -17,7 +17,7 @@ enum BoundType {
 }
 
 struct TranspositionTable {
-    table: HashMap<PositionHash, (BoundType, i32, i32, Move)>
+    table: HashMap<PositionHash, (BoundType, i32, i32)>
 }
 impl TranspositionTable {
     fn new() -> Self {
@@ -26,18 +26,18 @@ impl TranspositionTable {
         }
     }
 
-    fn insert(&mut self, hash: PositionHash, bound_type: BoundType, depth: i32, eval: i32, best_move: Move) {
-        self.table.insert(hash, (bound_type, depth, eval, best_move));
+    fn insert(&mut self, hash: PositionHash, bound_type: BoundType, depth: i32, eval: i32) {
+        self.table.insert(hash, (bound_type, depth, eval));
     }
     
-    fn get(&self, hash: PositionHash) -> Option<&(BoundType, i32, i32, Move)> {
+    fn get(&self, hash: PositionHash) -> Option<&(BoundType, i32, i32)> {
         self.table.get(&hash)
     }
 }
 
-pub fn choose_move(bs: &BoardState, depth: i32) -> (i32, &Move) {
+pub fn choose_move<'a>(bs: &'a BoardState, depth: i32, tt: &'a mut TranspositionTable) -> (i32, &'a Move) {
     // TODO add check if position is in endgame, for different evaluation
-    negamax_root(bs, depth, bs.side_to_move)
+    negamax_root(bs, depth, bs.side_to_move, tt)
 }
 
 pub fn quiescence(
@@ -66,7 +66,7 @@ pub fn quiescence(
     max_eval
 }
 
-pub fn negamax_root(bs: &BoardState, depth: i32, maxi_colour: PieceColour) -> (i32, &Move) {
+pub fn negamax_root<'a>(bs: &'a BoardState, depth: i32, maxi_colour: PieceColour, tt: &'a mut TranspositionTable) -> (i32, &'a Move) {
     if bs.is_in_check() && bs.legal_moves.is_empty() {
         return (
             if bs.side_to_move == maxi_colour {
@@ -88,7 +88,7 @@ pub fn negamax_root(bs: &BoardState, depth: i32, maxi_colour: PieceColour) -> (i
     for i in sorted_move_indexes(&bs.legal_moves, false) {
         let mv = &bs.legal_moves[i];
         let child_bs = bs.next_state(mv).unwrap();
-        let eval = -negamax(&child_bs, depth - 1, -beta, -alpha, !maxi_colour, 1);
+        let eval = -negamax(&child_bs, depth - 1, -beta, -alpha, !maxi_colour, 1, tt);
         if eval > max_eval {
             max_eval = eval;
             best_move = &mv;
@@ -107,10 +107,28 @@ pub fn negamax(
     bs: &BoardState,
     depth: i32,
     mut alpha: i32,
-    beta: i32,
+    mut beta: i32,
     maxi_colour: PieceColour,
     root_depth: i32,
+    tt: &mut TranspositionTable,
 ) -> i32 {
+
+    // transposition table lookup
+    let alpha_orig = alpha;
+    if let Some((bound_type, tt_depth, tt_eval)) = tt.get(bs.position_hash) {
+        let tt_eval = *tt_eval;
+        if *tt_depth >= depth {
+            match bound_type {
+                BoundType::Exact => return tt_eval,
+                BoundType::Lower => alpha = cmp::max(alpha, tt_eval),
+                BoundType::Upper => beta = cmp::min(beta, tt_eval),
+            }
+            if alpha >= beta {
+                return tt_eval;
+            }
+        }
+    }
+
     if bs.is_in_check() && bs.legal_moves.is_empty() {
         return if bs.side_to_move == maxi_colour {
             MIN + root_depth
@@ -134,6 +152,7 @@ pub fn negamax(
             -alpha,
             !maxi_colour,
             root_depth + 1,
+            tt
         );
         if eval > max_eval {
             max_eval = eval;
@@ -143,6 +162,16 @@ pub fn negamax(
             break;
         }
     }
+
+    let tt_eval = max_eval;
+    if tt_eval <= alpha_orig {
+        tt.insert(bs.position_hash, BoundType::Upper, depth, tt_eval);
+    } else if tt_eval >= beta {
+        tt.insert(bs.position_hash, BoundType::Lower, depth, tt_eval);
+    } else {
+        tt.insert(bs.position_hash, BoundType::Exact, depth, tt_eval);
+    }
+
     max_eval
 }
 
