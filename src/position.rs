@@ -1,4 +1,3 @@
-use core::panic;
 use rand::Rng;
 
 use static_init::dynamic;
@@ -295,14 +294,14 @@ impl Position {
                 new_pos.pos64[castle_mv.rook_to] = new_pos.pos64[castle_mv.rook_from];
                 new_pos.pos64[castle_mv.rook_from] = Square::Empty;
             }
-            MoveType::Promotion(ptype) => {
-                match &mut new_pos.pos64[mv.from] {
-                    Square::Piece(p) => {
-                        p.ptype = ptype;
-                    }
-                    Square::Empty => { /* should never get here */ }
+            MoveType::Promotion(ptype) => match &mut new_pos.pos64[mv.from] {
+                Square::Piece(p) => {
+                    p.ptype = ptype;
                 }
-            }
+                Square::Empty => {
+                    unreachable!();
+                }
+            },
             _ => {}
         }
 
@@ -676,7 +675,7 @@ impl Position {
                     return Err(FenParseError(format!(
                         "Invalid char in third field: {}",
                         other
-                    )))
+                    )));
                 }
             }
         }
@@ -780,7 +779,9 @@ impl Position {
                         PieceType::None => unreachable!(),
                     }
                 }
-                Square::Empty => empty_count += 1,
+                Square::Empty => {
+                    empty_count += 1;
+                }
             }
 
             if (idx + 1) % 8 == 0 && idx != 63 {
