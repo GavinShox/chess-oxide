@@ -7,19 +7,6 @@
 use chess::*;
 use std::sync::{Arc, Mutex};
 
-// fn main() {
-//     //let pos = Position::new_starting();
-//     // let mut pos = Position::from_fen("rnbq1k1r/pp1Pbppp/2p5/8/2B5/8/PPP1NnPP/RNBQK2R w KQ - 1 8");
-//     // //let mut pos = Position::new_position_from_fen("r3k2r/Pppp1ppp/1b3nbN/nP6/BBP1P3/q4N2/Pp1P2PP/R2Q1RK1 w kq - 0 1");
-//     // pos.print_board();
-
-//     // perft(&pos, 5);
-
-//     //game_loop();
-//     let board = Board::from_fen("rnbq1k1r/pp1Pbppp/2p5/8/2B5/8/PPP1NnPP/RNBQK2R w KQ - 1 8").unwrap();
-//     assert_eq!(board.to_fen(), "rnbq1k1r/pp1Pbppp/2p5/8/2B5/8/PPP1NnPP/RNBQK2R w KQ - 1 8".to_owned());
-// }
-
 slint::include_modules!();
 
 type PieceUI = slint_generatedBoard_UI::Piece_UI;

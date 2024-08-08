@@ -8,13 +8,13 @@ build = "build.rs"
 name = "chess"
 path = "src/lib.rs"
 
-# [[bin]]
-# name = "chess"
-# path = "src/main.rs"
+[[bin]]
+name = "chess-gui"
+path = "src/bin/chess-gui.rs"
 
-# [[bin]]
-# name = "chess-gui"
-# path = "src/bin/gui.rs"
+[[bin]]
+name = "chess-perft"
+path = "src/bin/chess-perft.rs"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
@@ -25,7 +25,7 @@ log = "0.4"
 slint = "1.7"
 
 [build-dependencies]
-slint-build = "1.6"
+slint-build = "1.7"
 
 [profile.release]
 debug = true
