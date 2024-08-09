@@ -304,7 +304,7 @@ impl Board {
         Board {
             current_state,
             state_history,
-            transposition_table
+            transposition_table,
         }
     }
     pub fn from_fen(fen: &str) -> Result<Self, FenParseError> {
@@ -317,7 +317,7 @@ impl Board {
         Ok(Board {
             current_state,
             state_history,
-            transposition_table
+            transposition_table,
         })
     }
 
@@ -342,7 +342,8 @@ impl Board {
     }
 
     pub fn make_engine_move(&mut self, depth: i32) -> Result<GameState, BoardStateError> {
-        let engine_move = engine::choose_move(&self.current_state, depth, &mut self.transposition_table);
+        let engine_move =
+            engine::choose_move(&self.current_state, depth, &mut self.transposition_table);
         let mv = *engine_move.1;
 
         self.make_move(&mv)
