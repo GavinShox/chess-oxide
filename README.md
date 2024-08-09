@@ -16,22 +16,22 @@ A chess engine written in Rust.
 To build and run the project, ensure you have Rust installed. Clone the repository and run:
 
 
-'''sh
+```sh
 cargo build [--bin] [--release]
-'''
+```
 
 ## Usage
 
 To run the chess engine with the GUI:
 
-'''sh
+```sh
 cargo run --bin chess-gui [--release]
-'''
+```
 
 To run the basic performance test:
-'''sh
+```sh
 cargo run --bin chess-perft [--release]
-'''
+```
 
 NOTE: GUI IS VERY BASIC AND JUST USED FOR TESTING
 
