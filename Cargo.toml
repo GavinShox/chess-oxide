@@ -3,6 +3,8 @@ name = "chess-oxide"
 version = "0.2.0"
 edition = "2021"
 build = "build.rs"
+description = "A chess engine library written in Rust, with a GUI bin to play against it."
+license = "MIT"
 
 [lib]
 name = "chess"
