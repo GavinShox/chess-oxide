@@ -265,6 +265,18 @@ impl BoardState {
         }
     }
 
+    pub fn is_in_check(&self) -> bool {
+        self.position.is_in_check()
+    }
+
+    pub fn is_checkmate(&self) -> bool {
+        self.legal_moves.is_empty() && self.position.is_in_check()
+    }
+
+    pub fn is_draw(&self) -> bool {
+        (self.legal_moves.is_empty() && !self.position.is_in_check()) || self.halfmove_count >= 100 || self.get_occurences_of_current_position() >= 3
+    }
+
     // gamestates that are draws
     pub fn gamestate_is_draw(&self, gamestate: GameState) -> bool {
         matches!(
@@ -280,9 +292,6 @@ impl BoardState {
         &self.position.pos64
     }
 
-    pub fn is_in_check(&self) -> bool {
-        self.position.is_in_check()
-    }
 }
 
 #[derive(Debug)]
@@ -337,6 +346,7 @@ impl Board {
         self.state_history.push(self.current_state.clone());
 
         let game_state = self.current_state.get_gamestate();
+        println!("FEN: {}", self.to_fen());
 
         Ok(game_state)
     }

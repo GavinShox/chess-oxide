@@ -78,7 +78,7 @@ pub fn negamax_root<'a>(
     maxi_colour: PieceColour,
     tt: &'a mut TranspositionTable,
 ) -> (i32, &'a Move) {
-    if bs.is_in_check() && bs.legal_moves.is_empty() {
+    if bs.is_checkmate() {
         return (
             if bs.side_to_move == maxi_colour {
                 MIN
@@ -87,7 +87,7 @@ pub fn negamax_root<'a>(
             },
             &NULL_MOVE,
         );
-    } else if bs.legal_moves.is_empty() || bs.get_occurences_of_current_position() == 3 {
+    } else if bs.is_draw() {
         // stalemate
         return (0, &NULL_MOVE);
     }
@@ -98,8 +98,11 @@ pub fn negamax_root<'a>(
     let mut max_eval = MIN;
     for i in sorted_move_indexes(&bs.legal_moves, false) {
         let mv = &bs.legal_moves[i];
+        // println!("evaluating move: {:?}", mv);
         let child_bs = bs.next_state(mv).unwrap();
         let eval = -negamax(&child_bs, depth - 1, -beta, -alpha, !maxi_colour, 1, tt);
+        
+        if eval == 0 {println!("eval: {}", eval)};
         if eval > max_eval {
             max_eval = eval;
             best_move = &mv;
@@ -109,7 +112,10 @@ pub fn negamax_root<'a>(
             break;
         }
     }
-
+    // println!("root");
+    // println!("root eval: {}", max_eval);
+    // println!("best move: {:?}", best_move);
+    //println!("pos occurences: {}", bs.get_occurences_of_current_position());
     (max_eval, best_move)
 }
 
@@ -123,6 +129,19 @@ pub fn negamax(
     root_depth: i32,
     tt: &mut TranspositionTable,
 ) -> i32 {
+    // TODO ADD 3 fold repetition and 50 move INTO ZOBRIST HASH SO IT WORKS
+    // TODO ADD MOVE ORDERING WITH BEST MOVE IN TRANSPOSITION TABLE?
+    if bs.is_checkmate() {
+        return if bs.side_to_move == maxi_colour {
+            MIN + root_depth
+        } else {
+            MAX - root_depth
+        };
+    } else if bs.is_draw() {
+        return 0; // stalemate
+    } else if depth == 0 {
+        return quiescence(bs, QUIECENCE_DEPTH, alpha, beta, maxi_colour);
+    }
     // transposition table lookup
     let alpha_orig = alpha;
     if let Some((bound_type, tt_depth, tt_eval)) = tt.get(bs.position_hash) {
@@ -137,18 +156,6 @@ pub fn negamax(
                 return tt_eval;
             }
         }
-    }
-
-    if bs.is_in_check() && bs.legal_moves.is_empty() {
-        return if bs.side_to_move == maxi_colour {
-            MIN + root_depth
-        } else {
-            MAX - root_depth
-        };
-    } else if bs.legal_moves.is_empty() || bs.get_occurences_of_current_position() == 3 {
-        return 0; // stalemate
-    } else if depth == 0 {
-        return quiescence(bs, QUIECENCE_DEPTH, alpha, beta, maxi_colour);
     }
 
     let mut max_eval = MIN;
@@ -181,6 +188,8 @@ pub fn negamax(
     } else {
         tt.insert(bs.position_hash, BoundType::Exact, depth, tt_eval);
     }
+
+    // println!("max_eval: {}", max_eval);
 
     max_eval
 }
