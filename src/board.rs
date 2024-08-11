@@ -274,7 +274,9 @@ impl BoardState {
     }
 
     pub fn is_draw(&self) -> bool {
-        (self.legal_moves.is_empty() && !self.position.is_in_check()) || self.halfmove_count >= 100 || self.get_occurences_of_current_position() >= 3
+        (self.legal_moves.is_empty() && !self.position.is_in_check())
+            || self.halfmove_count >= 100
+            || self.get_occurences_of_current_position() >= 3
     }
 
     // gamestates that are draws
@@ -291,7 +293,6 @@ impl BoardState {
     pub fn get_pos64(&self) -> &Pos64 {
         &self.position.pos64
     }
-
 }
 
 #[derive(Debug)]
@@ -346,7 +347,7 @@ impl Board {
         self.state_history.push(self.current_state.clone());
 
         let game_state = self.current_state.get_gamestate();
-        println!("FEN: {}", self.to_fen());
+        //println!("FEN: {}", self.to_fen());
 
         Ok(game_state)
     }

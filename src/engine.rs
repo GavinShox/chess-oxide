@@ -101,8 +101,7 @@ pub fn negamax_root<'a>(
         // println!("evaluating move: {:?}", mv);
         let child_bs = bs.next_state(mv).unwrap();
         let eval = -negamax(&child_bs, depth - 1, -beta, -alpha, !maxi_colour, 1, tt);
-        
-        if eval == 0 {println!("eval: {}", eval)};
+
         if eval > max_eval {
             max_eval = eval;
             best_move = &mv;
