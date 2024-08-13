@@ -24,6 +24,10 @@ impl AttackMap {
         Self(Vec::new())
     }
 
+    fn new_no_alloc() -> Self {
+        Self(Vec::with_capacity(0))
+    }
+
     fn clear(&mut self) {
         self.0.clear();
     }
@@ -331,7 +335,7 @@ impl Position {
             movegen_flags: self.movegen_flags,
             defend_map: self.defend_map,
             // create new attack map with empty vec, because it's not needed for testing legality.
-            attack_map: AttackMap::new(),
+            attack_map: AttackMap::new_no_alloc(),
             wking_idx: self.wking_idx,
             bking_idx: self.bking_idx,
         }
