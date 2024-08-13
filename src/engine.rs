@@ -1,9 +1,10 @@
 use std::cmp;
-use std::collections::HashMap;
 
 use crate::board::*;
 use crate::movegen::*;
 use crate::PositionHash;
+
+use ahash;
 
 // avoid int overflows when operating on these values i.e. negating, +/- checkmate depth etc.
 const MIN: i32 = i32::MIN + 1000;
@@ -19,12 +20,12 @@ enum BoundType {
 
 #[derive(Debug)]
 pub struct TranspositionTable {
-    table: HashMap<PositionHash, (BoundType, i32, i32)>,
+    table: ahash::AHashMap<PositionHash, (BoundType, i32, i32)>,
 }
 impl TranspositionTable {
     pub fn new() -> Self {
         TranspositionTable {
-            table: HashMap::new(),
+            table: ahash::AHashMap::default(),
         }
     }
 

@@ -679,6 +679,7 @@ dependencies = [
 name = "chess-oxide"
 version = "0.2.1"
 dependencies = [
+ "ahash",
  "log",
  "rand",
  "slint",

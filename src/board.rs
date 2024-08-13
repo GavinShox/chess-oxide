@@ -1,5 +1,7 @@
 use core::fmt;
-use std::{collections::HashMap, rc::Rc};
+use std::rc::Rc;
+
+use ahash;
 
 use crate::engine;
 use crate::errors::BoardStateError;
@@ -46,7 +48,7 @@ pub struct BoardState {
     position: Position,
     move_count: u32,
     halfmove_count: u32,
-    position_occurences: HashMap<PositionHash, u8>,
+    position_occurences: ahash::AHashMap<PositionHash, u8>,
 }
 
 impl BoardState {
@@ -56,7 +58,7 @@ impl BoardState {
         let side_to_move = position.side;
         // deref all legal moves, performance isn't as important here, so avoid lifetime specifiers to make things easier to look at
         let legal_moves = position.get_legal_moves().into_iter().copied().collect();
-        let mut position_occurences = HashMap::new();
+        let mut position_occurences = ahash::AHashMap::default();
         *position_occurences.entry(position_hash).or_insert(0) += 1;
         BoardState {
             position,
@@ -76,7 +78,7 @@ impl BoardState {
         let side_to_move = position.side;
         // deref all legal moves, performance isn't as important here, so avoid lifetime specifiers to make things easier to look at
         let legal_moves = position.get_legal_moves().into_iter().copied().collect();
-        let mut position_occurences = HashMap::new();
+        let mut position_occurences = ahash::AHashMap::default();
         *position_occurences.entry(position_hash).or_insert(0) += 1;
 
         // default values for move count and halfmove count if not provided see <https://www.talkchess.com/forum3/viewtopic.php?f=7&t=79627>
