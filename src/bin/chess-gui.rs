@@ -85,7 +85,8 @@ fn ui_convert_piece(piece: chess::Piece) -> PieceUI {
 fn main() -> Result<(), slint::PlatformError> {
     // board::Board::from_fen("8/8/8/5R2/8/P1P3PP/P2QPP2/k5K1 b - - 0 1"
     let board = Arc::new(Mutex::new(
-        Board::from_fen("k7/pp3p1p/8/5bp1/8/8/5K2/3q w - - 7 47").unwrap(),
+        //Board::from_fen("k7/pp3p1p/8/5bp1/8/8/5K2/3q w - - 7 47").unwrap(),
+        Board::new()
     ));
 
     let ui = Board_UI::new().unwrap();

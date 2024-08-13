@@ -506,6 +506,7 @@ impl Position {
                 }
             }
         }
+        // TODO this is very confusing, as defend map has to be updated before we can check legal moves, so outside this function it looks like circular logic
         // defend map has to be updated before we can check legal moves, but it is directly updsted above
         // prune illegal moves
         let mut legal_indexes = vec![true; self.attack_map.0.len()];
