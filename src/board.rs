@@ -1,6 +1,7 @@
 use core::fmt;
-use std::{collections::HashMap, rc::Rc};
+use std::rc::Rc;
 
+use ahash;
 use log;
 
 use crate::engine;
@@ -44,7 +45,7 @@ pub struct BoardState {
     position: Position,
     move_count: u32,
     halfmove_count: u32,
-    position_occurences: HashMap<PositionHash, u8>,
+    position_occurences: ahash::AHashMap<PositionHash, u8>,
 }
 
 impl BoardState {
@@ -56,7 +57,7 @@ impl BoardState {
         // deref all legal moves, performance isn't as important here, so avoid lifetime specifiers to make things easier to look at
         let legal_moves = position.get_legal_moves().into_iter().copied().collect();
         log::info!("Legal moves generated: {legal_moves:?}");
-        let mut position_occurences = HashMap::new();
+        let mut position_occurences = ahash::AHashMap::default();
         *position_occurences.entry(position_hash).or_insert(0) += 1;
         log::info!("New starting BoardState created");
         BoardState {
@@ -79,7 +80,7 @@ impl BoardState {
         let side_to_move = position.side;
         // deref all legal moves, performance isn't as important here, so avoid lifetime specifiers to make things easier to look at
         let legal_moves = position.get_legal_moves().into_iter().copied().collect();
-        let mut position_occurences = HashMap::new();
+        let mut position_occurences = ahash::AHashMap::default();
         *position_occurences.entry(position_hash).or_insert(0) += 1;
 
         // default values for move count and halfmove count if not provided see <https://www.talkchess.com/forum3/viewtopic.php?f=7&t=79627>
@@ -133,7 +134,13 @@ impl BoardState {
         fen_str
     }
 
-    pub fn last_move_as_notation(&self) -> String {
+    pub fn last_move_as_notation(&self) -> Result<String, BoardStateError> {
+        if self.last_move == NULL_MOVE {
+            return Err(BoardStateError::NullMove(
+                "last_move is NULL_MOVE, has a move been made yet?".to_string(),
+            ));
+        }
+
         let notation_from = util::index_to_notation(self.last_move.from);
         let notation_to = util::index_to_notation(self.last_move.to);
 
@@ -170,11 +177,11 @@ impl BoardState {
             MoveType::None => "".to_string(),
         };
         return if self.get_gamestate() == GameState::Checkmate {
-            format!("{}#", notation)
+            Ok(format!("{}#", notation))
         } else if self.get_gamestate() == GameState::Check {
-            format!("{}+", notation)
+            Ok(format!("{}+", notation))
         } else {
-            notation
+            Ok(notation)
         };
     }
 

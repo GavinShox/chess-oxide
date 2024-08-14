@@ -23,6 +23,12 @@ export struct Piece_UI {
     piece-type: PieceType_UI,
 }
 
+export struct Move_UI {
+    from-square: int,
+    to-square: int,
+    string: string,
+}
+
 component PieceImg inherits Image {
     pure function get-piece-img(piece: Piece_UI) -> image {
         if piece.piece-type == PieceType_UI.King {
@@ -82,6 +88,7 @@ export component Board_UI inherits Window {
     out property<int> selected-from-square: -1;
     out property <int> selected-to-square: -1;
     in-out property <bool> engine-made-move: true; // only works if player is white, change later
+    in-out property <Move-UI> last-move: { from-square: -1, to-square: -1, string: "" };
     
     in-out property <string> gamestate;
     in-out property <PieceColour-UI> player-colour;
@@ -105,7 +112,7 @@ export component Board_UI inherits Window {
             for sq in board-size: square := Square {
                 index: sq + (row * board-size);
                 width: 50px;
-                height: 50px;                
+                height: 50px;
                 
                 piece-img := PieceImg {
                     piece: root.position[parent.index];
@@ -140,15 +147,20 @@ export component Board_UI inherits Window {
                         
                         }
                     }
-                    moved => {
-                        if (self.pressed) {
-                            piece-img.x = self.mouse-x - self.pressed-x;
-                            piece-img.y = self.mouse-y - self.pressed-y;
-                        }
-                    }
+                    // moved => {
+                    //     if (self.pressed) {
+                    //         piece-img.x = self.mouse-x - self.pressed-x;
+                    //         piece-img.y = self.mouse-y - self.pressed-y;
+                    //     }
+                    // }
                 }
 
                 states [
+                    last-move when root.last-move.from-square == square.index || root.last-move.to-square == square.index: {
+                        square.border-color: salmon;
+                        square.border-width: 2px;
+
+                    }
                     clicked-from when root.selected-from-square == square.index && root.engine-made-move: {
                         square.background: square.get-square-background().darker(0.2);
                     }

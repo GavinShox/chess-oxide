@@ -24,6 +24,10 @@ impl AttackMap {
         Self(Vec::new())
     }
 
+    fn new_no_alloc() -> Self {
+        Self(Vec::with_capacity(0))
+    }
+
     fn clear(&mut self) {
         self.0.clear();
     }
@@ -331,7 +335,7 @@ impl Position {
             movegen_flags: self.movegen_flags,
             defend_map: self.defend_map,
             // create new attack map with empty vec, because it's not needed for testing legality.
-            attack_map: AttackMap::new(),
+            attack_map: AttackMap::new_no_alloc(),
             wking_idx: self.wking_idx,
             bking_idx: self.bking_idx,
         }
@@ -506,6 +510,7 @@ impl Position {
                 }
             }
         }
+        // TODO this is very confusing, as defend map has to be updated before we can check legal moves, so outside this function it looks like circular logic
         // defend map has to be updated before we can check legal moves, but it is directly updsted above
         // prune illegal moves
         let mut legal_indexes = vec![true; self.attack_map.0.len()];
