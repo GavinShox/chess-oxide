@@ -128,7 +128,13 @@ impl BoardState {
         fen_str
     }
 
-    pub fn last_move_as_notation(&self) -> String {
+    pub fn last_move_as_notation(&self) -> Result<String, BoardStateError> {
+        if self.last_move == NULL_MOVE {
+            return Err(BoardStateError::NullMove(
+                "last_move is NULL_MOVE, has a move been made yet?".to_string(),
+            ));
+        }
+
         let notation_from = util::index_to_notation(self.last_move.from);
         let notation_to = util::index_to_notation(self.last_move.to);
 
@@ -165,11 +171,11 @@ impl BoardState {
             MoveType::None => "".to_string(),
         };
         return if self.get_gamestate() == GameState::Checkmate {
-            format!("{}#", notation)
+            Ok(format!("{}#", notation))
         } else if self.get_gamestate() == GameState::Check {
-            format!("{}+", notation)
+            Ok(format!("{}+", notation))
         } else {
-            notation
+            Ok(notation)
         };
     }
 

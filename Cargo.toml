@@ -24,7 +24,7 @@ path = "src/bin/chess-perft.rs"
 rand = "0.8.5"
 static_init = "1.0.3"
 log = "0.4"
-slint = "1.7"
+slint = "1.7.2"
 ahash = "0.8.11"
 
 [build-dependencies]

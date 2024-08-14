@@ -12,6 +12,7 @@ slint::include_modules!();
 type PieceUI = slint_generatedBoard_UI::Piece_UI;
 type PieceColourUI = slint_generatedBoard_UI::PieceColour_UI;
 type PieceTypeUI = slint_generatedBoard_UI::PieceType_UI;
+//type MoveUI = slint_generatedBoard_UI::Move_UI;
 
 fn ui_convert_piece(piece: chess::Piece) -> PieceUI {
     match piece.pcolour {
@@ -86,7 +87,7 @@ fn main() -> Result<(), slint::PlatformError> {
     // board::Board::from_fen("8/8/8/5R2/8/P1P3PP/P2QPP2/k5K1 b - - 0 1"
     let board = Arc::new(Mutex::new(
         //Board::from_fen("k7/pp3p1p/8/5bp1/8/8/5K2/3q w - - 7 47").unwrap(),
-        Board::new()
+        Board::new(),
     ));
 
     let ui = Board_UI::new().unwrap();
@@ -121,6 +122,34 @@ fn main() -> Result<(), slint::PlatformError> {
             }
         }
         let pos = std::rc::Rc::new(slint::VecModel::from(ui_position));
+        // only set last move in GUI if it is not NULL_MOVE, then unwrap() is safe
+        if board_refresh_position
+            .lock()
+            .unwrap()
+            .current_state
+            .last_move
+            != NULL_MOVE
+        {
+            let last_move = board_refresh_position
+                .lock()
+                .unwrap()
+                .current_state
+                .last_move;
+            let last_move_notation = board_refresh_position
+                .lock()
+                .unwrap()
+                .current_state
+                .last_move_as_notation()
+                .unwrap();
+            ui.set_last_move(
+                Move_UI {
+                    from_square: last_move.from as i32,
+                    to_square: last_move.to as i32,
+                    string: last_move_notation.into(),
+                }
+                .into(),
+            );
+        }
         ui.set_position(pos.into());
     });
 
