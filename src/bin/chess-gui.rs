@@ -5,6 +5,8 @@
 // static GLOBAL: jemallocator::Jemalloc = jemallocator::Jemalloc;
 
 use chess::*;
+use env_logger::{Builder, Target};
+use std::env;
 use std::sync::{Arc, Mutex};
 
 slint::include_modules!();
@@ -84,20 +86,37 @@ fn ui_convert_piece(piece: chess::Piece) -> PieceUI {
 
 fn main() -> Result<(), slint::PlatformError> {
     // board::Board::from_fen("8/8/8/5R2/8/P1P3PP/P2QPP2/k5K1 b - - 0 1"
-    let board = Arc::new(Mutex::new(
-        Board::from_fen("k7/pp3p1p/8/5bp1/8/8/5K2/3q w - - 7 47").unwrap(),
-    ));
+
+    let mut builder = Builder::from_default_env();
+    builder.target(Target::Stdout);
+    builder.init();
+
+    let board = Arc::new(Mutex::new(Board::new()));
 
     let ui = Board_UI::new().unwrap();
     let ui_weak_new_game = ui.as_weak();
     let ui_weak_refresh_position = ui.as_weak();
     let ui_weak_make_move = ui.as_weak();
     let ui_weak_engine_make_move = ui.as_weak();
+    let ui_weak_get_gamestate = ui.as_weak();
 
     let board_new_game = board.clone();
     let board_refresh_position = board.clone();
     let board_make_move = board.clone();
     let board_engine_make_move = board.clone();
+    let board_engine_get_gamestate = board.clone();
+
+    ui.on_get_gamestate(move || {
+        let ui = ui_weak_get_gamestate.upgrade().unwrap();
+        let board = board_engine_get_gamestate.lock().unwrap();
+        let side_to_move = if board.current_state.side_to_move == chess::PieceColour::White {
+            "White"
+        } else {
+            "Black"
+        };
+        let gamestate = board.current_state.get_gamestate().to_string();
+        ui.set_gamestate(format!("{}'s turn: {}", side_to_move, gamestate).into());
+    });
 
     ui.on_new_game(move || {
         let ui = ui_weak_new_game.upgrade().unwrap();
@@ -120,6 +139,7 @@ fn main() -> Result<(), slint::PlatformError> {
             }
         }
         let pos = std::rc::Rc::new(slint::VecModel::from(ui_position));
+        ui.invoke_get_gamestate();
         ui.set_position(pos.into());
     });
 

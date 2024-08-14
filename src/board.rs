@@ -1,16 +1,14 @@
 use core::fmt;
 use std::{collections::HashMap, rc::Rc};
 
+use log;
+
 use crate::engine;
 use crate::errors::BoardStateError;
 use crate::errors::FenParseError;
 use crate::movegen::*;
 use crate::position::*;
 use crate::util;
-
-pub trait Player {
-    fn get_move(&self, _: &BoardState) -> Move;
-}
 
 #[derive(Debug, PartialEq, Eq)]
 pub enum GameState {
@@ -52,12 +50,15 @@ pub struct BoardState {
 impl BoardState {
     pub fn new_starting() -> Self {
         let position = Position::new_starting();
+        log::info!("New starting Position created");
         let position_hash: PositionHash = position.pos_hash();
         let side_to_move = position.side;
         // deref all legal moves, performance isn't as important here, so avoid lifetime specifiers to make things easier to look at
         let legal_moves = position.get_legal_moves().into_iter().copied().collect();
+        log::info!("Legal moves generated: {legal_moves:?}");
         let mut position_occurences = HashMap::new();
         *position_occurences.entry(position_hash).or_insert(0) += 1;
+        log::info!("New starting BoardState created");
         BoardState {
             position,
             move_count: 1, // movecount starts at 1
@@ -72,6 +73,8 @@ impl BoardState {
 
     pub fn from_fen(fen: &str) -> Result<Self, FenParseError> {
         let (position, fen_vec) = Position::from_fen_partial_impl(fen)?;
+        log::info!("New Position created from FEN");
+        log::debug!("FEN: {fen}, Position: {position:?}");
         let position_hash: PositionHash = position.pos_hash();
         let side_to_move = position.side;
         // deref all legal moves, performance isn't as important here, so avoid lifetime specifiers to make things easier to look at
@@ -87,6 +90,7 @@ impl BoardState {
             halfmove_count = match fen_vec[4].parse::<u32>() {
                 Ok(halfmove_count) => halfmove_count,
                 Err(_) => {
+                    log::error!("Error parsing halfmove count: {}", fen_vec[4]);
                     return Err(FenParseError(format!(
                         "Error parsing halfmove count: {}",
                         fen_vec[4]
@@ -98,14 +102,16 @@ impl BoardState {
                 move_count = match fen_vec[5].parse::<u32>() {
                     Ok(move_count) => move_count,
                     Err(_) => {
+                        log::error!("Error parsing move count: {}", fen_vec[5]);
                         return Err(FenParseError(format!(
-                            "Error parsing halfmove count: {}",
+                            "Error parsing move count: {}",
                             fen_vec[5]
                         )));
                     }
                 }
             }
         }
+        log::info!("New BoardState created from FEN");
         Ok(BoardState {
             side_to_move,
             last_move: NULL_MOVE,
@@ -122,6 +128,7 @@ impl BoardState {
         // final two fields of the FEN string, halfmove count and move count
         let mut fen_str = self.position.to_fen_partial_impl();
         fen_str.push_str(&format!("{} {}", self.halfmove_count, self.move_count));
+        log::info!("Converted BoardState to FEN: {}", fen_str);
 
         fen_str
     }
@@ -173,11 +180,13 @@ impl BoardState {
 
     pub fn next_state(&self, mv: &Move) -> Result<Self, BoardStateError> {
         if mv == &NULL_MOVE {
+            log::error!("&NULL_MOVE was passed as an argument to BoardState::next_state()");
             return Err(BoardStateError::NullMove(
                 "&NULL_MOVE was passed as an argument to BoardState::next_state()".to_string(),
             ));
         }
         if !self.legal_moves.contains(mv) {
+            log::error!("{:?} is not a legal move", mv);
             return Err(BoardStateError::IllegalMove(format!(
                 "{:?} is not a legal move",
                 mv
@@ -191,15 +200,21 @@ impl BoardState {
             || current_game_state == GameState::FiftyMove
             || current_game_state == GameState::Repetition
         {
+            log::error!(
+                "No legal moves in current game state: {:?}",
+                current_game_state
+            );
             return Err(BoardStateError::NoLegalMoves(current_game_state));
         }
 
         let position = self.position.new_position(mv);
+        log::debug!("New Position created from move: {:?}", mv);
         let position_hash = position.pos_hash();
         let side_to_move = position.side;
         let last_move = *mv;
         // deref all legal moves
         let legal_moves = position.get_legal_moves().into_iter().copied().collect();
+        log::debug!("Legal moves generated: {legal_moves:?}");
 
         let move_count = if side_to_move == PieceColour::White {
             self.move_count + 1
@@ -219,7 +234,7 @@ impl BoardState {
 
         let mut position_occurences = self.position_occurences.clone();
         *position_occurences.entry(position_hash).or_insert(0) += 1;
-
+        log::info!("New BoardState created from move: {:?}", mv);
         Ok(Self {
             side_to_move,
             last_move,
@@ -305,12 +320,15 @@ pub struct Board {
 impl Board {
     pub fn new() -> Self {
         let current_state = BoardState::new_starting();
+        log::info!("New starting BoardState created");
 
         let mut state_history: Vec<BoardState> = Vec::new();
+        log::info!("State history created");
         state_history.push(current_state.clone());
 
         let transposition_table = engine::TranspositionTable::new();
-
+        log::info!("Transposition table created");
+        log::info!("New Board created");
         Board {
             current_state,
             state_history,
@@ -323,7 +341,7 @@ impl Board {
         state_history.push(current_state.clone());
 
         let transposition_table = engine::TranspositionTable::new();
-
+        log::info!("New Board created from FEN: {}", fen);
         Ok(Board {
             current_state,
             state_history,
@@ -353,9 +371,10 @@ impl Board {
     }
 
     pub fn make_engine_move(&mut self, depth: i32) -> Result<GameState, BoardStateError> {
-        let engine_move =
+        let (eval, engine_move) =
             engine::choose_move(&self.current_state, depth, &mut self.transposition_table);
-        let mv = *engine_move.1;
+        let mv = *engine_move;
+        log::info!("Engine move chosen: {:?} @ eval: {}", engine_move, eval);
 
         self.make_move(&mv)
     }
