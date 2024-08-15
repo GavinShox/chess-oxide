@@ -6,6 +6,7 @@
 
 use chess::*;
 use env_logger::{Builder, Target};
+use slint::{ModelRc, SharedString, VecModel};
 use std::env;
 use std::sync::{Arc, Mutex};
 
@@ -140,7 +141,13 @@ fn main() -> Result<(), slint::PlatformError> {
             }
         }
         let pos = std::rc::Rc::new(slint::VecModel::from(ui_position));
+        
+        // generate move history as vector of move notations
+        let ui_move_history: Vec<SharedString> = board_refresh_position.lock().unwrap().state_history.iter().map(|x| x.last_move_as_notation().unwrap_or("History:".into()).into()).collect();
+        println!("{:?}", ui_move_history);
+        ui.set_move_history(std::rc::Rc::new(slint::VecModel::from(ui_move_history)).into());
 
+        // set gamestate
         ui.invoke_get_gamestate();
         
         // only set last move in GUI if it is not NULL_MOVE, then unwrap() is safe
