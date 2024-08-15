@@ -33,10 +33,13 @@ slint-build = "1.7"
 
 [profile.release]
 debug = true
-lto = true
+lto = "fat"
 codegen-units = 1
 opt-level = 3
 panic = "abort"
 
 [profile.test]
 opt-level = 3 # optimise for performance heavy perft tests
+
+[profile.dev]
+opt-level = 1
