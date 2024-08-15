@@ -1,7 +1,7 @@
 use std::time::Instant;
 
 use crate::position::Position;
-use crate::movegen::*;
+use crate::{engine, movegen::*, BoardState};
 
 fn get_all_legal_positions(
     pos: &Position,
@@ -10,7 +10,7 @@ fn get_all_legal_positions(
     promotions: &mut u64,
     castles: &mut u64,
     en_passant: &mut u64,
-    captures: &mut u64
+    captures: &mut u64,
 ) {
     let moves = pos.get_legal_moves();
     if depth == 0 || moves.is_empty() {
@@ -44,7 +44,7 @@ fn get_all_legal_positions(
                 promotions,
                 castles,
                 en_passant,
-                captures
+                captures,
             );
         }
     }
@@ -66,18 +66,36 @@ pub fn perft(pos: &Position, depth: i32) -> u64 {
         &mut promotions,
         &mut castles,
         &mut en_passant,
-        &mut captures
+        &mut captures,
     );
 
     let duration = start.elapsed();
 
-    println!("Perft at depth {} (took {:?} to complete):", depth, duration);
-    println!("Nodes: {}", nodes);
-    println!("Move types breakdown: ");
-    println!("Promotions: {}", promotions);
-    println!("Castles: {}", castles);
-    println!("En Passant: {}", castles);
-    println!("Captures: {}", captures);
+    println!(
+        "Perft at depth {} (took {:?} to complete):",
+        depth, duration
+    );
+    println!(" - Nodes: {}", nodes);
+    println!(" - Move types breakdown: ");
+    println!(" - Promotions: {}", promotions);
+    println!(" - Castles: {}", castles);
+    println!(" - En Passant: {}", castles);
+    println!(" - Captures: {}", captures);
+    println!();
 
     nodes
+}
+
+pub fn engine_perft(bs: &BoardState, depth: i32) {
+    let start = Instant::now();
+    let mut tt = engine::TranspositionTable::new();
+    let (eval, mv) = engine::choose_move(bs, depth, &mut tt);
+    let duration = start.elapsed();
+    println!(
+        "Engine perft at depth {} (took {:?} to complete):",
+        depth, duration
+    );
+    println!(" - Eval: {}", eval);
+    println!(" - Best move: {:?}", mv);
+    println!();
 }

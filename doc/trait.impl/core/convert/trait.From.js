@@ -1,0 +1,3 @@
+(function() {var implementors = {
+"chess_gui":[["impl <a class=\"trait\" href=\"https://doc.rust-lang.org/1.80.1/core/convert/trait.From.html\" title=\"trait core::convert::From\">From</a>&lt;<a class=\"struct\" href=\"chess_gui/slint_generatedBoard_UI/struct.Board_UI.html\" title=\"struct chess_gui::slint_generatedBoard_UI::Board_UI\">Board_UI</a>&gt; for VRc&lt;ItemTreeVTable, <a class=\"struct\" href=\"chess_gui/slint_generatedBoard_UI/struct.InnerBoard_UI.html\" title=\"struct chess_gui::slint_generatedBoard_UI::InnerBoard_UI\">InnerBoard_UI</a>&gt;"]]
+};if (window.register_implementors) {window.register_implementors(implementors);} else {window.pending_implementors = implementors;}})()

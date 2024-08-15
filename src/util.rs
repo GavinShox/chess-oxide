@@ -1,3 +1,6 @@
+use crate::movegen::{PieceColour, PieceType, Square};
+use crate::BoardState;
+
 // TODO Add error handling for invalid str and usizes
 pub fn notation_to_index(n: &str) -> usize {
     let file: char = n.chars().next().unwrap();
@@ -33,4 +36,83 @@ pub fn index_to_notation(i: usize) -> String {
     let rank_num = 8 - i / 8;
     let rank = char::from_digit(rank_num.try_into().unwrap(), 10).unwrap();
     format!("{}{}", file, rank)
+}
+
+#[allow(dead_code)]
+pub fn print_board(bs: &BoardState) {
+    let pawn = " ♙ ";
+    let knight = " ♘ ";
+    let bishop = " ♗ ";
+    let rook = " ♖ ";
+    let queen = " ♕ ";
+    let king = " ♔ ";
+
+    let bking = " ♚ ";
+    let bqueen = " ♛ ";
+    let brook = " ♜ ";
+    let bbishop = " ♝ ";
+    let bknight = " ♞ ";
+    let bpawn = " ♟︎ ";
+
+    for (num, j) in bs.get_pos64().iter().enumerate() {
+        match j {
+            Square::Piece(p) => match p.pcolour {
+                PieceColour::White => match p.ptype {
+                    PieceType::Pawn => {
+                        print!("{}", pawn);
+                    }
+                    PieceType::Knight => {
+                        print!("{}", knight);
+                    }
+                    PieceType::Bishop => {
+                        print!("{}", bishop);
+                    }
+                    PieceType::Rook => {
+                        print!("{}", rook);
+                    }
+                    PieceType::Queen => {
+                        print!("{}", queen);
+                    }
+                    PieceType::King => {
+                        print!("{}", king);
+                    }
+                    PieceType::None => {
+                        print!(" - ");
+                    }
+                },
+                PieceColour::Black => match p.ptype {
+                    PieceType::Pawn => {
+                        print!("{}", bpawn);
+                    }
+                    PieceType::Knight => {
+                        print!("{}", bknight);
+                    }
+                    PieceType::Bishop => {
+                        print!("{}", bbishop);
+                    }
+                    PieceType::Rook => {
+                        print!("{}", brook);
+                    }
+                    PieceType::Queen => {
+                        print!("{}", bqueen);
+                    }
+                    PieceType::King => {
+                        print!("{}", bking);
+                    }
+                    PieceType::None => {
+                        print!(" - ");
+                    }
+                },
+                PieceColour::None => {}
+            },
+            Square::Empty => {
+                print!(" - ");
+            }
+        }
+
+        // new rank
+        if (num + 1) % 8 == 0 {
+            println!();
+        }
+    }
 }

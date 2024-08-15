@@ -1,11 +1,10 @@
-use core::panic;
 use rand::Rng;
 
 use static_init::dynamic;
 
+use crate::errors::FenParseError;
 use crate::movegen::*;
 use crate::util;
-use crate::errors::FenParseError;
 
 #[dynamic]
 static ZOBRIST_HASH_TABLE: ZobristHashTable = ZobristHashTable::new();
@@ -23,6 +22,10 @@ pub struct AttackMap(Vec<Move>);
 impl AttackMap {
     fn new() -> Self {
         Self(Vec::new())
+    }
+
+    fn new_no_alloc() -> Self {
+        Self(Vec::with_capacity(0))
     }
 
     fn clear(&mut self) {
@@ -107,29 +110,31 @@ impl ZobristHashTable {
 
     fn get_piece_idx(piece: &Piece) -> usize {
         match piece.pcolour {
-            PieceColour::White => {
-                match piece.ptype {
-                    PieceType::Pawn => 0,
-                    PieceType::Knight => 1,
-                    PieceType::Bishop => 2,
-                    PieceType::Rook => 3,
-                    PieceType::Queen => 4,
-                    PieceType::King => 5,
-                    PieceType::None => { panic!("PieceType::None in get_piece_idx()") }
+            PieceColour::White => match piece.ptype {
+                PieceType::Pawn => 0,
+                PieceType::Knight => 1,
+                PieceType::Bishop => 2,
+                PieceType::Rook => 3,
+                PieceType::Queen => 4,
+                PieceType::King => 5,
+                PieceType::None => {
+                    unreachable!("PieceType::None in get_piece_idx()")
                 }
-            }
-            PieceColour::Black => {
-                match piece.ptype {
-                    PieceType::Pawn => 6,
-                    PieceType::Knight => 7,
-                    PieceType::Bishop => 8,
-                    PieceType::Rook => 9,
-                    PieceType::Queen => 10,
-                    PieceType::King => 11,
-                    PieceType::None => { panic!("PieceType::None in get_piece_idx()") }
+            },
+            PieceColour::Black => match piece.ptype {
+                PieceType::Pawn => 6,
+                PieceType::Knight => 7,
+                PieceType::Bishop => 8,
+                PieceType::Rook => 9,
+                PieceType::Queen => 10,
+                PieceType::King => 11,
+                PieceType::None => {
+                    unreachable!("PieceType::None in get_piece_idx()")
                 }
+            },
+            PieceColour::None => {
+                unreachable!("PieceColour::None in get_piece_idx()")
             }
-            PieceColour::None => { panic!("PieceColour::None in get_piece_idx()") }
         }
     }
 }
@@ -160,9 +165,8 @@ impl Position {
             hash ^= ZOBRIST_HASH_TABLE.black_castle_short;
         }
         if self.movegen_flags.en_passant.is_some() {
-            hash ^=
-                ZOBRIST_HASH_TABLE.en_passant_table
-                    [(self.movegen_flags.en_passant.unwrap() % 8) as usize];
+            hash ^= ZOBRIST_HASH_TABLE.en_passant_table
+                [(self.movegen_flags.en_passant.unwrap() % 8) as usize];
         }
         if self.side == PieceColour::Black {
             hash ^= ZOBRIST_HASH_TABLE.black_to_move;
@@ -183,31 +187,85 @@ impl Position {
             en_passant: None,
         };
 
-        pos[0] = Square::Piece(Piece { pcolour: PieceColour::Black, ptype: PieceType::Rook });
-        pos[1] = Square::Piece(Piece { pcolour: PieceColour::Black, ptype: PieceType::Knight });
-        pos[2] = Square::Piece(Piece { pcolour: PieceColour::Black, ptype: PieceType::Bishop });
-        pos[3] = Square::Piece(Piece { pcolour: PieceColour::Black, ptype: PieceType::Queen });
-        pos[4] = Square::Piece(Piece { pcolour: PieceColour::Black, ptype: PieceType::King });
-        pos[5] = Square::Piece(Piece { pcolour: PieceColour::Black, ptype: PieceType::Bishop });
-        pos[6] = Square::Piece(Piece { pcolour: PieceColour::Black, ptype: PieceType::Knight });
-        pos[7] = Square::Piece(Piece { pcolour: PieceColour::Black, ptype: PieceType::Rook });
+        pos[0] = Square::Piece(Piece {
+            pcolour: PieceColour::Black,
+            ptype: PieceType::Rook,
+        });
+        pos[1] = Square::Piece(Piece {
+            pcolour: PieceColour::Black,
+            ptype: PieceType::Knight,
+        });
+        pos[2] = Square::Piece(Piece {
+            pcolour: PieceColour::Black,
+            ptype: PieceType::Bishop,
+        });
+        pos[3] = Square::Piece(Piece {
+            pcolour: PieceColour::Black,
+            ptype: PieceType::Queen,
+        });
+        pos[4] = Square::Piece(Piece {
+            pcolour: PieceColour::Black,
+            ptype: PieceType::King,
+        });
+        pos[5] = Square::Piece(Piece {
+            pcolour: PieceColour::Black,
+            ptype: PieceType::Bishop,
+        });
+        pos[6] = Square::Piece(Piece {
+            pcolour: PieceColour::Black,
+            ptype: PieceType::Knight,
+        });
+        pos[7] = Square::Piece(Piece {
+            pcolour: PieceColour::Black,
+            ptype: PieceType::Rook,
+        });
         for i in 8..16 {
-            pos[i] = Square::Piece(Piece { pcolour: PieceColour::Black, ptype: PieceType::Pawn });
+            pos[i] = Square::Piece(Piece {
+                pcolour: PieceColour::Black,
+                ptype: PieceType::Pawn,
+            });
         }
         for i in 16..48 {
             pos[i] = Square::Empty;
         }
         for i in 48..56 {
-            pos[i] = Square::Piece(Piece { pcolour: PieceColour::White, ptype: PieceType::Pawn });
+            pos[i] = Square::Piece(Piece {
+                pcolour: PieceColour::White,
+                ptype: PieceType::Pawn,
+            });
         }
-        pos[56] = Square::Piece(Piece { pcolour: PieceColour::White, ptype: PieceType::Rook });
-        pos[57] = Square::Piece(Piece { pcolour: PieceColour::White, ptype: PieceType::Knight });
-        pos[58] = Square::Piece(Piece { pcolour: PieceColour::White, ptype: PieceType::Bishop });
-        pos[59] = Square::Piece(Piece { pcolour: PieceColour::White, ptype: PieceType::Queen });
-        pos[60] = Square::Piece(Piece { pcolour: PieceColour::White, ptype: PieceType::King });
-        pos[61] = Square::Piece(Piece { pcolour: PieceColour::White, ptype: PieceType::Bishop });
-        pos[62] = Square::Piece(Piece { pcolour: PieceColour::White, ptype: PieceType::Knight });
-        pos[63] = Square::Piece(Piece { pcolour: PieceColour::White, ptype: PieceType::Rook });
+        pos[56] = Square::Piece(Piece {
+            pcolour: PieceColour::White,
+            ptype: PieceType::Rook,
+        });
+        pos[57] = Square::Piece(Piece {
+            pcolour: PieceColour::White,
+            ptype: PieceType::Knight,
+        });
+        pos[58] = Square::Piece(Piece {
+            pcolour: PieceColour::White,
+            ptype: PieceType::Bishop,
+        });
+        pos[59] = Square::Piece(Piece {
+            pcolour: PieceColour::White,
+            ptype: PieceType::Queen,
+        });
+        pos[60] = Square::Piece(Piece {
+            pcolour: PieceColour::White,
+            ptype: PieceType::King,
+        });
+        pos[61] = Square::Piece(Piece {
+            pcolour: PieceColour::White,
+            ptype: PieceType::Bishop,
+        });
+        pos[62] = Square::Piece(Piece {
+            pcolour: PieceColour::White,
+            ptype: PieceType::Knight,
+        });
+        pos[63] = Square::Piece(Piece {
+            pcolour: PieceColour::White,
+            ptype: PieceType::Rook,
+        });
 
         let side = PieceColour::White;
 
@@ -240,14 +298,14 @@ impl Position {
                 new_pos.pos64[castle_mv.rook_to] = new_pos.pos64[castle_mv.rook_from];
                 new_pos.pos64[castle_mv.rook_from] = Square::Empty;
             }
-            MoveType::Promotion(ptype) => {
-                match &mut new_pos.pos64[mv.from] {
-                    Square::Piece(p) => {
-                        p.ptype = ptype;
-                    }
-                    Square::Empty => {/* should never get here */}
+            MoveType::Promotion(ptype) => match &mut new_pos.pos64[mv.from] {
+                Square::Piece(p) => {
+                    p.ptype = ptype;
                 }
-            }
+                Square::Empty => {
+                    unreachable!();
+                }
+            },
             _ => {}
         }
 
@@ -277,7 +335,7 @@ impl Position {
             movegen_flags: self.movegen_flags,
             defend_map: self.defend_map,
             // create new attack map with empty vec, because it's not needed for testing legality.
-            attack_map: AttackMap::new(),
+            attack_map: AttackMap::new_no_alloc(),
             wking_idx: self.wking_idx,
             bking_idx: self.bking_idx,
         }
@@ -293,11 +351,9 @@ impl Position {
             }
             if let MoveType::Castle(castle_mv) = mv.move_type {
                 // if any square the king moves from, through or to are defended, move isnt legal
-                return !(
-                    self.is_defended(castle_mv.king_squares.0) ||
-                    self.is_defended(castle_mv.king_squares.1) ||
-                    self.is_defended(castle_mv.king_squares.2)
-                );
+                return !(self.is_defended(castle_mv.king_squares.0)
+                    || self.is_defended(castle_mv.king_squares.1)
+                    || self.is_defended(castle_mv.king_squares.2));
             }
         }
 
@@ -330,7 +386,11 @@ impl Position {
         movegen_in_check(&self.pos64, self.get_king_idx())
     }
     fn get_king_idx(&self) -> usize {
-        if self.side == PieceColour::White { self.wking_idx } else { self.bking_idx }
+        if self.side == PieceColour::White {
+            self.wking_idx
+        } else {
+            self.bking_idx
+        }
     }
 
     pub fn is_in_check(&self) -> bool {
@@ -432,10 +492,17 @@ impl Position {
                             p,
                             i,
                             true,
-                            &mut self.defend_map
+                            &mut self.defend_map,
                         );
                     } else {
-                        movegen(&self.pos64, &self.movegen_flags, p, i, false, &mut attack_map);
+                        movegen(
+                            &self.pos64,
+                            &self.movegen_flags,
+                            p,
+                            i,
+                            false,
+                            &mut attack_map,
+                        );
                     }
                 }
                 Square::Empty => {
@@ -443,6 +510,7 @@ impl Position {
                 }
             }
         }
+        // TODO this is very confusing, as defend map has to be updated before we can check legal moves, so outside this function it looks like circular logic
         // defend map has to be updated before we can check legal moves, but it is directly updsted above
         // prune illegal moves
         let mut legal_indexes = vec![true; self.attack_map.0.len()];
@@ -457,13 +525,16 @@ impl Position {
     // partial implementation of the FEN format, last 2 fields are not used here
     // OK => returns completed Position struct and the parsed FEN fields
     // Err => returns the error message
-    pub fn from_fen_partial_impl(fen: &str) -> Result<(Self, Vec<&str>), FenParseError>{
+    pub fn from_fen_partial_impl(fen: &str) -> Result<(Self, Vec<&str>), FenParseError> {
         let mut pos: Pos64 = [Square::Empty; 64];
         let fen_vec: Vec<&str> = fen.split(' ').collect();
 
-        // check if the FEN string has the correct number of fields
-        if fen_vec.len() != 6 {
-            return Err(FenParseError(format!("Invalid number of fields in FEN string: {}. Expected 6", fen_vec.len())));
+        // check if the FEN string has the correct number of fields, accept the last two as optional with default values given in BoardState
+        if fen_vec.len() < 4 || fen_vec.len() > 6 {
+            return Err(FenParseError(format!(
+                "Invalid number of fields in FEN string: {}. Expected at least 4, max 6",
+                fen_vec.len()
+            )));
         }
 
         // first field of FEN defines the piece positions
@@ -471,7 +542,7 @@ impl Position {
         for rank in fen_vec[0].split('/') {
             let mut i = 0;
             for c in rank.chars() {
-                let mut square = Square::Empty;
+                let square: Square;
                 match c {
                     'p' => {
                         square = Square::Piece(Piece {
@@ -553,7 +624,10 @@ impl Position {
                         continue; // skip the below square assignment for pieces
                     }
                     other => {
-                        return Err(FenParseError(format!("Invalid char in first field: {}", other)));
+                        return Err(FenParseError(format!(
+                            "Invalid char in first field: {}",
+                            other
+                        )));
                     }
                 }
                 pos[i + rank_start_idx] = square;
@@ -565,12 +639,15 @@ impl Position {
         // second filed of FEN defines which side it is to move, either 'w' or 'b'
         let mut side = PieceColour::White;
         match fen_vec[1] {
-            "w" => {/* already set as white */}
+            "w" => { /* already set as white */ }
             "b" => {
                 side = PieceColour::Black;
             }
             other => {
-                return Err(FenParseError(format!("Invalid second field: {}. Expected 'w' or 'b'", other)));
+                return Err(FenParseError(format!(
+                    "Invalid second field: {}. Expected 'w' or 'b'",
+                    other
+                )));
             }
         }
 
@@ -599,7 +676,12 @@ impl Position {
                     movegen_flags.white_castle_short = true;
                 }
                 '-' => {}
-                other => return Err(FenParseError(format!("Invalid char in third field: {}", other))),
+                other => {
+                    return Err(FenParseError(format!(
+                        "Invalid char in third field: {}",
+                        other
+                    )));
+                }
             }
         }
 
@@ -609,7 +691,10 @@ impl Position {
 
             // error if index is out of bounds. FEN defines the index behind the pawn that moved, so valid indexes are only 16->47 (excluded top and bottom two ranks)
             if ep_mv_idx < 16 || ep_mv_idx > 47 {
-                return Err(FenParseError(format!("Invalid en passant square: {}. Index is out of bounds", fen_vec[3])));
+                return Err(FenParseError(format!(
+                    "Invalid en passant square: {}. Index is out of bounds",
+                    fen_vec[3]
+                )));
             }
 
             // in our struct however, we store the idx of the pawn to be captured
@@ -652,87 +737,111 @@ impl Position {
         Ok((new, fen_vec))
     }
 
-    pub fn print_board(&self) {
-        let pawn = " ♙ ";
-        let knight = " ♘ ";
-        let bishop = " ♗ ";
-        let rook = " ♖ ";
-        let queen = " ♕ ";
-        let king = " ♔ ";
+    pub fn to_fen_partial_impl(&self) -> String {
+        let mut fen_str = String::new();
 
-        let bking = " ♚ ";
-        let bqueen = " ♛ ";
-        let brook = " ♜ ";
-        let bbishop = " ♝ ";
-        let bknight = " ♞ ";
-        let bpawn = " ♟︎ ";
+        let mut empty_count: i32 = 0;
 
-        for (num, j) in self.pos64.iter().enumerate() {
-            match j {
+        for (idx, sq) in self.pos64.iter().enumerate() {
+            match sq {
                 Square::Piece(p) => {
-                    match p.pcolour {
-                        PieceColour::White => {
-                            match p.ptype {
-                                PieceType::Pawn => {
-                                    print!("{}", pawn);
-                                }
-                                PieceType::Knight => {
-                                    print!("{}", knight);
-                                }
-                                PieceType::Bishop => {
-                                    print!("{}", bishop);
-                                }
-                                PieceType::Rook => {
-                                    print!("{}", rook);
-                                }
-                                PieceType::Queen => {
-                                    print!("{}", queen);
-                                }
-                                PieceType::King => {
-                                    print!("{}", king);
-                                }
-                                PieceType::None => {
-                                    print!(" - ");
-                                }
-                            }
-                        }
-                        PieceColour::Black => {
-                            match p.ptype {
-                                PieceType::Pawn => {
-                                    print!("{}", bpawn);
-                                }
-                                PieceType::Knight => {
-                                    print!("{}", bknight);
-                                }
-                                PieceType::Bishop => {
-                                    print!("{}", bbishop);
-                                }
-                                PieceType::Rook => {
-                                    print!("{}", brook);
-                                }
-                                PieceType::Queen => {
-                                    print!("{}", bqueen);
-                                }
-                                PieceType::King => {
-                                    print!("{}", bking);
-                                }
-                                PieceType::None => {
-                                    print!(" - ");
-                                }
-                            }
-                        }
-                        PieceColour::None => {}
+                    if empty_count > 0 {
+                        fen_str.push_str(empty_count.to_string().as_str());
+                        empty_count = 0;
+                    }
+
+                    match p.ptype {
+                        PieceType::Pawn => match p.pcolour {
+                            PieceColour::White => fen_str.push('P'),
+                            PieceColour::Black => fen_str.push('p'),
+                            _ => unreachable!(),
+                        },
+                        PieceType::Knight => match p.pcolour {
+                            PieceColour::White => fen_str.push('N'),
+                            PieceColour::Black => fen_str.push('n'),
+                            _ => unreachable!(),
+                        },
+                        PieceType::Bishop => match p.pcolour {
+                            PieceColour::White => fen_str.push('B'),
+                            PieceColour::Black => fen_str.push('b'),
+                            _ => unreachable!(),
+                        },
+                        PieceType::Rook => match p.pcolour {
+                            PieceColour::White => fen_str.push('R'),
+                            PieceColour::Black => fen_str.push('r'),
+                            _ => unreachable!(),
+                        },
+                        PieceType::Queen => match p.pcolour {
+                            PieceColour::White => fen_str.push('Q'),
+                            PieceColour::Black => fen_str.push('q'),
+                            _ => unreachable!(),
+                        },
+                        PieceType::King => match p.pcolour {
+                            PieceColour::White => fen_str.push('K'),
+                            PieceColour::Black => fen_str.push('k'),
+                            _ => unreachable!(),
+                        },
+                        PieceType::None => unreachable!(),
                     }
                 }
                 Square::Empty => {
-                    print!(" - ");
+                    empty_count += 1;
                 }
             }
 
-            // new rank
-            if (num + 1) % 8 == 0 {
-                println!();
+            if (idx + 1) % 8 == 0 && idx != 63 {
+                if empty_count > 0 {
+                    fen_str.push_str(empty_count.to_string().as_str());
+                    empty_count = 0;
+                }
+                fen_str.push('/');
             }
         }
+        fen_str.push(' ');
+
+        match self.side {
+            PieceColour::White => fen_str.push('w'),
+            PieceColour::Black => fen_str.push('b'),
+            _ => unreachable!(),
+        }
+        fen_str.push(' ');
+
+        if self.movegen_flags.white_castle_short {
+            fen_str.push('K');
+        }
+        if self.movegen_flags.white_castle_long {
+            fen_str.push('Q');
+        }
+        if self.movegen_flags.black_castle_short {
+            fen_str.push('k');
+        }
+        if self.movegen_flags.black_castle_long {
+            fen_str.push('q');
+        }
+        if !(self.movegen_flags.white_castle_short
+            || self.movegen_flags.white_castle_long
+            || self.movegen_flags.black_castle_short
+            || self.movegen_flags.black_castle_long)
+        {
+            fen_str.push('-');
+        }
+        fen_str.push(' ');
+
+        match self.movegen_flags.en_passant {
+            Some(idx) => {
+                if self.side == PieceColour::White {
+                    fen_str.push_str(util::index_to_notation(idx - ABOVE_BELOW).as_str());
+                } else {
+                    fen_str.push_str(util::index_to_notation(idx + ABOVE_BELOW).as_str());
+                }
+            }
+            None => {
+                fen_str.push('-');
+            }
+        }
+        fen_str.push(' ');
+
+        // last two fields implemented in BoardState
+        fen_str
     }
 }

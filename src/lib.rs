@@ -1,16 +1,11 @@
 pub mod board;
 mod engine;
-mod movegen;
-mod position;
-mod mailbox;
-mod util;
 mod errors;
+mod mailbox;
+mod movegen;
 pub mod perft;
-//pub mod test;
+mod position;
+pub mod test;
+mod util;
 
-pub use {
-    board::*,
-    position::*,
-    movegen::*,
-    perft::*,
-};
+pub use {board::*, movegen::*, perft::*, position::*};

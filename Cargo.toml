@@ -1,32 +1,43 @@
 [package]
-name = "chess"
-version = "0.1.0"
+name = "chess-oxide"
+version = "0.2.1"
 edition = "2021"
+build = "build.rs"
+description = "A chess engine library written in Rust, with a GUI bin to play against it."
+license = "MIT"
 
 [lib]
 name = "chess"
 path = "src/lib.rs"
 
-# [[bin]]
-# name = "chess"
-# path = "src/main.rs"
+[[bin]]
+name = "chess-gui"
+path = "src/bin/chess-gui.rs"
 
-# [[bin]]
-# name = "chess-gui"
-# path = "src/bin/gui.rs"
+[[bin]]
+name = "chess-perft"
+path = "src/bin/chess-perft.rs"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
 rand = "0.8.5"
 static_init = "1.0.3"
+log = "0.4"
+env_logger = "0.11"
+iced = "0.12"
+ahash = "0.8.11"
+
 
 [profile.release]
 debug = true
-lto = true
+lto = "fat"
 codegen-units = 1
 opt-level = 3
 panic = "abort"
 
 [profile.test]
 opt-level = 3 # optimise for performance heavy perft tests
+
+[profile.dev]
+opt-level = 1

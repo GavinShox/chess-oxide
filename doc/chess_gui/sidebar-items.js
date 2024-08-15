@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"enum":["PieceColour_UI","PieceType_UI"],"fn":["main","ui_convert_piece"],"mod":["slint_generatedBoard_UI"],"struct":["Board_UI","Piece_UI"],"type":["PieceColourUI","PieceTypeUI","PieceUI"]};

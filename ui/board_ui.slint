@@ -1,0 +1,180 @@
+import { Button, VerticalBox, GridBox } from "std-widgets.slint";
+
+
+
+export enum PieceType_UI {
+    None, // default value
+    King,
+    Queen,
+    Rook,
+    Bishop,
+    Knight,
+    Pawn
+}
+
+export enum PieceColour_UI {
+    None, // default value
+    White,
+    Black
+}
+
+export struct Piece_UI {
+    piece-colour: PieceColour_UI,
+    piece-type: PieceType_UI,
+}
+
+export struct Move_UI {
+    from-square: int,
+    to-square: int,
+    string: string,
+}
+
+component PieceImg inherits Image {
+    pure function get-piece-img(piece: Piece_UI) -> image {
+        if piece.piece-type == PieceType_UI.King {
+            return piece.piece-colour == PieceColour_UI.White ? @image-url("resources/klt45.svg") : @image-url("resources/kdt45.svg");
+        }
+        if piece.piece-type == PieceType_UI.Queen {
+            return piece.piece-colour == PieceColour_UI.White ? @image-url("resources/qlt45.svg") : @image-url("resources/qdt45.svg");
+
+        }
+        if piece.piece-type == PieceType_UI.Rook {
+            return piece.piece-colour == PieceColour_UI.White ? @image-url("resources/rlt45.svg") : @image-url("resources/rdt45.svg");
+
+        }
+        if piece.piece-type == PieceType_UI.Bishop {
+            return piece.piece-colour == PieceColour_UI.White ? @image-url("resources/blt45.svg") : @image-url("resources/bdt45.svg");
+
+        }
+        if piece.piece-type == PieceType_UI.Knight {
+            return piece.piece-colour == PieceColour_UI.White ? @image-url("resources/nlt45.svg") : @image-url("resources/ndt45.svg");
+
+        }
+        if piece.piece-type == PieceType_UI.Pawn {
+            return piece.piece-colour == PieceColour_UI.White ? @image-url("resources/plt45.svg") : @image-url("resources/pdt45.svg");
+
+        }
+        
+        return @image-url("");
+    }
+
+    in property <Piece_UI> piece;
+    source: get-piece-img(piece);
+}
+
+component Square inherits Rectangle {
+    in property<int> index;
+
+    property<color> dark-square: burlywood;
+    property <color> light-square: white;
+
+    public pure function get-square-background() -> color {
+        if (Math.mod(Math.floor(index / 8), 2) == 0) {
+            return Math.mod(index, 2) == 0 ? light-square : dark-square;
+        }
+        else {
+            return Math.mod(index, 2) == 0 ? dark-square : light-square;
+        }
+    }
+
+    background: get-square-background();
+
+    animate background { duration: 50ms; }
+}
+
+export component Board_UI inherits Window {
+    out property<int> board-size: 8;
+    in-out property <[Piece_UI]> position;
+    out property<int> selected-from-square: -1;
+    out property <int> selected-to-square: -1;
+    in-out property <bool> engine-made-move: true; // only works if player is white, change later
+    in-out property <Move-UI> last-move: { from-square: -1, to-square: -1, string: "" };
+    
+    in-out property <string> gamestate;
+    in-out property <PieceColour-UI> player-colour;
+
+    callback new-game();
+    callback make-move() -> bool;
+    callback engine-make-move();
+    callback refresh-position();
+    callback get-gamestate();
+    
+    VerticalLayout {
+
+        game-info := Text {
+            text: gamestate;
+            horizontal-alignment: center;
+            font-size: 20px;
+        }
+        
+        for row in board-size: HorizontalLayout {
+            
+            for sq in board-size: square := Square {
+                index: sq + (row * board-size);
+                width: 50px;
+                height: 50px;
+                
+                piece-img := PieceImg {
+                    piece: root.position[parent.index];
+                    width: parent.width;
+                    height: parent.height;
+                }
+
+                ta := TouchArea {
+                    height: 100%;
+                    width: 100%;
+                    clicked => {
+                        if root.selected-from-square == -1 {
+                            root.selected-from-square = square.index;
+                        }
+                        else if root.selected-from-square >= 0 && root.selected-to-square == -1 && root.engine-made-move {
+                            root.selected-to-square = square.index;
+                            if root.make-move() == true { // side effect makes move but only returns true if move is valid
+                                root.refresh-position();
+
+                                root.engine-made-move = false;
+                                root.engine-make-move();
+                            }
+                            
+                            // reset variables even if move was invalid
+                            root.selected-from-square = -1;
+                            root.selected-to-square = -1;
+                        }
+                        // shouldnt reach this else
+                        else {
+                            root.selected-from-square = -1;
+                            root.selected-to-square = -1;
+                        
+                        }
+                    }
+                    // moved => {
+                    //     if (self.pressed) {
+                    //         piece-img.x = self.mouse-x - self.pressed-x;
+                    //         piece-img.y = self.mouse-y - self.pressed-y;
+                    //     }
+                    // }
+                }
+
+                states [
+                    last-move when root.last-move.from-square == square.index || root.last-move.to-square == square.index: {
+                        square.border-color: salmon;
+                        square.border-width: 2px;
+
+                    }
+                    clicked-from when root.selected-from-square == square.index && root.engine-made-move: {
+                        square.background: square.get-square-background().darker(0.2);
+                    }
+                    hovered when ta.has-hover && root.engine-made-move: {
+                        square.background: square.get-square-background().darker(0.1);
+                    }
+                    disabled when !root.engine-made-move: {
+                        ta.enabled: false;
+                    }
+                ]
+
+            }
+
+        }
+
+    }
+}
