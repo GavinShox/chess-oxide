@@ -85,7 +85,7 @@ component Square inherits Rectangle {
 export component Board_UI inherits Window {
     title: "Chess";
     icon: @image-url("resources/kdt45.svg");
-    background: rgb(218, 235, 235);
+    //background: rgb(218, 235, 235);
 
     out property<int> board-size: 8;
     in-out property <[Piece_UI]> position;
@@ -117,7 +117,7 @@ export component Board_UI inherits Window {
             padding-right: 10px;
             alignment: center;
             Rectangle {
-                background: rgb(218, 235, 235);
+                //background: rgb(218, 235, 235);
                 game-info := Text {
                     text: gamestate;
                     horizontal-alignment: center;

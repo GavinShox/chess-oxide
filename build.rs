@@ -1,3 +1,7 @@
 fn main() {
-    slint_build::compile("ui/board_ui.slint").unwrap();
+    let config =
+    slint_build::CompilerConfiguration::new()
+    .with_style("cosmic".into());
+slint_build::compile_with_config("ui/board_ui.slint", config).unwrap();
+
 }
