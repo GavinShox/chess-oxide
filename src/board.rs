@@ -134,6 +134,10 @@ impl BoardState {
         fen_str
     }
 
+    pub fn get_move_count(&self) -> u32 {
+        self.move_count
+    }
+
     pub fn last_move_as_notation(&self) -> Result<String, BoardStateError> {
         if self.last_move == NULL_MOVE {
             return Err(BoardStateError::NullMove(
