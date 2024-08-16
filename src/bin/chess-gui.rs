@@ -143,7 +143,8 @@ fn main() -> Result<(), slint::PlatformError> {
         let pos = std::rc::Rc::new(slint::VecModel::from(ui_position));
         
         // generate move history as vector of move notations
-        let ui_move_history: Vec<SharedString> = board_refresh_position.lock().unwrap().state_history.iter().map(|x| x.last_move_as_notation().unwrap_or("History:".into()).into()).collect();
+        let mut ui_move_history: Vec<SharedString> = board_refresh_position.lock().unwrap().state_history.iter().map(|x| x.last_move_as_notation().unwrap_or("".into()).into()).collect();
+        ui_move_history.remove(0); // remove first null move empty string
         println!("{:?}", ui_move_history);
         ui.set_move_history(std::rc::Rc::new(slint::VecModel::from(ui_move_history)).into());
 
