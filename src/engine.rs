@@ -4,8 +4,6 @@ use crate::board::*;
 use crate::movegen::*;
 use crate::PositionHash;
 
-use ahash;
-
 // avoid int overflows when operating on these values i.e. negating, +/- checkmate depth etc.
 const MIN: i32 = i32::MIN + 1000;
 const MAX: i32 = i32::MAX - 1000;
@@ -60,7 +58,7 @@ pub fn quiescence(
     }
     alpha = cmp::max(alpha, max_eval);
     let moves = &bs.legal_moves;
-    for i in sorted_move_indexes(&moves, true) {
+    for i in sorted_move_indexes(moves, true) {
         let mv = moves[i];
         let child_bs = bs.next_state(&mv).unwrap();
         let eval = -quiescence(&child_bs, depth - 1, -beta, -alpha, !maxi_colour);
@@ -105,7 +103,7 @@ pub fn negamax_root<'a>(
 
         if eval > max_eval {
             max_eval = eval;
-            best_move = &mv;
+            best_move = mv;
         }
         alpha = cmp::max(alpha, max_eval);
         if beta <= alpha {

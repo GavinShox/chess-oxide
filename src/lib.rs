@@ -8,4 +8,4 @@ mod position;
 pub mod test;
 mod util;
 
-pub use {board::*, movegen::*, perft::*, position::*};
+pub use {board::*, movegen::*, perft::*, position::*, util::print_board};

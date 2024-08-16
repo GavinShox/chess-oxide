@@ -97,21 +97,12 @@ fn main() -> Result<(), slint::PlatformError> {
     let board = Arc::new(Mutex::new(Board::new()));
 
     let ui = Board_UI::new().unwrap();
-    let ui_weak_new_game = ui.as_weak();
-    let ui_weak_refresh_position = ui.as_weak();
-    let ui_weak_make_move = ui.as_weak();
-    let ui_weak_engine_make_move = ui.as_weak();
+
     let ui_weak_get_gamestate = ui.as_weak();
-
-    let board_new_game = board.clone();
-    let board_refresh_position = board.clone();
-    let board_make_move = board.clone();
-    let board_engine_make_move = board.clone();
-    let board_engine_get_gamestate = board.clone();
-
+    let board_get_gamestate = board.clone();
     ui.on_get_gamestate(move || {
         let ui = ui_weak_get_gamestate.upgrade().unwrap();
-        let board = board_engine_get_gamestate.lock().unwrap();
+        let board = board_get_gamestate.lock().unwrap();
         let side_to_move = if board.current_state.side_to_move == chess::PieceColour::White {
             "White"
         } else {
@@ -121,12 +112,16 @@ fn main() -> Result<(), slint::PlatformError> {
         ui.set_gamestate(format!("{}'s turn: {}", side_to_move, gamestate).into());
     });
 
+    let ui_weak_new_game = ui.as_weak();
+    let board_new_game = board.clone();
     ui.on_new_game(move || {
         let ui = ui_weak_new_game.upgrade().unwrap();
         *board_new_game.lock().unwrap() = board::Board::new();
         ui.invoke_refresh_position();
     });
 
+    let ui_weak_refresh_position = ui.as_weak();
+    let board_refresh_position = board.clone();
     ui.on_refresh_position(move || {
         let ui = ui_weak_refresh_position.upgrade().unwrap();
         let mut ui_position: Vec<PieceUI> = vec![];
@@ -173,11 +168,13 @@ fn main() -> Result<(), slint::PlatformError> {
             ui_move_history.push(mv_notation);
         }
 
-        println!("{:?}", ui_move_history);
         ui.set_move_history(std::rc::Rc::new(slint::VecModel::from(ui_move_history)).into());
 
         // set gamestate
         ui.invoke_get_gamestate();
+
+        // set current BoardState FEN
+        ui.set_fen(board_refresh_position.lock().unwrap().current_state.to_fen().into());
 
         // only set last move in GUI if it is not NULL_MOVE, then unwrap() is safe
         if board_refresh_position
@@ -198,18 +195,17 @@ fn main() -> Result<(), slint::PlatformError> {
                 .current_state
                 .last_move_as_notation()
                 .unwrap();
-            ui.set_last_move(
-                Move_UI {
-                    from_square: last_move.from as i32,
-                    to_square: last_move.to as i32,
-                    string: last_move_notation.into(),
-                }
-                .into(),
-            );
+            ui.set_last_move(Move_UI {
+                from_square: last_move.from as i32,
+                to_square: last_move.to as i32,
+                string: last_move_notation.into(),
+            });
         }
         ui.set_position(pos.into());
     });
 
+    let ui_weak_make_move = ui.as_weak();
+    let board_make_move = board.clone();
     ui.on_make_move(move || -> bool {
         let ui = ui_weak_make_move.upgrade().unwrap();
 
@@ -229,22 +225,16 @@ fn main() -> Result<(), slint::PlatformError> {
                 if mv.from as i32 == 63 - from && mv.to as i32 == 63 - to {
                     legal_mv = mv;
                 }
-            } else {
-                if mv.from as i32 == from && mv.to as i32 == to {
-                    legal_mv = mv;
-                }
+            } else if mv.from as i32 == from && mv.to as i32 == to {
+                legal_mv = mv;
             }
         }
-        match board_make_move.lock().unwrap().make_move(&legal_mv) {
-            Ok(_) => {
-                return true;
-            }
-            Err(_) => {
-                return false;
-            }
-        }
+        // make move and return true if successful
+        board_make_move.lock().unwrap().make_move(&legal_mv).is_ok()
     });
 
+    let ui_weak_engine_make_move = ui.as_weak();
+    let board_engine_make_move = board.clone();
     ui.on_engine_make_move(move || {
         let ui = ui_weak_engine_make_move.clone();
         let bmem: Arc<Mutex<Board>> = board_engine_make_move.clone();

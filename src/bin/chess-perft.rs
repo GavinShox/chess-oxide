@@ -1,5 +1,3 @@
-use chess;
-
 fn main() {
     let pos = chess::Position::new_starting();
     let board = chess::board::Board::new();

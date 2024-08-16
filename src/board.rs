@@ -55,7 +55,7 @@ impl BoardState {
         let position_hash: PositionHash = position.pos_hash();
         let side_to_move = position.side;
         // deref all legal moves, performance isn't as important here, so avoid lifetime specifiers to make things easier to look at
-        let legal_moves = position.get_legal_moves().into_iter().copied().collect();
+        let legal_moves = position.get_legal_moves().to_vec();
         log::info!("Legal moves generated: {legal_moves:?}");
         let mut position_occurences = ahash::AHashMap::default();
         *position_occurences.entry(position_hash).or_insert(0) += 1;
@@ -79,7 +79,7 @@ impl BoardState {
         let position_hash: PositionHash = position.pos_hash();
         let side_to_move = position.side;
         // deref all legal moves, performance isn't as important here, so avoid lifetime specifiers to make things easier to look at
-        let legal_moves = position.get_legal_moves().into_iter().copied().collect();
+        let legal_moves = position.get_legal_moves().to_vec();
         let mut position_occurences = ahash::AHashMap::default();
         *position_occurences.entry(position_hash).or_insert(0) += 1;
 
@@ -176,13 +176,13 @@ impl BoardState {
             MoveType::Normal => format!("{}{}", piece_str, notation_to),
             MoveType::None => "".to_string(),
         };
-        return if self.get_gamestate() == GameState::Checkmate {
+        if self.get_gamestate() == GameState::Checkmate {
             Ok(format!("{}#", notation))
         } else if self.get_gamestate() == GameState::Check {
             Ok(format!("{}+", notation))
         } else {
             Ok(notation)
-        };
+        }
     }
 
     pub fn next_state(&self, mv: &Move) -> Result<Self, BoardStateError> {
@@ -220,7 +220,7 @@ impl BoardState {
         let side_to_move = position.side;
         let last_move = *mv;
         // deref all legal moves
-        let legal_moves = position.get_legal_moves().into_iter().copied().collect();
+        let legal_moves = position.get_legal_moves().to_vec();
         log::trace!("Legal moves generated: {legal_moves:?}");
 
         let move_count = if side_to_move == PieceColour::White {
@@ -324,6 +324,12 @@ pub struct Board {
     transposition_table: engine::TranspositionTable,
 }
 
+impl Default for Board {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl Board {
     pub fn new() -> Self {
         let current_state = BoardState::new_starting();
@@ -344,8 +350,7 @@ impl Board {
     }
     pub fn from_fen(fen: &str) -> Result<Self, FenParseError> {
         let current_state = BoardState::from_fen(fen)?;
-        let mut state_history: Vec<BoardState> = Vec::new();
-        state_history.push(current_state.clone());
+        let state_history: Vec<BoardState> = vec![current_state.clone()];
 
         let transposition_table = engine::TranspositionTable::new();
         log::info!("New Board created from FEN: {}", fen);

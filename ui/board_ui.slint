@@ -1,4 +1,4 @@
-import { Button, VerticalBox, GridBox, ScrollView, ListView } from "std-widgets.slint";
+import { Button, VerticalBox, GridBox, ScrollView, ListView, LineEdit } from "std-widgets.slint";
 
 
 
@@ -90,7 +90,7 @@ component Square inherits Rectangle {
 
 export component Board_UI inherits Window {
     title: "Chess";
-    icon: @image-url("resources/kdt45.svg");
+    icon: @image-url("resources/chesslogo.png");
     //background: rgb(218, 235, 235);
 
     out property<int> board-size: 8;
@@ -101,6 +101,7 @@ export component Board_UI inherits Window {
     in-out property <Move-UI> last-move: { from-square: -1, to-square: -1, string: "" };
     in-out property <PieceColour-UI> player-colour: PieceColour-UI.White;
     in-out property <[MoveNotation-UI]> move-history;
+    in property <string> fen;
     
     in-out property <string> gamestate;
 
@@ -232,22 +233,34 @@ export component Board_UI inherits Window {
                 }
     
             }
+
+            LineEdit {
+                visible: true;
+                font-size: 10px;
+                text: root.fen;
+                read-only: true;
+            }
     
         }
         VerticalLayout {
-            ListView {
-                for move in move-history: Text {
-                    text: move.move-number + ". " + move.notation1 + " " + move.notation2;//Math.mod(i+1, 2) == 0 ? move-history[i - 1] + " " + move : ((i / 2) + 1) + ".";
-                    font-size: 14px;
-                }
+            Text {
+                horizontal-alignment: center;
+                text: "Move History";
+                font-size: 18px;
+                font-weight: 500;
             }
-            Button {
-                text: "Export FEN";
-                clicked => {
-                    
-                }
+            Rectangle {
+                border-color: black;
+                border-radius: 5px;
+                border-width: 1px;
+                ListView {
+                    preferred-width: 100%;
+                    for move in move-history: Text {
+                        text: " " + move.move-number + ".  " + move.notation1 + " " + move.notation2;//Math.mod(i+1, 2) == 0 ? move-history[i - 1] + " " + move : ((i / 2) + 1) + ".";
+                        font-size: 16px;
+                    }
+                }    
             }
         }
-
     }
 }

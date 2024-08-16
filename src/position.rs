@@ -165,8 +165,7 @@ impl Position {
             hash ^= ZOBRIST_HASH_TABLE.black_castle_short;
         }
         if self.movegen_flags.en_passant.is_some() {
-            hash ^= ZOBRIST_HASH_TABLE.en_passant_table
-                [(self.movegen_flags.en_passant.unwrap() % 8) as usize];
+            hash ^= ZOBRIST_HASH_TABLE.en_passant_table[self.movegen_flags.en_passant.unwrap() % 8];
         }
         if self.side == PieceColour::Black {
             hash ^= ZOBRIST_HASH_TABLE.black_to_move;
@@ -690,7 +689,7 @@ impl Position {
             let ep_mv_idx = util::notation_to_index(fen_vec[3]);
 
             // error if index is out of bounds. FEN defines the index behind the pawn that moved, so valid indexes are only 16->47 (excluded top and bottom two ranks)
-            if ep_mv_idx < 16 || ep_mv_idx > 47 {
+            if !(16..=47).contains(&ep_mv_idx) {
                 return Err(FenParseError(format!(
                     "Invalid en passant square: {}. Index is out of bounds",
                     fen_vec[3]
