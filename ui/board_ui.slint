@@ -29,6 +29,12 @@ export struct Move_UI {
     string: string,
 }
 
+export struct MoveNotation_UI {
+    move-number: int,
+    notation1: string,
+    notation2: string,
+}
+
 component PieceImg inherits Image {
     pure function get-piece-img(piece: Piece_UI) -> image {
         if piece.piece-type == PieceType_UI.King {
@@ -93,8 +99,8 @@ export component Board_UI inherits Window {
     out property <int> selected-to-square: -1;
     in-out property <bool> engine-made-move: true; // only works if player is white, change later
     in-out property <Move-UI> last-move: { from-square: -1, to-square: -1, string: "" };
-    property <PieceColour-UI> player-colour: PieceColour-UI.White;
-    in-out property <[string]> move-history;
+    in-out property <PieceColour-UI> player-colour: PieceColour-UI.White;
+    in-out property <[MoveNotation-UI]> move-history;
     
     in-out property <string> gamestate;
 
@@ -133,6 +139,8 @@ export component Board_UI inherits Window {
                     clicked => {
                         new-game();
                         reset-properties();
+                        root.player-colour = PieceColour_UI.White;
+                        refresh-position();
                         root.engine-made-move = true;
                     }
                 }
@@ -143,6 +151,8 @@ export component Board_UI inherits Window {
                     clicked => {
                         new-game();
                         reset-properties();
+                        root.player-colour = PieceColour_UI.Black;
+                        refresh-position();
                         root.engine-made-move = false;
                         root.engine-make-move();
                     }
@@ -219,11 +229,20 @@ export component Board_UI inherits Window {
             }
     
         }
-        ListView {
-            for move[i] in move-history: Text {
-                text: Math.mod(i+1, 2) == 0 ? move-history[i - 1] + " " + move : ((i / 2) + 1) + ".";
-                font-size: 14px;
+        VerticalLayout {
+            ListView {
+                for move in move-history: Text {
+                    text: move.move-number + ". " + move.notation1 + " " + move.notation2;//Math.mod(i+1, 2) == 0 ? move-history[i - 1] + " " + move : ((i / 2) + 1) + ".";
+                    font-size: 14px;
+                }
+            }
+            Button {
+                text: "Export FEN";
+                clicked => {
+                    
+                }
             }
         }
+
     }
 }

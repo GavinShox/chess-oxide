@@ -6,7 +6,7 @@
 
 use chess::*;
 use env_logger::{Builder, Target};
-use slint::{ModelRc, SharedString, VecModel};
+use slint::SharedString;
 use std::env;
 use std::sync::{Arc, Mutex};
 
@@ -15,6 +15,7 @@ slint::include_modules!();
 type PieceUI = slint_generatedBoard_UI::Piece_UI;
 type PieceColourUI = slint_generatedBoard_UI::PieceColour_UI;
 type PieceTypeUI = slint_generatedBoard_UI::PieceType_UI;
+type MoveNotationUI = slint_generatedBoard_UI::MoveNotation_UI;
 //type MoveUI = slint_generatedBoard_UI::Move_UI;
 
 fn ui_convert_piece(piece: chess::Piece) -> PieceUI {
@@ -140,17 +141,44 @@ fn main() -> Result<(), slint::PlatformError> {
                 chess::Square::Empty => ui_position.push(ui_convert_piece(chess::NULL_PIECE)),
             }
         }
+        // reverse board if player is black
+        if ui.get_player_colour() == PieceColour_UI::Black {
+            ui_position.reverse();
+        }
         let pos = std::rc::Rc::new(slint::VecModel::from(ui_position));
-        
+
         // generate move history as vector of move notations
-        let mut ui_move_history: Vec<SharedString> = board_refresh_position.lock().unwrap().state_history.iter().map(|x| x.last_move_as_notation().unwrap_or("".into()).into()).collect();
-        ui_move_history.remove(0); // remove first null move empty string
+        let mut ui_moves: Vec<SharedString> = board_refresh_position
+            .lock()
+            .unwrap()
+            .state_history
+            .iter()
+            .map(|x| x.last_move_as_notation().unwrap_or("".into()).into())
+            .collect();
+        ui_moves.remove(0); // remove first null move empty string
+
+        let mut ui_move_history: Vec<MoveNotationUI> = vec![];
+        for (i, chunk) in ui_moves.chunks(2).enumerate() {
+            let mut mv_notation = MoveNotationUI {
+                move_number: (i + 1) as i32,
+                notation1: "".into(),
+                notation2: "".into(),
+            };
+            if chunk.len() == 2 {
+                mv_notation.notation1 = chunk[0].clone();
+                mv_notation.notation2 = chunk[1].clone();
+            } else {
+                mv_notation.notation1 = chunk[0].clone();
+            }
+            ui_move_history.push(mv_notation);
+        }
+
         println!("{:?}", ui_move_history);
         ui.set_move_history(std::rc::Rc::new(slint::VecModel::from(ui_move_history)).into());
 
         // set gamestate
         ui.invoke_get_gamestate();
-        
+
         // only set last move in GUI if it is not NULL_MOVE, then unwrap() is safe
         if board_refresh_position
             .lock()
@@ -196,8 +224,15 @@ fn main() -> Result<(), slint::PlatformError> {
             .legal_moves
             .clone()
         {
-            if mv.from as i32 == from && mv.to as i32 == to {
-                legal_mv = mv;
+            // ui indexes are reversed if player is black
+            if ui.get_player_colour() == PieceColour_UI::Black {
+                if mv.from as i32 == 63 - from && mv.to as i32 == 63 - to {
+                    legal_mv = mv;
+                }
+            } else {
+                if mv.from as i32 == from && mv.to as i32 == to {
+                    legal_mv = mv;
+                }
             }
         }
         match board_make_move.lock().unwrap().make_move(&legal_mv) {
