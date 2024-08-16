@@ -74,8 +74,8 @@ impl BoardState {
 
     pub fn from_fen(fen: &str) -> Result<Self, FenParseError> {
         let (position, fen_vec) = Position::from_fen_partial_impl(fen)?;
-        log::info!("New Position created from FEN");
-        log::debug!("FEN: {fen}, Position: {position:?}");
+        log::debug!("New Position created from FEN");
+        log::trace!("FEN: {fen}, Position: {position:?}");
         let position_hash: PositionHash = position.pos_hash();
         let side_to_move = position.side;
         // deref all legal moves, performance isn't as important here, so avoid lifetime specifiers to make things easier to look at
@@ -215,13 +215,13 @@ impl BoardState {
         }
 
         let position = self.position.new_position(mv);
-        log::debug!("New Position created from move: {:?}", mv);
+        log::trace!("New Position created from move: {:?}", mv);
         let position_hash = position.pos_hash();
         let side_to_move = position.side;
         let last_move = *mv;
         // deref all legal moves
         let legal_moves = position.get_legal_moves().into_iter().copied().collect();
-        log::debug!("Legal moves generated: {legal_moves:?}");
+        log::trace!("Legal moves generated: {legal_moves:?}");
 
         let move_count = if side_to_move == PieceColour::White {
             self.move_count + 1
