@@ -191,6 +191,11 @@ export component Board_UI inherits Window {
                                 // reset variables even if move was invalid
                                 root.selected-from-square = -1;
                                 root.selected-to-square = -1;
+
+                                // reselect square if there was a players piece there
+                                if root.position[square.index].piece-colour == root.player-colour {
+                                    root.selected-from-square = square.index;
+                                }
                             }
                             // shouldnt reach this else
                             else {
