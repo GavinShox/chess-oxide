@@ -218,13 +218,12 @@ pub fn negamax(
 // }
 
 pub fn sorted_move_indexes(moves: &[Move], captures_only: bool) -> Vec<usize> {
-    let mut move_scores: Vec<i32> = Vec::with_capacity(moves.len());
-    let move_indexes: Vec<usize> = (0..moves.len()).collect();
+    let mut move_scores: Vec<(usize, i32)> = Vec::with_capacity(moves.len());
 
-    for mv in moves {
+    for (index, mv) in moves.iter().enumerate() {
         // non captures = -1 so they can be filtered out
         if captures_only && !matches!(mv.move_type, MoveType::Capture(_)) {
-            move_scores.push(-1);
+            move_scores.push((index, -1));
             continue;
         }
 
@@ -243,21 +242,18 @@ pub fn sorted_move_indexes(moves: &[Move], captures_only: bool) -> Vec<usize> {
             }
             _ => {}
         }
-        move_scores.push(mv_score);
+        move_scores.push((index, mv_score));
     }
-    let mut sorted_move_indexes = move_indexes
-        .iter()
-        .zip(move_scores.iter())
-        .collect::<Vec<_>>();
 
     // sort the moves in descending order of scores
-    sorted_move_indexes.sort_unstable_by(|a, b| b.1.cmp(a.1));
-    // filter out negative scores here
-    sorted_move_indexes
+    move_scores.sort_unstable_by(|a, b| b.1.cmp(&a.1));
+
+    // filter out negative scores and collect the indexes
+    move_scores
         .into_iter()
-        .filter(|&x| *x.1 >= 0)
-        .map(|a| *a.0)
-        .collect::<Vec<_>>()
+        .filter(|&(_, score)| score >= 0)
+        .map(|(index, _)| index)
+        .collect()
 }
 // values in centipawns
 fn get_piece_value(ptype: &PieceType) -> i32 {
