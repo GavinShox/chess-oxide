@@ -1,3 +1,0 @@
-(function() {var implementors = {
-"chess":[["impl <a class=\"trait\" href=\"https://doc.rust-lang.org/1.80.1/core/fmt/trait.Display.html\" title=\"trait core::fmt::Display\">Display</a> for <a class=\"enum\" href=\"chess/board/enum.GameState.html\" title=\"enum chess::board::GameState\">GameState</a>"]]
-};if (window.register_implementors) {window.register_implementors(implementors);} else {window.pending_implementors = implementors;}})()

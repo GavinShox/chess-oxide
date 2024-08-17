@@ -1,1 +1,0 @@
-window.ALL_CRATES = ["chess","chess_gui","chess_perft"];

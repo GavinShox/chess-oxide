@@ -1,3 +1,0 @@
-(function() {var implementors = {
-"chess_gui":[["impl RepeatedItemTree for <a class=\"struct\" href=\"chess_gui/slint_generatedBoard_UI/struct.InnerComponent_empty_4.html\" title=\"struct chess_gui::slint_generatedBoard_UI::InnerComponent_empty_4\">InnerComponent_empty_4</a>"],["impl RepeatedItemTree for <a class=\"struct\" href=\"chess_gui/slint_generatedBoard_UI/struct.InnerComponent_square_5.html\" title=\"struct chess_gui::slint_generatedBoard_UI::InnerComponent_square_5\">InnerComponent_square_5</a>"]]
-};if (window.register_implementors) {window.register_implementors(implementors);} else {window.pending_implementors = implementors;}})()
