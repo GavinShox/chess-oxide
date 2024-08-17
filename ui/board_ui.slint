@@ -1,5 +1,5 @@
 import { Button, VerticalBox, GridBox, ScrollView, ListView, LineEdit } from "std-widgets.slint";
-
+import "resources/font/CaskaydiaCoveNerdFont-Regular.ttf";
 
 
 export enum PieceType_UI {
@@ -91,6 +91,7 @@ component Square inherits Rectangle {
 export component Board_UI inherits Window {
     title: "Chess";
     icon: @image-url("resources/chesslogo.png");
+    default-font-family: "CaskaydiaCove Nerd Font";
     //background: rgb(218, 235, 235);
 
     out property<int> board-size: 8;
@@ -121,16 +122,8 @@ export component Board_UI inherits Window {
     HorizontalLayout {
         padding: 10px;
         VerticalLayout {
-            padding-right: 10px;
             alignment: center;
-            Rectangle {
-                //background: rgb(218, 235, 235);
-                game-info := Text {
-                    text: gamestate;
-                    horizontal-alignment: center;
-                    font-size: 20px;
-                }
-            }
+            spacing: 10px;
             HorizontalLayout {
                 alignment: center;
                 Button {
@@ -159,93 +152,108 @@ export component Board_UI inherits Window {
                     }
                 }
             }
-
-            for row in board-size: HorizontalLayout {
-                
-                for sq in board-size: square := Square {
-                    index: sq + (row * board-size);
-                    width: 50px;
-                    height: 50px;
-                    
-                    piece-img := PieceImg {
-                        piece: root.position[parent.index];
-                        width: parent.width;
-                        height: parent.height;
-                    }
-    
-                    ta := TouchArea {
-                        height: 100%;
-                        width: 100%;
-                        clicked => {
-                            if root.selected-from-square == -1 {
-                                root.selected-from-square = square.index;
-                            }
-                            else if root.selected-from-square >= 0 && root.selected-to-square == -1 && root.engine-made-move {
-                                root.selected-to-square = square.index;
-                                if root.make-move() == true { // side effect makes move but only returns true if move is valid
-                                    root.refresh-position();
-    
-                                    root.engine-made-move = false;
-                                    root.engine-make-move();
-                                }
-                                
-                                // reset variables even if move was invalid
-                                root.selected-from-square = -1;
-                                root.selected-to-square = -1;
-
-                                // reselect square if there was a players piece there
-                                if root.position[square.index].piece-colour == root.player-colour {
+            Rectangle {
+                //background: rgb(218, 235, 235);
+                game-info := Text {
+                    text: gamestate;
+                    horizontal-alignment: center;
+                    font-size: 20px;
+                }
+            }
+            VerticalLayout {
+                for row in board-size: HorizontalLayout {
+                    spacing: 0px;
+                    for sq in board-size: square := Square {
+                        index: sq + (row * board-size);
+                        width: 50px;
+                        height: 50px;
+                        
+                        piece-img := PieceImg {
+                            piece: root.position[parent.index];
+                            width: parent.width;
+                            height: parent.height;
+                        }
+        
+                        ta := TouchArea {
+                            height: 100%;
+                            width: 100%;
+                            clicked => {
+                                if root.selected-from-square == -1 {
                                     root.selected-from-square = square.index;
                                 }
+                                else if root.selected-from-square >= 0 && root.selected-to-square == -1 && root.engine-made-move {
+                                    root.selected-to-square = square.index;
+                                    if root.make-move() == true { // side effect makes move but only returns true if move is valid
+                                        root.refresh-position();
+        
+                                        root.engine-made-move = false;
+                                        root.engine-make-move();
+                                    }
+                                    
+                                    // reset variables even if move was invalid
+                                    root.selected-from-square = -1;
+                                    root.selected-to-square = -1;
+    
+                                    // reselect square if there was a players piece there
+                                    if root.position[square.index].piece-colour == root.player-colour {
+                                        root.selected-from-square = square.index;
+                                    }
+                                }
+                                // shouldnt reach this else
+                                else {
+                                    root.selected-from-square = -1;
+                                    root.selected-to-square = -1;
+                                
+                                }
                             }
-                            // shouldnt reach this else
-                            else {
-                                root.selected-from-square = -1;
-                                root.selected-to-square = -1;
-                            
-                            }
+                            // moved => {
+                            //     if (self.pressed) {
+                            //         piece-img.x = self.mouse-x - self.pressed-x;
+                            //         piece-img.y = self.mouse-y - self.pressed-y;
+                            //     }
+                            // }
                         }
-                        // moved => {
-                        //     if (self.pressed) {
-                        //         piece-img.x = self.mouse-x - self.pressed-x;
-                        //         piece-img.y = self.mouse-y - self.pressed-y;
-                        //     }
-                        // }
+        
+                        states [
+                            last-move when root.last-move.from-square == square.index || root.last-move.to-square == square.index: {
+                                square.border-color: salmon;
+                                square.border-width: 2px;
+        
+                            }
+                            clicked-from when root.selected-from-square == square.index && root.engine-made-move: {
+                                square.background: square.get-square-background().darker(0.2);
+                            }
+                            hovered when ta.has-hover && root.engine-made-move: {
+                                square.background: square.get-square-background().darker(0.1);
+                            }
+                            disabled when !root.engine-made-move: {
+                                ta.enabled: false;
+                            }
+                        ]
+        
                     }
-    
-                    states [
-                        last-move when root.last-move.from-square == square.index || root.last-move.to-square == square.index: {
-                            square.border-color: salmon;
-                            square.border-width: 2px;
-    
-                        }
-                        clicked-from when root.selected-from-square == square.index && root.engine-made-move: {
-                            square.background: square.get-square-background().darker(0.2);
-                        }
-                        hovered when ta.has-hover && root.engine-made-move: {
-                            square.background: square.get-square-background().darker(0.1);
-                        }
-                        disabled when !root.engine-made-move: {
-                            ta.enabled: false;
-                        }
-                    ]
-    
+        
                 }
     
             }
+
 
             LineEdit {
                 visible: true;
                 font-size: 10px;
                 text: root.fen;
                 read-only: true;
+                horizontal-alignment: center;
             }
+
+
     
         }
         VerticalLayout {
+            padding: 5px;
             Text {
                 horizontal-alignment: center;
-                text: "Move History";
+                text: "Move History:";
                 font-size: 18px;
                 font-weight: 500;
             }
@@ -253,11 +261,12 @@ export component Board_UI inherits Window {
                 border-color: black;
                 border-radius: 5px;
                 border-width: 1px;
+                max-width: 100px;
+                
                 ListView {
-                    preferred-width: 100%;
                     for move in move-history: Text {
-                        text: " " + move.move-number + ".  " + move.notation1 + " " + move.notation2;//Math.mod(i+1, 2) == 0 ? move-history[i - 1] + " " + move : ((i / 2) + 1) + ".";
-                        font-size: 16px;
+                        text: move.move-number + ". " + move.notation1 + " " + move.notation2;//Math.mod(i+1, 2) == 0 ? move-history[i - 1] + " " + move : ((i / 2) + 1) + ".";
+                        font-size: 14px;
                     }
                 }    
             }
