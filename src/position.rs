@@ -316,7 +316,7 @@ impl Position {
         new_pos
     }
 
-    // TODO maybe consolidate all movegen fag updates into one place if possible?
+    // TODO maybe consolidate all movegen flag updates into one place if possible?
     fn set_king_position(&mut self, mv: &Move) {
         if mv.piece.ptype == PieceType::King {
             if mv.piece.pcolour == PieceColour::White {
