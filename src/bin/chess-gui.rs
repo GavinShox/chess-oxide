@@ -174,7 +174,14 @@ fn main() -> Result<(), slint::PlatformError> {
         ui.invoke_get_gamestate();
 
         // set current BoardState FEN
-        ui.set_fen(board_refresh_position.lock().unwrap().current_state.to_fen().into());
+        ui.set_fen(
+            board_refresh_position
+                .lock()
+                .unwrap()
+                .current_state
+                .to_fen()
+                .into(),
+        );
 
         // only set last move in GUI if it is not NULL_MOVE, then unwrap() is safe
         if board_refresh_position
@@ -195,11 +202,21 @@ fn main() -> Result<(), slint::PlatformError> {
                 .current_state
                 .last_move_as_notation()
                 .unwrap();
-            ui.set_last_move(Move_UI {
-                from_square: last_move.from as i32,
-                to_square: last_move.to as i32,
-                string: last_move_notation.into(),
-            });
+
+            if ui.get_player_colour() == PieceColour_UI::Black {
+                // reverse index if player is black as the board is flipped
+                ui.set_last_move(Move_UI {
+                    from_square: 63 - last_move.from as i32,
+                    to_square: 63 - last_move.to as i32,
+                    string: last_move_notation.into(),
+                });
+            } else {
+                ui.set_last_move(Move_UI {
+                    from_square: last_move.from as i32,
+                    to_square: last_move.to as i32,
+                    string: last_move_notation.into(),
+                });
+            }
         }
         ui.set_position(pos.into());
     });
