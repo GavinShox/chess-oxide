@@ -192,31 +192,6 @@ pub fn negamax(
     max_eval
 }
 
-// pub fn quiescence_sort_move_indexes(moves: &[Move]) -> Vec<usize> {
-//     let mut move_scores: Vec<i32> = Vec::with_capacity(moves.len());
-//     let mut move_indexes: Vec<usize> = (0..moves.len()).collect();
-//     for mv in moves {
-//         let mut mv_score = 0;
-//         match mv.move_type {
-//             MoveType::Capture(capture_type) => {
-//                 mv_score += get_piece_value(&capture_type) - get_piece_value(&mv.piece.ptype);
-//             },
-//             _ => {},
-//         }
-//         move_scores.push(mv_score);
-//     }
-//     let mut sorted_move_indexes =
-//         move_indexes
-//         .iter()
-//         .zip(move_scores.iter())
-//         .collect::<Vec<_>>();
-
-//     // sort the moves in descending order of scores
-//     sorted_move_indexes.sort_unstable_by(|a, b| b.1.cmp(a.1));
-
-//     sorted_move_indexes.into_iter().map(|a| *a.0).collect::<Vec<_>>()
-// }
-
 pub fn sorted_move_indexes(moves: &[Move], captures_only: bool) -> Vec<usize> {
     let mut move_scores: Vec<(usize, i32)> = Vec::with_capacity(moves.len());
 
@@ -256,6 +231,7 @@ pub fn sorted_move_indexes(moves: &[Move], captures_only: bool) -> Vec<usize> {
         .collect()
 }
 // values in centipawns
+#[inline(always)]
 fn get_piece_value(ptype: &PieceType) -> i32 {
     match ptype {
         PieceType::Pawn => 100,
@@ -264,10 +240,11 @@ fn get_piece_value(ptype: &PieceType) -> i32 {
         PieceType::Rook => 500,
         PieceType::Queen => 900,
         PieceType::King => 20000,
-        PieceType::None => panic!("None piece type"),
+        PieceType::None => unreachable!(),
     }
 }
 
+#[inline(always)]
 fn get_piece_pos_value(i: usize, piece: &Piece, is_endgame: bool) -> i32 {
     // all pos values are from whites perspective (a8 = index 0, h1 = index 63)
     const PAWN_POS_VALUES: [i32; 64] = [
@@ -326,7 +303,7 @@ fn get_piece_pos_value(i: usize, piece: &Piece, is_endgame: bool) -> i32 {
                 KING_MIDDLE_POS_VALUES[side_adjusted_idx]
             }
         }
-        PieceType::None => panic!("PieceType::None is not a valid piece type"),
+        PieceType::None => unreachable!(),
     }
 }
 
@@ -334,7 +311,6 @@ fn get_piece_pos_value(i: usize, piece: &Piece, is_endgame: bool) -> i32 {
 pub fn evaluate(bs: &BoardState, maxi_colour: PieceColour) -> i32 {
     let mut w_eval: i32 = 0;
     let mut b_eval: i32 = 0;
-    //tTODO add getter function for position
     for (i, s) in bs.get_pos64().iter().enumerate() {
         match s {
             Square::Empty => {
