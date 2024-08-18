@@ -255,9 +255,16 @@ fn main() -> Result<(), slint::PlatformError> {
     ui.on_engine_make_move(move || {
         let ui = ui_weak_engine_make_move.clone();
         let bmem: Arc<Mutex<Board>> = board_engine_make_move.clone();
-
+        let depth = ui
+            .upgrade()
+            .unwrap()
+            .get_depth()
+            .to_string()
+            .parse::<i32>()
+            .unwrap();
+        println!("Engine depth: {}", depth);
         std::thread::spawn(move || {
-            bmem.lock().unwrap().make_engine_move(4).unwrap();
+            bmem.lock().unwrap().make_engine_move(depth).unwrap();
             slint::invoke_from_event_loop(move || {
                 ui.upgrade().unwrap().invoke_refresh_position();
                 ui.upgrade().unwrap().set_engine_made_move(true);

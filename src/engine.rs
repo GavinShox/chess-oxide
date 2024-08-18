@@ -127,22 +127,10 @@ pub fn negamax(
     root_depth: i32,
     tt: &mut TranspositionTable,
 ) -> i32 {
-    // TODO ADD 3 fold repetition and 50 move INTO ZOBRIST HASH SO IT WORKS
     // TODO ADD MOVE ORDERING WITH BEST MOVE IN TRANSPOSITION TABLE?
-    if bs.is_checkmate() {
-        return if bs.side_to_move == maxi_colour {
-            MIN + root_depth
-        } else {
-            MAX - root_depth
-        };
-    } else if bs.is_draw() {
-        return 0; // stalemate
-    } else if depth == 0 {
-        return quiescence(bs, QUIECENCE_DEPTH, alpha, beta, maxi_colour);
-    }
     // transposition table lookup
     let alpha_orig = alpha;
-    if let Some((bound_type, tt_depth, tt_eval)) = tt.get(bs.position_hash) {
+    if let Some((bound_type, tt_depth, tt_eval)) = tt.get(bs.board_hash) {
         let tt_eval = *tt_eval;
         if *tt_depth >= depth {
             match bound_type {
@@ -155,6 +143,18 @@ pub fn negamax(
             }
         }
     }
+    if bs.is_checkmate() {
+        return if bs.side_to_move == maxi_colour {
+            MIN + root_depth
+        } else {
+            MAX - root_depth
+        };
+    } else if bs.is_draw() {
+        return 0; // stalemate
+    } else if depth == 0 {
+        return quiescence(bs, QUIECENCE_DEPTH, alpha, beta, maxi_colour);
+    }
+
 
     let mut max_eval = MIN;
     for i in sorted_move_indexes(&bs.legal_moves, false) {
@@ -180,11 +180,11 @@ pub fn negamax(
 
     let tt_eval = max_eval;
     if tt_eval <= alpha_orig {
-        tt.insert(bs.position_hash, BoundType::Upper, depth, tt_eval);
+        tt.insert(bs.board_hash, BoundType::Upper, depth, tt_eval);
     } else if tt_eval >= beta {
-        tt.insert(bs.position_hash, BoundType::Lower, depth, tt_eval);
+        tt.insert(bs.board_hash, BoundType::Lower, depth, tt_eval);
     } else {
-        tt.insert(bs.position_hash, BoundType::Exact, depth, tt_eval);
+        tt.insert(bs.board_hash, BoundType::Exact, depth, tt_eval);
     }
 
     // println!("max_eval: {}", max_eval);

@@ -1,4 +1,4 @@
-import { Button, VerticalBox, GridBox, ScrollView, ListView, LineEdit } from "std-widgets.slint";
+import { Button, VerticalBox, GridBox, ScrollView, ListView, LineEdit, ComboBox, SpinBox } from "std-widgets.slint";
 import "resources/font/CaskaydiaCoveNerdFont-Regular.ttf";
 
 
@@ -94,16 +94,16 @@ export component Board_UI inherits Window {
     default-font-family: "CaskaydiaCove Nerd Font";
     //background: rgb(218, 235, 235);
 
-    out property<int> board-size: 8;
+    property<int> board-size: 8;
     in-out property <[Piece_UI]> position;
     out property<int> selected-from-square: -1;
     out property <int> selected-to-square: -1;
-    in-out property <bool> engine-made-move: true; // only works if player is white, change later
+    in-out property <bool> engine-made-move: true; //TODO only works if player is white at start
     in-out property <Move-UI> last-move: { from-square: -1, to-square: -1, string: "" };
     in-out property <PieceColour-UI> player-colour: PieceColour-UI.White;
     in-out property <[MoveNotation-UI]> move-history;
     in property <string> fen;
-    
+    out property <string> depth <=> depth-combobox.current-value;
     in-out property <string> gamestate;
 
     callback new-game();
@@ -118,7 +118,7 @@ export component Board_UI inherits Window {
         self.engine-made-move = true;
         self.last-move = { from-square: -1, to-square: -1, string: "" };
     }
-    
+
     HorizontalLayout {
         padding: 10px;
         VerticalLayout {
@@ -129,6 +129,7 @@ export component Board_UI inherits Window {
                 Button {
                     text: "New Game (white)";
                     width: 25%;
+                    height: 25px;
                     padding: 10px;
                     clicked => {
                         new-game();
@@ -141,6 +142,7 @@ export component Board_UI inherits Window {
                 Button {
                     text: "New Game (black)";
                     width: 25%;
+                    height: 25px;
                     padding: 10px;
                     clicked => {
                         new-game();
@@ -150,6 +152,18 @@ export component Board_UI inherits Window {
                         root.engine-made-move = false;
                         root.engine-make-move();
                     }
+                }
+                Text {
+                    text: "Depth:";
+                    font-size: 10px;
+                    vertical-alignment: center;
+                }
+                depth-combobox := ComboBox {
+                    width: 10%;
+                    height: 25px;
+                    model: [2, 3, 4, 5, 6, 7];
+                    current-value: 5;
+
                 }
             }
             Rectangle {
@@ -237,7 +251,6 @@ export component Board_UI inherits Window {
     
             }
 
-
             LineEdit {
                 visible: true;
                 font-size: 10px;
@@ -245,8 +258,6 @@ export component Board_UI inherits Window {
                 read-only: true;
                 horizontal-alignment: center;
             }
-
-
     
         }
         VerticalLayout {

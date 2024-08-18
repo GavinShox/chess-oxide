@@ -41,30 +41,33 @@ pub struct BoardState {
     pub side_to_move: PieceColour,
     pub last_move: Move,
     pub legal_moves: Vec<Move>,
-    pub position_hash: u64,
+    pub board_hash: u64,
+    position_hash: u64,
     position: Position,
     move_count: u32,
     halfmove_count: u32,
     position_occurences: ahash::AHashMap<PositionHash, u8>,
 }
-
+// TODO benchmark hash generation, does this commit regress performance?
 impl BoardState {
     pub fn new_starting() -> Self {
         let position = Position::new_starting();
         log::info!("New starting Position created");
         let position_hash: PositionHash = position.pos_hash();
+        let board_hash = position_hash ^ 1 ^ 0; // starting position doesnt need a unique hash as pos cant repeat //TODO atm just for clarity xor with occurences and halfmove count
         let side_to_move = position.side;
         // deref all legal moves, performance isn't as important here, so avoid lifetime specifiers to make things easier to look at
         let legal_moves = position.get_legal_moves().to_vec();
         log::info!("Legal moves generated: {legal_moves:?}");
         let mut position_occurences = ahash::AHashMap::default();
-        *position_occurences.entry(position_hash).or_insert(0) += 1;
+        *position_occurences.entry(position_hash).or_insert(0) += 1; // TODO no need for this entry as the hashmap is empty
         log::info!("New starting BoardState created");
         BoardState {
             position,
             move_count: 1, // movecount starts at 1
             halfmove_count: 0,
             position_hash,
+            board_hash,
             side_to_move,
             last_move: NULL_MOVE,
             legal_moves,
@@ -81,7 +84,8 @@ impl BoardState {
         // deref all legal moves, performance isn't as important here, so avoid lifetime specifiers to make things easier to look at
         let legal_moves = position.get_legal_moves().to_vec();
         let mut position_occurences = ahash::AHashMap::default();
-        *position_occurences.entry(position_hash).or_insert(0) += 1;
+        let po = position_occurences.entry(position_hash).or_insert(0);
+        *po += 1;
 
         // default values for move count and halfmove count if not provided see <https://www.talkchess.com/forum3/viewtopic.php?f=7&t=79627>
         let mut halfmove_count: u32 = 0;
@@ -112,6 +116,9 @@ impl BoardState {
                 }
             }
         }
+
+        let board_hash = position_hash ^ *po as u64 ^ halfmove_count as u64;
+
         log::info!("New BoardState created from FEN");
         Ok(BoardState {
             side_to_move,
@@ -121,6 +128,7 @@ impl BoardState {
             move_count,
             halfmove_count,
             position_hash,
+            board_hash,
             position_occurences,
         })
     }
@@ -240,13 +248,18 @@ impl BoardState {
         };
 
         let mut position_occurences = self.position_occurences.clone();
-        *position_occurences.entry(position_hash).or_insert(0) += 1;
-        log::info!("New BoardState created from move: {:?}", mv);
+        let po = position_occurences.entry(position_hash).or_insert(0);
+        *po += 1;
+
+        let board_hash = position_hash ^ *po as u64 ^ halfmove_count as u64;
+
+        log::trace!("New BoardState created from move: {:?}", mv);
         Ok(Self {
             side_to_move,
             last_move,
             legal_moves,
             position,
+            board_hash,
             position_hash,
             move_count,
             halfmove_count,
