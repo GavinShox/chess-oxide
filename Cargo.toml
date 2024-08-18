@@ -34,7 +34,7 @@ ahash = "0.8.11"
 slint-build = "1.7.2"
 
 [profile.release]
-debug = true
+debug = false
 lto = "fat"
 codegen-units = 1
 opt-level = 3
