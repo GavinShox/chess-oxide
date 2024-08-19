@@ -262,7 +262,6 @@ fn main() -> Result<(), slint::PlatformError> {
             .to_string()
             .parse::<i32>()
             .unwrap();
-        println!("Engine depth: {}", depth);
         std::thread::spawn(move || {
             bmem.lock().unwrap().make_engine_move(depth).unwrap();
             slint::invoke_from_event_loop(move || {
