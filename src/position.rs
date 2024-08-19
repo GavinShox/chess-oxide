@@ -541,80 +541,55 @@ impl Position {
         for rank in fen_vec[0].split('/') {
             let mut i = 0;
             for c in rank.chars() {
-                let square: Square;
-                match c {
-                    'p' => {
-                        square = Square::Piece(Piece {
-                            pcolour: PieceColour::Black,
-                            ptype: PieceType::Pawn,
-                        });
-                    }
-                    'P' => {
-                        square = Square::Piece(Piece {
-                            pcolour: PieceColour::White,
-                            ptype: PieceType::Pawn,
-                        });
-                    }
-                    'r' => {
-                        square = Square::Piece(Piece {
-                            pcolour: PieceColour::Black,
-                            ptype: PieceType::Rook,
-                        });
-                    }
-                    'R' => {
-                        square = Square::Piece(Piece {
-                            pcolour: PieceColour::White,
-                            ptype: PieceType::Rook,
-                        });
-                    }
-                    'n' => {
-                        square = Square::Piece(Piece {
-                            pcolour: PieceColour::Black,
-                            ptype: PieceType::Knight,
-                        });
-                    }
-                    'N' => {
-                        square = Square::Piece(Piece {
-                            pcolour: PieceColour::White,
-                            ptype: PieceType::Knight,
-                        });
-                    }
-                    'b' => {
-                        square = Square::Piece(Piece {
-                            pcolour: PieceColour::Black,
-                            ptype: PieceType::Bishop,
-                        });
-                    }
-                    'B' => {
-                        square = Square::Piece(Piece {
-                            pcolour: PieceColour::White,
-                            ptype: PieceType::Bishop,
-                        });
-                    }
-                    'q' => {
-                        square = Square::Piece(Piece {
-                            pcolour: PieceColour::Black,
-                            ptype: PieceType::Queen,
-                        });
-                    }
-                    'Q' => {
-                        square = Square::Piece(Piece {
-                            pcolour: PieceColour::White,
-                            ptype: PieceType::Queen,
-                        });
-                    }
-                    'k' => {
-                        square = Square::Piece(Piece {
-                            pcolour: PieceColour::Black,
-                            ptype: PieceType::King,
-                        });
-                    }
-                    'K' => {
-                        square = Square::Piece(Piece {
-                            pcolour: PieceColour::White,
-                            ptype: PieceType::King,
-                        });
-                    }
+                let square = match c {
+                    'p' => Square::Piece(Piece {
+                        pcolour: PieceColour::Black,
+                        ptype: PieceType::Pawn,
+                    }),
+                    'P' => Square::Piece(Piece {
+                        pcolour: PieceColour::White,
+                        ptype: PieceType::Pawn,
+                    }),
+                    'r' => Square::Piece(Piece {
+                        pcolour: PieceColour::Black,
+                        ptype: PieceType::Rook,
+                    }),
+                    'R' => Square::Piece(Piece {
+                        pcolour: PieceColour::White,
+                        ptype: PieceType::Rook,
+                    }),
+                    'n' => Square::Piece(Piece {
+                        pcolour: PieceColour::Black,
+                        ptype: PieceType::Knight,
+                    }),
+                    'N' => Square::Piece(Piece {
+                        pcolour: PieceColour::White,
+                        ptype: PieceType::Knight,
+                    }),
+                    'b' => Square::Piece(Piece {
+                        pcolour: PieceColour::Black,
+                        ptype: PieceType::Bishop,
+                    }),
+                    'B' => Square::Piece(Piece {
+                        pcolour: PieceColour::White,
+                        ptype: PieceType::Bishop,
+                    }),
+                    'q' => Square::Piece(Piece {
+                        pcolour: PieceColour::Black,
+                        ptype: PieceType::Queen,
+                    }),
+                    'Q' => Square::Piece(Piece {
+                        pcolour: PieceColour::White,
+                        ptype: PieceType::Queen,
+                    }),
+                    'k' => Square::Piece(Piece {
+                        pcolour: PieceColour::Black,
+                        ptype: PieceType::King,
+                    }),
+                    'K' => Square::Piece(Piece {
+                        pcolour: PieceColour::White,
+                        ptype: PieceType::King,
+                    }),
                     x if x.is_ascii_digit() => {
                         for _ in 0..x.to_digit(10).unwrap() {
                             pos[i + rank_start_idx] = Square::Empty;
@@ -628,7 +603,7 @@ impl Position {
                             other
                         )));
                     }
-                }
+                };
                 pos[i + rank_start_idx] = square;
                 i += 1;
             }

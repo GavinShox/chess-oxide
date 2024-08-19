@@ -66,7 +66,7 @@ impl BoardState {
         let position = Position::new_starting();
         log::info!("New starting Position created");
         let position_hash: PositionHash = position.pos_hash();
-        let board_hash = position_hash ^ 1 ^ 0; // starting position doesnt need a unique hash as pos cant repeat //TODO atm just for clarity xor with occurences and halfmove count
+        let board_hash = position_hash ^ 1; // (^0) starting position doesnt need a unique hash as pos cant repeat //TODO atm just for clarity xor with occurences and halfmove count
         let side_to_move = position.side;
         // deref all legal moves, performance isn't as important here, so avoid lifetime specifiers to make things easier to look at
         let legal_moves = position.get_legal_moves().to_vec();
