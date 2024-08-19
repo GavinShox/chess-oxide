@@ -155,7 +155,6 @@ pub fn negamax(
         return quiescence(bs, QUIECENCE_DEPTH, alpha, beta, maxi_colour);
     }
 
-
     let mut max_eval = MIN;
     for i in sorted_move_indexes(&bs.legal_moves, false) {
         let mv = &bs.legal_moves[i];

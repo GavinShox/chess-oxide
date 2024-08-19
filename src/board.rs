@@ -21,6 +21,18 @@ pub enum GameState {
     InsufficientMaterial,
     Active,
 }
+impl GameState {
+    // gamestates that are draws
+    pub fn is_draw(&self, gamestate: GameState) -> bool {
+        matches!(
+            gamestate,
+            GameState::Stalemate
+                | GameState::FiftyMove
+                | GameState::Repetition
+                | GameState::InsufficientMaterial
+        )
+    }
+}
 // String representation of GameState
 impl fmt::Display for GameState {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
@@ -60,7 +72,7 @@ impl BoardState {
         let legal_moves = position.get_legal_moves().to_vec();
         log::info!("Legal moves generated: {legal_moves:?}");
         let mut position_occurences = ahash::AHashMap::default();
-        *position_occurences.entry(position_hash).or_insert(0) += 1; // TODO no need for this entry as the hashmap is empty
+        position_occurences.insert(position_hash, 1);
         log::info!("New starting BoardState created");
         BoardState {
             position,
@@ -84,8 +96,7 @@ impl BoardState {
         // deref all legal moves, performance isn't as important here, so avoid lifetime specifiers to make things easier to look at
         let legal_moves = position.get_legal_moves().to_vec();
         let mut position_occurences = ahash::AHashMap::default();
-        let po = position_occurences.entry(position_hash).or_insert(0);
-        *po += 1;
+        position_occurences.insert(position_hash, 1);
 
         // default values for move count and halfmove count if not provided see <https://www.talkchess.com/forum3/viewtopic.php?f=7&t=79627>
         let mut halfmove_count: u32 = 0;
@@ -117,7 +128,7 @@ impl BoardState {
             }
         }
 
-        let board_hash = position_hash ^ *po as u64 ^ halfmove_count as u64;
+        let board_hash = position_hash ^ 1 ^ halfmove_count as u64; // FEN doesnt store position occurrence info, so set to 1
 
         log::info!("New BoardState created from FEN");
         Ok(BoardState {
@@ -252,6 +263,7 @@ impl BoardState {
         *po += 1;
 
         let board_hash = position_hash ^ *po as u64 ^ halfmove_count as u64;
+        log::trace!("Board hash: {}", board_hash);
 
         log::trace!("New BoardState created from move: {:?}", mv);
         Ok(Self {
@@ -278,7 +290,6 @@ impl BoardState {
     pub fn get_gamestate(&self) -> GameState {
         let legal_move_len = self.legal_moves.len();
         let is_in_check = self.position.is_in_check();
-        let occurence_of_current_pos = self.get_occurences_of_current_position();
 
         // checkmate has to be checked for first, as it supercedes other states like the 50 move rule
         if is_in_check && legal_move_len == 0 {
@@ -287,7 +298,7 @@ impl BoardState {
             GameState::Stalemate
         } else if self.halfmove_count >= 100 {
             GameState::FiftyMove
-        } else if occurence_of_current_pos >= 3 {
+        } else if self.get_occurences_of_current_position() >= 3 {
             GameState::Repetition
         } else if is_in_check {
             GameState::Check
@@ -312,17 +323,6 @@ impl BoardState {
         (self.legal_moves.is_empty() && !self.position.is_in_check())
             || self.halfmove_count >= 100
             || self.get_occurences_of_current_position() >= 3
-    }
-
-    // gamestates that are draws
-    pub fn gamestate_is_draw(&self, gamestate: GameState) -> bool {
-        matches!(
-            gamestate,
-            GameState::Stalemate
-                | GameState::FiftyMove
-                | GameState::Repetition
-                | GameState::InsufficientMaterial
-        )
     }
 
     pub fn get_pos64(&self) -> &Pos64 {
