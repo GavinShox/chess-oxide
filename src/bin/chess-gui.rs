@@ -6,7 +6,7 @@
 
 use chess::*;
 use env_logger::{Builder, Target};
-use slint::SharedString;
+use slint::{ComponentHandle, SharedString};
 use std::env;
 use std::sync::{Arc, Mutex};
 
@@ -17,6 +17,14 @@ type PieceColourUI = slint_generatedBoard_UI::PieceColour_UI;
 type PieceTypeUI = slint_generatedBoard_UI::PieceType_UI;
 type MoveNotationUI = slint_generatedBoard_UI::MoveNotation_UI;
 //type MoveUI = slint_generatedBoard_UI::Move_UI;
+
+fn ui_convert_piece_colour(colour: chess::PieceColour) -> PieceColourUI {
+    match colour {
+        chess::PieceColour::White => PieceColourUI::White,
+        chess::PieceColour::Black => PieceColourUI::Black,
+        chess::PieceColour::None => PieceColourUI::None,
+    }
+}
 
 fn ui_convert_piece(piece: chess::Piece) -> PieceUI {
     match piece.pcolour {
@@ -97,6 +105,7 @@ fn main() -> Result<(), slint::PlatformError> {
     let board = Arc::new(Mutex::new(Board::new()));
 
     let ui = Board_UI::new().unwrap();
+    let import_fen_dialog = ImportFen_UI::new().unwrap();
 
     let ui_weak_get_gamestate = ui.as_weak();
     let board_get_gamestate = board.clone();
@@ -271,6 +280,73 @@ fn main() -> Result<(), slint::PlatformError> {
             .unwrap();
         });
     });
+
+    let import_fen_dialog_weak_run = import_fen_dialog.as_weak();
+    ui.on_import_fen_dialog(move || {
+        let import_fen_dialog = import_fen_dialog_weak_run.upgrade().unwrap();
+        import_fen_dialog.show().unwrap();
+    });
+
+    let import_fen_dialog_weak_close = import_fen_dialog.as_weak();
+    ui.window()
+        .on_close_requested(move || -> slint::CloseRequestResponse {
+            let import_fen_dialog = import_fen_dialog_weak_close.upgrade().unwrap();
+            import_fen_dialog.hide().unwrap();
+            slint::CloseRequestResponse::HideWindow
+        });
+
+    let ui_weak_import_fen = ui.as_weak();
+    let import_fen_dialog_weak_import = import_fen_dialog.as_weak();
+    let board_import_fen = board.clone();
+    import_fen_dialog.on_import_fen(move |fen: SharedString| {
+        let import_fen_dialog = import_fen_dialog_weak_import.upgrade().unwrap();
+        let ui = ui_weak_import_fen.upgrade().unwrap();
+
+        let new_board = match board::Board::from_fen(&fen) {
+            Ok(b) => {
+                import_fen_dialog.set_error(false);
+                import_fen_dialog.set_fen_str("".into());
+                b
+            }
+            Err(e) => {
+                import_fen_dialog.set_error(true);
+                import_fen_dialog.set_error_message(e.to_string().into());
+                return;
+            }
+        };
+
+        let side_to_move = ui_convert_piece_colour(new_board.current_state.side_to_move);
+        let player_side = if import_fen_dialog.get_as_white() {
+            PieceColour_UI::White
+        } else {
+            PieceColour_UI::Black
+        };
+
+        *board_import_fen.lock().unwrap() = new_board;
+
+        ui.invoke_reset_properties(player_side, side_to_move);
+        ui.invoke_refresh_position();
+        import_fen_dialog.hide().unwrap();
+    });
+
+    let import_fen_dialog_weak_close = import_fen_dialog.as_weak();
+    import_fen_dialog.on_close(move || {
+        let import_fen_dialog = import_fen_dialog_weak_close.upgrade().unwrap();
+        import_fen_dialog.set_error(false);
+        import_fen_dialog.set_error_message("".into());
+        import_fen_dialog.set_fen_str("".into());
+        import_fen_dialog.hide().unwrap();
+    });
+
+    // on close window, invoke on_close to reset state
+    let import_fen_dialog_weak_close_requested = import_fen_dialog.as_weak();
+    import_fen_dialog
+        .window()
+        .on_close_requested(move || -> slint::CloseRequestResponse {
+            let import_fen_dialog = import_fen_dialog_weak_close_requested.upgrade().unwrap();
+            import_fen_dialog.invoke_close();
+            slint::CloseRequestResponse::HideWindow
+        });
 
     ui.invoke_refresh_position();
     ui.run()

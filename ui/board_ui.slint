@@ -1,4 +1,4 @@
-import { Button, VerticalBox, GridBox, ScrollView, ListView, LineEdit, ComboBox, SpinBox } from "std-widgets.slint";
+import { Button, VerticalBox, GridBox, ScrollView, ListView, LineEdit, ComboBox, SpinBox, StandardButton, CheckBox } from "std-widgets.slint";
 import "resources/font/CaskaydiaCoveNerdFont-Regular.ttf";
 
 
@@ -88,6 +88,64 @@ component Square inherits Rectangle {
     animate background { duration: 50ms; }
 }
 
+export component ImportFen_UI inherits Dialog {
+    title: "Import FEN";
+    icon: @image-url("resources/chesslogo.png");
+    default-font-family: "CaskaydiaCove Nerd Font";
+    width: 400px;
+    height: 200px;
+    always-on-top: true;
+
+    in property <bool> error: false;
+    in property <string> error-message: "";
+    in property <string> fen_str <=> fen.text;
+    in property <bool> as-white <=> side.checked;//side.current-value == "White" ? true : false;
+
+    callback import-fen(string);
+    callback close();
+
+    VerticalLayout {
+        alignment: center;
+        spacing: 10px;
+        fen:= LineEdit {
+            text: "";
+            placeholder-text: "Enter FEN";
+            read-only: false;
+        }
+        Text {
+            text: "Error: " + error-message;
+            color: red;
+            visible: error;
+            font-size: 10px;
+            wrap: word-wrap;
+            vertical-alignment: center;
+        }
+        HorizontalLayout {
+            alignment: center;
+            spacing: 10px;
+            StandardButton { 
+                kind: ok; 
+                clicked => { import-fen(fen.text); }
+            }
+            StandardButton { 
+                kind: cancel; 
+                clicked => { close(); }
+            }
+        }
+        HorizontalLayout {
+            alignment: center;
+            Text {
+                text: "Play as white ";
+                vertical-alignment: center;
+            }
+            side := CheckBox {
+                //text: "Play as white:";
+                checked: true;
+            }
+        }
+    }
+}
+
 export component Board_UI inherits Window {
     title: "Chess";
     icon: @image-url("resources/chesslogo.png");
@@ -111,12 +169,24 @@ export component Board_UI inherits Window {
     callback engine-make-move();
     callback refresh-position();
     callback get-gamestate();
+    callback import-fen-dialog();
 
-    public function reset-properties() {
+    public function reset-properties(player-colour: PieceColour-UI, side-to-move-colour: PieceColour-UI) {
         self.selected-from-square = -1;
         self.selected-to-square = -1;
         self.engine-made-move = true;
         self.last-move = { from-square: -1, to-square: -1, string: "" };
+        root.player-colour = player-colour;
+
+        refresh-position();
+
+        if player-colour == side-to-move-colour {
+            root.engine-made-move = true;
+        } 
+        else {
+            root.engine-made-move = false;
+            root.engine-make-move();
+        }
     }
 
     HorizontalLayout {
@@ -131,26 +201,19 @@ export component Board_UI inherits Window {
                     width: 25%;
                     height: 25px;
                     padding: 10px;
-                    clicked => {
-                        new-game();
-                        reset-properties();
-                        root.player-colour = PieceColour_UI.White;
-                        refresh-position();
-                        root.engine-made-move = true;
-                    }
+                    clicked => { 
+                        root.new-game();
+                        root.reset-properties(PieceColour-UI.White, PieceColour-UI.White);
+                     }
                 }
                 Button {
                     text: "New Game (black)";
                     width: 25%;
                     height: 25px;
                     padding: 10px;
-                    clicked => {
-                        new-game();
-                        reset-properties();
-                        root.player-colour = PieceColour_UI.Black;
-                        refresh-position();
-                        root.engine-made-move = false;
-                        root.engine-make-move();
+                    clicked => { 
+                        root.new-game();
+                        root.reset-properties(PieceColour-UI.Black, PieceColour-UI.White); 
                     }
                 }
                 Text {
@@ -251,17 +314,17 @@ export component Board_UI inherits Window {
     
             }
 
-            LineEdit {
+            fen_export := LineEdit {
                 visible: true;
                 font-size: 10px;
                 text: root.fen;
                 read-only: true;
                 horizontal-alignment: center;
             }
-    
         }
         VerticalLayout {
-            padding: 5px;
+            padding: 10px;
+            spacing: 10px;
             Text {
                 horizontal-alignment: center;
                 text: "Move History:";
@@ -280,6 +343,12 @@ export component Board_UI inherits Window {
                         font-size: 14px;
                     }
                 }    
+            }
+            Button {
+                text: "Import FEN";
+                clicked => {
+                    import-fen-dialog();
+                }
             }
         }
     }

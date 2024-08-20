@@ -87,8 +87,40 @@ impl BoardState {
         }
     }
 
+    // TODO check for overflows
     pub fn from_fen(fen: &str) -> Result<Self, FenParseError> {
         let (position, fen_vec) = Position::from_fen_partial_impl(fen)?;
+
+        // check for multiple kings, should be the only issue in terms of pieces on the board
+        let mut wking_num = 0;
+        let mut bking_num = 0;
+        for s in position.pos64 {
+            match s {
+                Square::Piece(p) => {
+                    if p.ptype == PieceType::King {
+                        match p.pcolour {
+                            PieceColour::White => wking_num += 1,
+                            PieceColour::Black => bking_num += 1,
+                            PieceColour::None => unreachable!(),
+                        }
+                    }
+                }
+                Square::Empty => continue,
+            }
+            if wking_num > 1 || bking_num > 1 {
+                log::error!(
+                    "Multiple kings (white: {}, black: {}) in FEN: {}",
+                    wking_num,
+                    bking_num,
+                    fen
+                );
+                return Err(FenParseError(format!(
+                    "Multiple kings (white: {}, black: {}) in FEN: {}",
+                    wking_num, bking_num, fen
+                )));
+            }
+        }
+
         log::debug!("New Position created from FEN");
         log::trace!("FEN: {fen}, Position: {position:?}");
         let position_hash: PositionHash = position.pos_hash();
