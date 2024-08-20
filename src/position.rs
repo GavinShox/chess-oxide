@@ -604,6 +604,13 @@ impl Position {
                         )));
                     }
                 };
+                if i + rank_start_idx >= 64 {
+                    return Err(FenParseError(format!(
+                        "Out of bounds array access: {}. Rank has too many pieces: {}",
+                        i + rank_start_idx,
+                        rank
+                    )));
+                }
                 pos[i + rank_start_idx] = square;
                 i += 1;
             }
