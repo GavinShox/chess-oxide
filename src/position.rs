@@ -552,8 +552,7 @@ impl Position {
             if square_count != 8 {
                 return Err(FenParseError(format!(
                     "Invalid number of squares in rank: {}. Expected 8, got {}",
-                    rank,
-                    square_count
+                    rank, square_count
                 )));
             }
 
