@@ -125,6 +125,7 @@ export component SettingsDialog_UI inherits Dialog {
 
     callback close();
     callback set-theme(BoardTheme);
+    callback set-depth(string);
 
     VerticalLayout {
         alignment: start;
@@ -133,7 +134,22 @@ export component SettingsDialog_UI inherits Dialog {
             alignment: center;
             spacing: 10px;
             Text {
-                text: "Select Theme: ";
+                text: "Engine Depth: ";
+                font-size: 12px;
+                vertical-alignment: center;
+            }
+            ComboBox {
+                height: 25px;
+                model: [2, 3, 4, 5, 6, 7];
+                current-value: 5;
+                selected => { set-depth(self.current-value); }
+            }
+        }
+        HorizontalLayout {
+            alignment: center;
+            spacing: 10px;
+            Text {
+                text: "Board Theme: ";
                 font-size: 12px;
                 vertical-alignment: center;
             }
@@ -233,6 +249,7 @@ export component Board_UI inherits Window {
 
     property <int> board-size: 8;
     property <length> square-size: 50px;
+
     in-out property <[Piece_UI]> position;
     out property <int> selected-from-square: -1;
     out property <int> selected-to-square: -1;
@@ -241,7 +258,7 @@ export component Board_UI inherits Window {
     in-out property <PieceColour-UI> player-colour: PieceColour-UI.White;
     in-out property <[MoveNotation-UI]> move-history;
     in property <string> fen;
-    out property <string> depth <=> depth-combobox.current-value;
+    in-out property <string> depth: "5"; // default depth
     in-out property <string> gamestate;
     in property <BoardTheme> board-theme: BoardThemes.wood;
 
@@ -305,20 +322,6 @@ export component Board_UI inherits Window {
                         root.new-game();
                         root.reset-properties(PieceColour-UI.Black, PieceColour-UI.White); 
                     }
-                }
-                Text {
-                    text: "Depth:";
-                    font-size: 12px;
-                    width: 10%;
-                    vertical-alignment: center;
-                    horizontal-alignment: center;
-                }
-                depth-combobox := ComboBox {
-                    width: 10%;
-                    height: 25px;
-                    model: [2, 3, 4, 5, 6, 7];
-                    current-value: 5;
-
                 }
             }
             Rectangle {

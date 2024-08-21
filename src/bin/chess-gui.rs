@@ -365,6 +365,12 @@ fn main() -> Result<(), slint::PlatformError> {
         ui.set_board_theme(theme);
     });
 
+    let ui_weak_set_depth = ui.as_weak();
+    settings_dialog.on_set_depth(move |depth| {
+        let ui = ui_weak_set_depth.upgrade().unwrap();
+        ui.set_depth(depth);
+    });
+
     let settings_dialog_weak_close = settings_dialog.as_weak();
     settings_dialog.on_close(move || {
         let settings_dialog = settings_dialog_weak_close.upgrade().unwrap();
