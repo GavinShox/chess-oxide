@@ -339,7 +339,7 @@ export component Board_UI inherits Window {
                 
                 ListView {
                     for move in move-history: Text {
-                        text: move.move-number + ". " + move.notation1 + " " + move.notation2;//Math.mod(i+1, 2) == 0 ? move-history[i - 1] + " " + move : ((i / 2) + 1) + ".";
+                        text: " " + move.move-number + ". " + move.notation1 + " " + move.notation2;//Math.mod(i+1, 2) == 0 ? move-history[i - 1] + " " + move : ((i / 2) + 1) + ".";
                         font-size: 14px;
                     }
                 }    
