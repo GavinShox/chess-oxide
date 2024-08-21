@@ -106,6 +106,7 @@ fn main() -> Result<(), slint::PlatformError> {
 
     let ui = Board_UI::new().unwrap();
     let import_fen_dialog = ImportFen_UI::new().unwrap();
+    let settings_dialog = SettingsDialog_UI::new().unwrap();
 
     let ui_weak_get_gamestate = ui.as_weak();
     let board_get_gamestate = board.clone();
@@ -287,11 +288,15 @@ fn main() -> Result<(), slint::PlatformError> {
         import_fen_dialog.show().unwrap();
     });
 
+    // close all child dialogs/windows on main window close
     let import_fen_dialog_weak_close = import_fen_dialog.as_weak();
+    let settings_dialog_weak_close = settings_dialog.as_weak();
     ui.window()
         .on_close_requested(move || -> slint::CloseRequestResponse {
             let import_fen_dialog = import_fen_dialog_weak_close.upgrade().unwrap();
+            let settings_dialog = settings_dialog_weak_close.upgrade().unwrap();
             import_fen_dialog.hide().unwrap();
+            settings_dialog.hide().unwrap();
             slint::CloseRequestResponse::HideWindow
         });
 
@@ -347,6 +352,24 @@ fn main() -> Result<(), slint::PlatformError> {
             import_fen_dialog.invoke_close();
             slint::CloseRequestResponse::HideWindow
         });
+
+    let settings_dialog_weak_run = settings_dialog.as_weak();
+    ui.on_settings_dialog(move || {
+        let settings_dialog = settings_dialog_weak_run.upgrade().unwrap();
+        settings_dialog.show().unwrap();
+    });
+
+    let ui_weak_set_theme = ui.as_weak();
+    settings_dialog.on_set_theme(move |theme| {
+        let ui = ui_weak_set_theme.upgrade().unwrap();
+        ui.set_board_theme(theme);
+    });
+
+    let settings_dialog_weak_close = settings_dialog.as_weak();
+    settings_dialog.on_close(move || {
+        let settings_dialog = settings_dialog_weak_close.upgrade().unwrap();
+        settings_dialog.hide().unwrap();
+    });
 
     ui.invoke_refresh_position();
     ui.run()
