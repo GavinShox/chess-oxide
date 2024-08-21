@@ -539,6 +539,24 @@ impl Position {
         // first field of FEN defines the piece positions
         let mut rank_start_idx = 0;
         for rank in fen_vec[0].split('/') {
+            // check to see if there is 8 squares in a rank.
+            let mut square_count = 0;
+            for c in rank.chars() {
+                if c.is_ascii_digit() {
+                    let num = c.to_digit(10).unwrap();
+                    square_count += num;
+                } else {
+                    square_count += 1;
+                }
+            }
+            if square_count != 8 {
+                return Err(FenParseError(format!(
+                    "Invalid number of squares in rank: {}. Expected 8, got {}",
+                    rank,
+                    square_count
+                )));
+            }
+
             let mut i = 0;
             for c in rank.chars() {
                 let square = match c {
@@ -604,13 +622,6 @@ impl Position {
                         )));
                     }
                 };
-                if i + rank_start_idx >= 64 {
-                    return Err(FenParseError(format!(
-                        "Out of bounds array access: {}. Rank has too many pieces: {}",
-                        i + rank_start_idx,
-                        rank
-                    )));
-                }
                 pos[i + rank_start_idx] = square;
                 i += 1;
             }
