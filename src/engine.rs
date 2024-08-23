@@ -71,7 +71,7 @@ pub fn quiescence(
     max_eval
 }
 
-pub fn negamax_root<'a>(
+fn negamax_root<'a>(
     bs: &'a BoardState,
     depth: i32,
     maxi_colour: PieceColour,
@@ -118,7 +118,7 @@ pub fn negamax_root<'a>(
 }
 
 //todo maybe no need for BoardState here, only for root negamax?
-pub fn negamax(
+fn negamax(
     bs: &BoardState,
     depth: i32,
     mut alpha: i32,
@@ -191,44 +191,35 @@ pub fn negamax(
     max_eval
 }
 
-pub fn sorted_move_indexes(moves: &[Move], captures_only: bool) -> Vec<usize> {
+fn sorted_move_indexes(moves: &[Move], captures_only: bool) -> Vec<usize> {
     let mut move_scores: Vec<(usize, i32)> = Vec::with_capacity(moves.len());
 
     for (index, mv) in moves.iter().enumerate() {
-        // non captures = -1 so they can be filtered out
         if captures_only && !matches!(mv.move_type, MoveType::Capture(_)) {
-            move_scores.push((index, -1));
             continue;
         }
 
-        let mut mv_score = 0;
-
-        // if mv is a capture
-        match mv.move_type {
+        let mv_score = match mv.move_type {
             MoveType::Capture(capture_type) => {
-                mv_score += get_piece_value(&capture_type) - get_piece_value(&mv.piece.ptype);
-                if mv_score < 0 {
-                    mv_score = 1; // prioritise captures, even when capturing with a more valuable piece. After trades it could still be good
-                }
+                 // prioritise captures, even when capturing with a more valuable piece. After trades it could still be good, so min 1
+                cmp::max(get_piece_value(&capture_type) - get_piece_value(&mv.piece.ptype), 1)
             }
-            MoveType::Promotion(promotion_type) => {
-                mv_score += get_piece_value(&promotion_type);
-            }
-            _ => {}
-        }
+            MoveType::Promotion(promotion_type) => get_piece_value(&promotion_type),
+            _ => 0,
+        };
+
         move_scores.push((index, mv_score));
     }
 
-    // sort the moves in descending order of scores
     move_scores.sort_unstable_by(|a, b| b.1.cmp(&a.1));
 
-    // filter out negative scores and collect the indexes
     move_scores
         .into_iter()
         .filter(|&(_, score)| score >= 0)
         .map(|(index, _)| index)
         .collect()
 }
+
 // values in centipawns
 #[inline(always)]
 fn get_piece_value(ptype: &PieceType) -> i32 {
@@ -307,7 +298,7 @@ fn get_piece_pos_value(i: usize, piece: &Piece, is_endgame: bool) -> i32 {
 }
 
 // adapted piece eval scores from here -> https://www.chessprogramming.org/Simplified_Evaluation_Function
-pub fn evaluate(bs: &BoardState, maxi_colour: PieceColour) -> i32 {
+fn evaluate(bs: &BoardState, maxi_colour: PieceColour) -> i32 {
     let mut w_eval: i32 = 0;
     let mut b_eval: i32 = 0;
     for (i, s) in bs.get_pos64().iter().enumerate() {
