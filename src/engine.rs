@@ -74,7 +74,12 @@ pub fn choose_move<'a>(
         log::info!("Quiescence nodes: {}", nodes.quiescence_nodes);
         log::info!("Quiescence prunes: {}", nodes.quiescence_prunes);
     }
-    log::info!("Engine chose move: {:?} with eval: {} @ depth {}", mv, eval, depth);
+    log::info!(
+        "Engine chose move: {:?} with eval: {} @ depth {}",
+        mv,
+        eval,
+        depth
+    );
 
     (eval, mv)
 }
@@ -119,7 +124,7 @@ fn negamax_root<'a>(
     depth: i32,
     maxi_colour: PieceColour,
     tt: &'a mut TranspositionTable,
-    nodes: & mut Nodes,
+    nodes: &mut Nodes,
 ) -> (i32, &'a Move) {
     if bs.is_checkmate() {
         if cfg!(feature = "debug_engine_logging") {
@@ -149,7 +154,16 @@ fn negamax_root<'a>(
         let mv = &bs.legal_moves[i];
         // println!("evaluating move: {:?}", mv);
         let child_bs = bs.next_state(mv).unwrap();
-        let eval = -negamax(&child_bs, depth - 1, -beta, -alpha, !maxi_colour, 1, tt, nodes);
+        let eval = -negamax(
+            &child_bs,
+            depth - 1,
+            -beta,
+            -alpha,
+            !maxi_colour,
+            1,
+            tt,
+            nodes,
+        );
 
         if eval > max_eval {
             max_eval = eval;
@@ -231,7 +245,7 @@ fn negamax(
             !maxi_colour,
             root_depth + 1,
             tt,
-            nodes
+            nodes,
         );
         if eval > max_eval {
             max_eval = eval;
@@ -274,7 +288,10 @@ fn sorted_move_indexes(moves: &[Move], captures_only: bool) -> Vec<usize> {
         let mv_score = match mv.move_type {
             MoveType::Capture(capture_type) => {
                 // prioritise captures, even when capturing with a more valuable piece. After trades it could still be good, so min 1
-                cmp::max(get_piece_value(&capture_type) - get_piece_value(&mv.piece.ptype), 1)
+                cmp::max(
+                    get_piece_value(&capture_type) - get_piece_value(&mv.piece.ptype),
+                    1,
+                )
             }
             MoveType::Promotion(promotion_type) => get_piece_value(&promotion_type),
             _ => 0,
@@ -285,7 +302,10 @@ fn sorted_move_indexes(moves: &[Move], captures_only: bool) -> Vec<usize> {
 
     move_scores.sort_unstable_by(|a, b| b.1.cmp(&a.1));
 
-    move_scores.into_iter().unzip::<_, _, Vec<usize>, Vec<i32>>().0
+    move_scores
+        .into_iter()
+        .unzip::<_, _, Vec<usize>, Vec<i32>>()
+        .0
 }
 
 // values in centipawns

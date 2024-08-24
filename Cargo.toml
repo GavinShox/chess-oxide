@@ -21,6 +21,7 @@ name = "chess-perft"
 path = "src/bin/chess-perft.rs"
 
 [features]
+default = []
 debug_engine_logging = []
 
 [dependencies]
