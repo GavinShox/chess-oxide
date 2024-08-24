@@ -294,7 +294,7 @@ impl BoardState {
         let po = position_occurences.entry(position_hash).or_insert(0);
         *po += 1;
 
-        let board_hash = position_hash ^ *po as u64 ^ halfmove_count as u64;
+        let board_hash = position_hash ^ *po as u64 ^ halfmove_count as u64;  //TODO this should be ok since zobrist hash is unique with proper rng, right? Should look into it
         log::trace!("Board hash: {}", board_hash);
 
         log::trace!("New BoardState created from move: {:?}", mv);
