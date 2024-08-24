@@ -780,12 +780,15 @@ impl Position {
                 }
             }
 
-            if (idx + 1) % 8 == 0 && idx != 63 {
+            // new rank insert '/', except when at last index, then only insert empty count if it's > 0 
+            if (idx + 1) % 8 == 0 {
                 if empty_count > 0 {
                     fen_str.push_str(empty_count.to_string().as_str());
                     empty_count = 0;
                 }
-                fen_str.push('/');
+                if idx != 63 {
+                    fen_str.push('/');
+                }
             }
         }
         fen_str.push(' ');
