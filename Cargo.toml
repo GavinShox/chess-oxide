@@ -20,7 +20,8 @@ path = "src/bin/chess-gui.rs"
 name = "chess-perft"
 path = "src/bin/chess-perft.rs"
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+[features]
+debug_engine_logging = []
 
 [dependencies]
 rand = "0.8.5"

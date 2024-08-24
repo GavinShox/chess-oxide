@@ -9,6 +9,16 @@ const MIN: i32 = i32::MIN + 1000;
 const MAX: i32 = i32::MAX - 1000;
 const QUIECENCE_DEPTH: i32 = 4;
 
+// #[cfg(feature = "debug_engine_logging")]
+struct Nodes {
+    nodes_searched: u64,
+    branches_pruned: u64,
+    negamax_nodes: u64,
+    negamax_prunes: u64,
+    quiescence_nodes: u64,
+    quiescence_prunes: u64,
+}
+
 #[derive(Debug)]
 enum BoundType {
     Exact,
@@ -41,16 +51,41 @@ pub fn choose_move<'a>(
     depth: i32,
     tt: &'a mut TranspositionTable,
 ) -> (i32, &'a Move) {
+    let mut nodes = Nodes {
+        nodes_searched: 0,
+        branches_pruned: 0,
+        negamax_nodes: 0,
+        negamax_prunes: 0,
+        quiescence_nodes: 0,
+        quiescence_prunes: 0,
+    };
     // TODO add check if position is in endgame, for different evaluation
-    negamax_root(bs, depth, bs.side_to_move, tt)
+    let (eval, mv) = negamax_root(bs, depth, bs.side_to_move, tt, &mut nodes);
+
+    // total up nodes and prunes
+    nodes.nodes_searched = nodes.negamax_nodes + nodes.quiescence_nodes;
+    nodes.branches_pruned = nodes.negamax_prunes + nodes.quiescence_prunes;
+
+    if cfg!(feature = "debug_engine_logging") {
+        log::info!("Nodes searched: {}", nodes.nodes_searched);
+        log::info!("Branches pruned: {}", nodes.branches_pruned);
+        log::info!("Negamax nodes: {}", nodes.negamax_nodes);
+        log::info!("Negamax prunes: {}", nodes.negamax_prunes);
+        log::info!("Quiescence nodes: {}", nodes.quiescence_nodes);
+        log::info!("Quiescence prunes: {}", nodes.quiescence_prunes);
+    }
+    log::info!("Engine chose move: {:?} with eval: {} @ depth {}", mv, eval, depth);
+
+    (eval, mv)
 }
 
-pub fn quiescence(
+fn quiescence(
     bs: &BoardState,
     depth: i32,
     mut alpha: i32,
     beta: i32,
     maxi_colour: PieceColour,
+    nodes: &mut Nodes,
 ) -> i32 {
     let mut max_eval = evaluate(bs, maxi_colour);
     if max_eval >= beta || depth == 0 {
@@ -61,10 +96,18 @@ pub fn quiescence(
     for i in sorted_move_indexes(moves, true) {
         let mv = moves[i];
         let child_bs = bs.next_state(&mv).unwrap();
-        let eval = -quiescence(&child_bs, depth - 1, -beta, -alpha, !maxi_colour);
+        let eval = -quiescence(&child_bs, depth - 1, -beta, -alpha, !maxi_colour, nodes);
         max_eval = cmp::max(max_eval, eval);
         alpha = cmp::max(alpha, max_eval);
+
+        if cfg!(feature = "debug_engine_logging") {
+            nodes.quiescence_nodes += 1;
+        }
+
         if beta <= alpha {
+            if cfg!(feature = "debug_engine_logging") {
+                nodes.quiescence_prunes += 1;
+            }
             break;
         }
     }
@@ -76,8 +119,12 @@ fn negamax_root<'a>(
     depth: i32,
     maxi_colour: PieceColour,
     tt: &'a mut TranspositionTable,
+    nodes: & mut Nodes,
 ) -> (i32, &'a Move) {
     if bs.is_checkmate() {
+        if cfg!(feature = "debug_engine_logging") {
+            nodes.negamax_nodes += 1;
+        }
         return (
             if bs.side_to_move == maxi_colour {
                 MIN
@@ -87,6 +134,9 @@ fn negamax_root<'a>(
             &NULL_MOVE,
         );
     } else if bs.is_draw() {
+        if cfg!(feature = "debug_engine_logging") {
+            nodes.negamax_nodes += 1;
+        }
         // stalemate
         return (0, &NULL_MOVE);
     }
@@ -99,14 +149,21 @@ fn negamax_root<'a>(
         let mv = &bs.legal_moves[i];
         // println!("evaluating move: {:?}", mv);
         let child_bs = bs.next_state(mv).unwrap();
-        let eval = -negamax(&child_bs, depth - 1, -beta, -alpha, !maxi_colour, 1, tt);
+        let eval = -negamax(&child_bs, depth - 1, -beta, -alpha, !maxi_colour, 1, tt, nodes);
 
         if eval > max_eval {
             max_eval = eval;
             best_move = mv;
         }
         alpha = cmp::max(alpha, max_eval);
+
+        if cfg!(feature = "debug_engine_logging") {
+            nodes.negamax_nodes += 1;
+        }
         if beta <= alpha {
+            if cfg!(feature = "debug_engine_logging") {
+                nodes.negamax_prunes += 1;
+            }
             break;
         }
     }
@@ -126,6 +183,7 @@ fn negamax(
     maxi_colour: PieceColour,
     root_depth: i32,
     tt: &mut TranspositionTable,
+    nodes: &mut Nodes,
 ) -> i32 {
     // TODO ADD MOVE ORDERING WITH BEST MOVE IN TRANSPOSITION TABLE?
     // transposition table lookup
@@ -144,15 +202,21 @@ fn negamax(
         }
     }
     if bs.is_checkmate() {
+        if cfg!(feature = "debug_engine_logging") {
+            nodes.negamax_nodes += 1;
+        }
         return if bs.side_to_move == maxi_colour {
             MIN + root_depth
         } else {
             MAX - root_depth
         };
     } else if bs.is_draw() {
+        if cfg!(feature = "debug_engine_logging") {
+            nodes.negamax_nodes += 1;
+        }
         return 0; // stalemate
     } else if depth == 0 {
-        return quiescence(bs, QUIECENCE_DEPTH, alpha, beta, maxi_colour);
+        return quiescence(bs, QUIECENCE_DEPTH, alpha, beta, maxi_colour, nodes);
     }
 
     let mut max_eval = MIN;
@@ -167,12 +231,20 @@ fn negamax(
             !maxi_colour,
             root_depth + 1,
             tt,
+            nodes
         );
         if eval > max_eval {
             max_eval = eval;
         }
         alpha = cmp::max(alpha, max_eval);
+
+        if cfg!(feature = "debug_engine_logging") {
+            nodes.negamax_nodes += 1;
+        }
         if beta <= alpha {
+            if cfg!(feature = "debug_engine_logging") {
+                nodes.negamax_prunes += 1;
+            }
             break;
         }
     }
