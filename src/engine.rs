@@ -201,7 +201,7 @@ fn sorted_move_indexes(moves: &[Move], captures_only: bool) -> Vec<usize> {
 
         let mv_score = match mv.move_type {
             MoveType::Capture(capture_type) => {
-                 // prioritise captures, even when capturing with a more valuable piece. After trades it could still be good, so min 1
+                // prioritise captures, even when capturing with a more valuable piece. After trades it could still be good, so min 1
                 cmp::max(get_piece_value(&capture_type) - get_piece_value(&mv.piece.ptype), 1)
             }
             MoveType::Promotion(promotion_type) => get_piece_value(&promotion_type),
@@ -213,11 +213,7 @@ fn sorted_move_indexes(moves: &[Move], captures_only: bool) -> Vec<usize> {
 
     move_scores.sort_unstable_by(|a, b| b.1.cmp(&a.1));
 
-    move_scores
-        .into_iter()
-        .filter(|&(_, score)| score >= 0)
-        .map(|(index, _)| index)
-        .collect()
+    move_scores.into_iter().unzip::<_, _, Vec<usize>, Vec<i32>>().0
 }
 
 // values in centipawns
