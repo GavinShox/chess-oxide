@@ -70,7 +70,7 @@ impl BoardState {
         let side_to_move = position.side;
         // deref all legal moves, performance isn't as important here, so avoid lifetime specifiers to make things easier to look at
         let legal_moves = position.get_legal_moves().to_vec();
-        log::info!("Legal moves generated: {legal_moves:?}");
+        log::trace!("Legal moves generated: {legal_moves:?}");
         let mut position_occurences = ahash::AHashMap::default();
         position_occurences.insert(position_hash, 1);
         log::info!("New starting BoardState created");
