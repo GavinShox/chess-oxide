@@ -99,13 +99,19 @@ impl BoardState {
                 Square::Piece(p) => {
                     if p.ptype == PieceType::King {
                         match p.pcolour {
-                            PieceColour::White => wking_num += 1,
-                            PieceColour::Black => bking_num += 1,
+                            PieceColour::White => {
+                                wking_num += 1;
+                            }
+                            PieceColour::Black => {
+                                bking_num += 1;
+                            }
                             PieceColour::None => unreachable!(),
                         }
                     }
                 }
-                Square::Empty => continue,
+                Square::Empty => {
+                    continue;
+                }
             }
             if wking_num > 1 || bking_num > 1 {
                 log::error!(
@@ -156,11 +162,11 @@ impl BoardState {
                             fen_vec[5]
                         )));
                     }
-                }
+                };
             }
         }
 
-        let board_hash = position_hash ^ 1 ^ halfmove_count as u64; // FEN doesnt store position occurrence info, so set to 1
+        let board_hash = position_hash ^ 1 ^ (halfmove_count as u64); // FEN doesnt store position occurrence info, so set to 1
 
         log::info!("New BoardState created from FEN");
         Ok(BoardState {
@@ -294,7 +300,7 @@ impl BoardState {
         let po = position_occurences.entry(position_hash).or_insert(0);
         *po += 1;
 
-        let board_hash = position_hash ^ *po as u64 ^ halfmove_count as u64;  //TODO this should be ok since zobrist hash is unique with proper rng, right? Should look into it
+        let board_hash = position_hash ^ (*po as u64) ^ (halfmove_count as u64); //TODO this should be ok since zobrist hash is unique with proper rng, right? Should look into it
         log::trace!("Board hash: {}", board_hash);
 
         log::trace!("New BoardState created from move: {:?}", mv);
@@ -432,6 +438,12 @@ impl Board {
             engine::choose_move(&self.current_state, depth, &mut self.transposition_table);
         let mv = *engine_move;
         log::info!("Engine move chosen: {:?} @ eval: {}", engine_move, eval);
+        log::debug!(
+            "Transposition table: Entries -> {}, Size on heap -> {}, Total allocated on heap -> {}",
+            self.transposition_table.len(),
+            util::bytes_to_str(self.transposition_table.heap_size()),
+            util::bytes_to_str(self.transposition_table.heap_alloc_size())
+        );
 
         self.make_move(&mv)
     }

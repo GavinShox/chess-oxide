@@ -116,3 +116,14 @@ pub fn print_board(bs: &BoardState) {
         }
     }
 }
+
+pub fn bytes_to_str(size: usize) -> String {
+    let units = ["B", "KiB", "MiB", "GiB", "TiB"];
+    let mut size = size as f64;
+    let mut i = 0;
+    while size >= 1024.0 {
+        size /= 1024.0;
+        i += 1;
+    }
+    format!("{:.2} {}", size, units[i])
+}

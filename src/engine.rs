@@ -9,14 +9,29 @@ const MIN: i32 = i32::MIN + 1000;
 const MAX: i32 = i32::MAX - 1000;
 const QUIECENCE_DEPTH: i32 = 4;
 
-// #[cfg(feature = "debug_engine_logging")]
 struct Nodes {
-    nodes_searched: u64,
-    branches_pruned: u64,
     negamax_nodes: u64,
     negamax_prunes: u64,
     quiescence_nodes: u64,
     quiescence_prunes: u64,
+}
+impl Nodes {
+    fn new() -> Self {
+        Nodes {
+            negamax_nodes: 0,
+            negamax_prunes: 0,
+            quiescence_nodes: 0,
+            quiescence_prunes: 0,
+        }
+    }
+
+    fn total_nodes(&self) -> u64 {
+        self.negamax_nodes + self.quiescence_nodes
+    }
+
+    fn total_prunes(&self) -> u64 {
+        self.negamax_prunes + self.quiescence_prunes
+    }
 }
 
 #[derive(Debug)]
@@ -37,6 +52,20 @@ impl TranspositionTable {
         }
     }
 
+    pub fn len(&self) -> usize {
+        self.table.len()
+    }
+
+    // size of actual stored data, memory allocated on heap may be larger
+    pub fn heap_size(&self) -> usize {
+        self.table.len() * std::mem::size_of::<(PositionHash, (BoundType, i32, i32))>()
+    }
+
+    // size of allocated memory
+    pub fn heap_alloc_size(&self) -> usize {
+        self.table.capacity() * std::mem::size_of::<(PositionHash, (BoundType, i32, i32))>()
+    }
+
     fn insert(&mut self, hash: PositionHash, bound_type: BoundType, depth: i32, eval: i32) {
         self.table.insert(hash, (bound_type, depth, eval));
     }
@@ -49,26 +78,15 @@ impl TranspositionTable {
 pub fn choose_move<'a>(
     bs: &'a BoardState,
     depth: i32,
-    tt: &'a mut TranspositionTable,
+    tt: &mut TranspositionTable,
 ) -> (i32, &'a Move) {
-    let mut nodes = Nodes {
-        nodes_searched: 0,
-        branches_pruned: 0,
-        negamax_nodes: 0,
-        negamax_prunes: 0,
-        quiescence_nodes: 0,
-        quiescence_prunes: 0,
-    };
+    let mut nodes = Nodes::new();
     // TODO add check if position is in endgame, for different evaluation
     let (eval, mv) = negamax_root(bs, depth, bs.side_to_move, tt, &mut nodes);
 
-    // total up nodes and prunes
-    nodes.nodes_searched = nodes.negamax_nodes + nodes.quiescence_nodes;
-    nodes.branches_pruned = nodes.negamax_prunes + nodes.quiescence_prunes;
-
     if cfg!(feature = "debug_engine_logging") {
-        log::info!("Nodes searched: {}", nodes.nodes_searched);
-        log::info!("Branches pruned: {}", nodes.branches_pruned);
+        log::info!("Nodes searched: {}", nodes.total_nodes());
+        log::info!("Branches pruned: {}", nodes.total_prunes());
         log::info!("Negamax nodes: {}", nodes.negamax_nodes);
         log::info!("Negamax prunes: {}", nodes.negamax_prunes);
         log::info!("Quiescence nodes: {}", nodes.quiescence_nodes);
@@ -80,10 +98,10 @@ pub fn choose_move<'a>(
         eval,
         depth
     );
-
     (eval, mv)
 }
 
+// TODO add checks (and maybe promotions) to quiescence search
 fn quiescence(
     bs: &BoardState,
     depth: i32,
@@ -123,7 +141,7 @@ fn negamax_root<'a>(
     bs: &'a BoardState,
     depth: i32,
     maxi_colour: PieceColour,
-    tt: &'a mut TranspositionTable,
+    tt: &mut TranspositionTable,
     nodes: &mut Nodes,
 ) -> (i32, &'a Move) {
     if bs.is_checkmate() {
@@ -146,6 +164,7 @@ fn negamax_root<'a>(
         return (0, &NULL_MOVE);
     }
     let mut alpha = MIN;
+
     let beta = MAX;
 
     let mut best_move = &bs.legal_moves[0];
@@ -206,9 +225,15 @@ fn negamax(
         let tt_eval = *tt_eval;
         if *tt_depth >= depth {
             match bound_type {
-                BoundType::Exact => return tt_eval,
-                BoundType::Lower => alpha = cmp::max(alpha, tt_eval),
-                BoundType::Upper => beta = cmp::min(beta, tt_eval),
+                BoundType::Exact => {
+                    return tt_eval;
+                }
+                BoundType::Lower => {
+                    alpha = cmp::max(alpha, tt_eval);
+                }
+                BoundType::Upper => {
+                    beta = cmp::min(beta, tt_eval);
+                }
             }
             if alpha >= beta {
                 return tt_eval;
@@ -397,10 +422,10 @@ fn evaluate(bs: &BoardState, maxi_colour: PieceColour) -> i32 {
             Square::Piece(p) => {
                 let val = get_piece_value(&p.ptype) + get_piece_pos_value(i, p, false);
                 if p.pcolour == PieceColour::White {
-                    w_eval += val
+                    w_eval += val;
                 } else {
-                    b_eval += val
-                };
+                    b_eval += val;
+                }
             }
         }
     }
