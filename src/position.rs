@@ -478,8 +478,6 @@ impl Position {
     fn gen_maps(&mut self) {
         self.defend_map.clear();
         self.attack_map.clear();
-        let mut attack_map = AttackMap::new();
-        // movegen_pos(&self.position, &self.movegen_flags, self.side, &mut self.attack_map, &mut self.defend_map);
 
         for (i, s) in self.pos64.iter().enumerate() {
             match s {
@@ -500,7 +498,7 @@ impl Position {
                             p,
                             i,
                             false,
-                            &mut attack_map,
+                            &mut self.attack_map,
                         );
                     }
                 }
@@ -512,13 +510,12 @@ impl Position {
         // TODO this is very confusing, as defend map has to be updated before we can check legal moves, so outside this function it looks like circular logic
         // defend map has to be updated before we can check legal moves, but it is directly updsted above
         // prune illegal moves
-        let mut legal_indexes = vec![true; self.attack_map.0.len()];
+        let mut legal_indexes = vec![false; self.attack_map.0.len()];
         for (i, mv) in self.attack_map.0.iter().enumerate() {
             legal_indexes[i] = self.is_move_legal(mv);
         }
-        attack_map.0.retain(|&mv| self.is_move_legal(&mv));
-
-        self.attack_map = attack_map;
+        let mut keep = legal_indexes.iter(); // iter stored here so .next() properly increments below
+        self.attack_map.0.retain(|_| *keep.next().unwrap());
     }
 
     // partial implementation of the FEN format, last 2 fields are not used here

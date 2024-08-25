@@ -449,16 +449,11 @@ pub fn movegen(
     }
 }
 
-// TODO, maybe use this to generate defend map as well? but maybe it will affect performance
-// so short would be kept as a boolean flag maybe? Because attack and defend map is generated separetly....
-// TODO Maybe combine the generation of defend and attacking? by using if statement on different piece colours.
-// TODO FIXME TODO TODO ^^^^^ this sounds good TODO TODO for highlight extention
-// TODO ok, so this could be what generated final legal moves, so this isnt called repeatedly in Position::gen_maps
 pub fn movegen_in_check(pos: &position::Pos64, king_idx: usize) -> bool {
     let king_colour = if let Square::Piece(p) = pos[king_idx] {
         p.pcolour
     } else {
-        panic!("king_idx does not contain a king....")
+        unreachable!("king_idx does not contain a king....")
     }; // just give the correct value please and we dont need to panic
     for (i, s) in pos.iter().enumerate() {
         match s {
