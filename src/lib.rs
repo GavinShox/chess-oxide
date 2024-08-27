@@ -5,6 +5,7 @@ mod mailbox;
 mod movegen;
 pub mod perft;
 mod position;
+mod zobrist;
 pub mod test;
 mod util;
 
