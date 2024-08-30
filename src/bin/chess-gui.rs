@@ -282,7 +282,10 @@ fn main() -> Result<(), slint::PlatformError> {
             .parse::<i32>()
             .unwrap();
         std::thread::spawn(move || {
-            bmem.lock().unwrap().make_engine_move(depth).unwrap();
+            if let Err(e) = bmem.lock().unwrap().make_engine_move(depth) {
+                log::error!("BoardStateError on making engine move: {e}");
+                return;
+            }
             slint::invoke_from_event_loop(move || {
                 ui.upgrade().unwrap().invoke_refresh_position();
                 ui.upgrade().unwrap().set_engine_made_move(true);

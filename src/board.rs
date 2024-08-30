@@ -10,6 +10,8 @@ use crate::errors::FenParseError;
 use crate::movegen::*;
 use crate::position::*;
 use crate::util;
+use crate::zobrist;
+use crate::zobrist::PositionHash;
 
 #[derive(Debug, PartialEq, Eq)]
 pub enum GameState {
@@ -273,7 +275,10 @@ impl BoardState {
 
         let position = self.position.new_position(mv);
         log::trace!("New Position created from move: {:?}", mv);
-        let position_hash = position.pos_hash();
+        let position_hash = zobrist::pos_next_hash(&self.position, self.position_hash, mv);  // use last position for movegen flags
+        println!("old hash: {} new hash: {}", position.pos_hash(), position_hash);
+        //assert_ne!(position.pos_hash(), position_hash);
+        log::trace!("New hash generated: {}", position_hash);
         let side_to_move = position.side;
         let last_move = *mv;
         // deref all legal moves
@@ -300,7 +305,8 @@ impl BoardState {
         let po = position_occurences.entry(position_hash).or_insert(0);
         *po += 1;
 
-        let board_hash = position_hash ^ (*po as u64) ^ (halfmove_count as u64); //TODO this should be ok since zobrist hash is unique with proper rng, right? Should look into it
+        let board_hash = zobrist::board_state_hash(position_hash, *po, halfmove_count);
+        //let board_hash = position_hash ^ (*po as u64) ^ (halfmove_count as u64);
         log::trace!("Board hash: {}", board_hash);
 
         log::trace!("New BoardState created from move: {:?}", mv);

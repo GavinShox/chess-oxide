@@ -114,6 +114,20 @@ pub enum MoveType {
     None, // used to represent null move, or moves that are only used in generating defend map, and are not actually possible to play
 }
 
+pub enum CastleType {
+    Short,
+    Long
+}
+
+#[inline(always)]
+pub fn get_castle_type(castle_move: CastleMove) -> CastleType {
+    if castle_move.rook_from == SHORT_BLACK_ROOK_START || castle_move.rook_from == SHORT_WHITE_ROOK_START {
+        CastleType::Short
+    } else {
+        CastleType::Long
+    }
+}
+
 pub trait MoveMap {
     fn add_move(&mut self, _: &Move);
 }

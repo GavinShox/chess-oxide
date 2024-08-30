@@ -2,7 +2,7 @@ use std::cmp;
 
 use crate::board::*;
 use crate::movegen::*;
-use crate::PositionHash;
+use crate::zobrist::PositionHash;
 
 // avoid int overflows when operating on these values i.e. negating, +/- checkmate depth etc.
 const MIN: i32 = i32::MIN + 1000;

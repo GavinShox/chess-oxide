@@ -1,24 +1,15 @@
-use rand::Rng;
-
-use static_init::dynamic;
-
 use crate::errors::FenParseError;
 use crate::movegen::*;
 use crate::util;
-
-#[dynamic]
-static ZOBRIST_HASH_TABLE: ZobristHashTable = ZobristHashTable::new();
+use crate::zobrist;
+use crate::zobrist::PositionHash;
 
 const ABOVE_BELOW: usize = 8; // 8 indexes from i is the square directly above/below in the pos64 array
 
 pub type Pos64 = [Square; 64];
-pub type PositionHash = u64;
 
-#[derive(Debug, PartialEq, Eq, Clone, Copy)]
-pub struct DefendMap([bool; 64]);
 #[derive(Debug, PartialEq, Clone)]
 pub struct AttackMap(Vec<Move>);
-
 impl AttackMap {
     fn new() -> Self {
         Self(Vec::new())
@@ -33,6 +24,8 @@ impl AttackMap {
     }
 }
 
+#[derive(Debug, PartialEq, Eq, Clone, Copy)]
+pub struct DefendMap([bool; 64]);
 impl DefendMap {
     fn new() -> Self {
         Self([false; 64])
@@ -65,115 +58,7 @@ pub struct Position {
     wking_idx: usize,
     bking_idx: usize,
 }
-
-struct ZobristHashTable {
-    pos_table: [[PositionHash; 12]; 64],
-    en_passant_table: [PositionHash; 8], // 8 possible files that an en passant move can be made
-    black_to_move: PositionHash,
-    white_castle_long: PositionHash,
-    black_castle_long: PositionHash,
-    white_castle_short: PositionHash,
-    black_castle_short: PositionHash,
-}
-impl ZobristHashTable {
-    fn new() -> Self {
-        let mut rng = rand::thread_rng();
-        let mut pos_table: [[PositionHash; 12]; 64] = [[0; 12]; 64];
-        for i in 0..64 {
-            for j in 0..12 {
-                pos_table[i][j] = rng.gen();
-            }
-        }
-        let mut en_passant_table: [PositionHash; 8] = [0; 8];
-        for i in 0..8 {
-            en_passant_table[i] = rng.gen();
-        }
-        let black_to_move = rng.gen();
-        let white_long_castle = rng.gen();
-        let black_long_castle = rng.gen();
-        let white_short_castle = rng.gen();
-        let black_short_castle = rng.gen();
-        Self {
-            pos_table,
-            en_passant_table,
-            black_to_move,
-            white_castle_long: white_long_castle,
-            black_castle_long: black_long_castle,
-            white_castle_short: white_short_castle,
-            black_castle_short: black_short_castle,
-        }
-    }
-
-    fn get_piece_hash(&self, piece: &Piece, square_idx: usize) -> PositionHash {
-        self.pos_table[square_idx][Self::get_piece_idx(piece)]
-    }
-
-    fn get_piece_idx(piece: &Piece) -> usize {
-        match piece.pcolour {
-            PieceColour::White => match piece.ptype {
-                PieceType::Pawn => 0,
-                PieceType::Knight => 1,
-                PieceType::Bishop => 2,
-                PieceType::Rook => 3,
-                PieceType::Queen => 4,
-                PieceType::King => 5,
-                PieceType::None => {
-                    unreachable!("PieceType::None in get_piece_idx()")
-                }
-            },
-            PieceColour::Black => match piece.ptype {
-                PieceType::Pawn => 6,
-                PieceType::Knight => 7,
-                PieceType::Bishop => 8,
-                PieceType::Rook => 9,
-                PieceType::Queen => 10,
-                PieceType::King => 11,
-                PieceType::None => {
-                    unreachable!("PieceType::None in get_piece_idx()")
-                }
-            },
-            PieceColour::None => {
-                unreachable!("PieceColour::None in get_piece_idx()")
-            }
-        }
-    }
-}
-
 impl Position {
-    pub fn pos_hash(&self) -> PositionHash {
-        let mut hash = 0;
-        for (i, s) in self.pos64.iter().enumerate() {
-            match s {
-                Square::Piece(p) => {
-                    hash ^= ZOBRIST_HASH_TABLE.get_piece_hash(p, i);
-                }
-                Square::Empty => {
-                    continue;
-                }
-            }
-        }
-        if self.movegen_flags.white_castle_long {
-            hash ^= ZOBRIST_HASH_TABLE.white_castle_long;
-        }
-        if self.movegen_flags.black_castle_long {
-            hash ^= ZOBRIST_HASH_TABLE.black_castle_long;
-        }
-        if self.movegen_flags.white_castle_short {
-            hash ^= ZOBRIST_HASH_TABLE.white_castle_short;
-        }
-        if self.movegen_flags.black_castle_short {
-            hash ^= ZOBRIST_HASH_TABLE.black_castle_short;
-        }
-        if self.movegen_flags.en_passant.is_some() {
-            hash ^= ZOBRIST_HASH_TABLE.en_passant_table[self.movegen_flags.en_passant.unwrap() % 8];
-        }
-        if self.side == PieceColour::Black {
-            hash ^= ZOBRIST_HASH_TABLE.black_to_move;
-        }
-
-        hash
-    }
-
     // new board with starting Position
     pub fn new_starting() -> Self {
         let mut pos: Pos64 = [Square::Empty; 64];
@@ -314,6 +199,10 @@ impl Position {
         new_pos.toggle_side();
         new_pos.gen_maps();
         new_pos
+    }
+
+    pub fn pos_hash(&self) -> PositionHash {
+        zobrist::pos_hash(self)
     }
 
     // TODO maybe consolidate all movegen flag updates into one place if possible?
