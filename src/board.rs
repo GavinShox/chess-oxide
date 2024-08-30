@@ -275,9 +275,8 @@ impl BoardState {
 
         let position = self.position.new_position(mv);
         log::trace!("New Position created from move: {:?}", mv);
-        let position_hash = zobrist::pos_next_hash(&self.position, self.position_hash, mv);  // use last position for movegen flags
-        println!("old hash: {} new hash: {}", position.pos_hash(), position_hash);
-        //assert_ne!(position.pos_hash(), position_hash);
+        let position_hash = zobrist::pos_next_hash(&self.position, self.position_hash, mv); // use last position for movegen flags
+        assert_eq!(position.pos_hash(), position_hash);
         log::trace!("New hash generated: {}", position_hash);
         let side_to_move = position.side;
         let last_move = *mv;

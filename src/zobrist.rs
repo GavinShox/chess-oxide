@@ -21,7 +21,11 @@ pub fn pos_next_hash(pos: &Position, current_hash: PositionHash, mv: &Move) -> P
 }
 
 // add BoardState information into a zobrist Position hash
-pub fn board_state_hash(current_hash: PositionHash, occurrences: u8, halfmove_count: u32) -> PositionHash {
+pub fn board_state_hash(
+    current_hash: PositionHash,
+    occurrences: u8,
+    halfmove_count: u32,
+) -> PositionHash {
     ZOBRIST_HASH_TABLE.board_state_hash(current_hash, occurrences, halfmove_count)
 }
 
@@ -34,7 +38,7 @@ struct ZobristHashTable {
     white_castle_short: PositionHash,
     black_castle_short: PositionHash,
     halfmove_count: [PositionHash; 100],
-    occurrences: [PositionHash; 3]
+    occurrences: [PositionHash; 3],
 }
 impl ZobristHashTable {
     fn new() -> Self {
@@ -71,72 +75,96 @@ impl ZobristHashTable {
             white_castle_short,
             black_castle_short,
             halfmove_count,
-            occurrences
+            occurrences,
         }
     }
 
-    pub fn next_hash(&self, position: &Position, current_hash: PositionHash, mv: &Move) -> PositionHash {
-        //https://www.chessprogramming.org/Zobrist_Hashing
-        // TODO not working, needs testing. Try to simplify
+    pub fn next_hash(
+        &self,
+        position: &Position,
+        current_hash: PositionHash,
+        mv: &Move,
+    ) -> PositionHash {
         let mut hash = current_hash;
         let side = mv.piece.pcolour;
         let mut piece = mv.piece;
-        hash ^= self.get_piece_hash(&mv.piece, mv.from);  // remove the moving piece from position
-        if let Some(idx) = position.movegen_flags.en_passant {hash ^= self.en_passant_table[idx % 8]}
+        hash ^= self.get_piece_hash(&mv.piece, mv.from); // remove the moving piece from position
+        if let Some(idx) = position.movegen_flags.en_passant {
+            hash ^= self.en_passant_table[idx % 8] // remove existing en passant index
+        }
         match mv.move_type {
-            MoveType::Promotion(ptype) => piece = Piece {pcolour: side, ptype},  // set piece to promoted type
-            MoveType::DoublePawnPush => hash ^= self.en_passant_table[mv.to % 8],
-            MoveType::Capture(p) => hash ^= self.get_piece_hash(&Piece{ptype: p, pcolour: !side}, mv.to),  // remove captured piece
-            MoveType::EnPassant(idx) => {
-                // reset enpassant flag
-                hash ^= self.en_passant_table[idx % 8];
-                // remove captured pawn
-                let pawn = Piece { ptype: PieceType::Pawn, pcolour: !side };
-                hash ^= self.get_piece_hash(&pawn, idx);
-            }, 
-            // castling hashing doesnt match original
-            MoveType::Castle(c) => {
-                println!("{c:?}");
-                match get_castle_type(c) {
-                    // reset short castle flag - test fen r1bqkbnr/pppp1ppp/2n5/4p3/2B1P3/5N2/PPPP1PPP/RNBQK2R b KQkq - 3 3
-                    CastleType::Short => {
-                        if side == PieceColour::White {
-                            println!("SHORT WHITE");
-                            hash ^= self.white_castle_short;
-                        } else {
-                            println!("SHORT BLACK");
-                            hash ^= self.black_castle_short;
-                        }
-                    },
-                    // reset long castle flag
-                    CastleType::Long => {
-                        if side == PieceColour::White {
-                            println!("LONG WHITE");
-                            hash ^= self.white_castle_long;
-                        } else {
-                            println!("LONG BLACK");
-                            hash ^= self.black_castle_long;
-                        }
-                    },
+            // TODO promotions not working, promotions can also be captures
+            MoveType::Promotion(ptype) => {
+                piece = Piece {
+                    pcolour: side,
+                    ptype,
                 }
-                let rook = Piece {ptype: PieceType::Rook, pcolour: side};
-                hash ^= self.get_piece_hash(&rook, c.rook_from);  // remove rook from its starting position
-                hash ^= self.get_piece_hash(&rook, c.rook_to);  // set rook to new position
-            },
+            } // set piece to promoted type
+            MoveType::DoublePawnPush => hash ^= self.en_passant_table[mv.to % 8],  // set en passant index
+            MoveType::Capture(p) => {
+                hash ^= self.get_piece_hash(
+                    &Piece {
+                        ptype: p,
+                        pcolour: !side,
+                    },
+                    mv.to,
+                )
+            } // remove captured piece
+            MoveType::EnPassant(idx) => {
+                // remove captured pawn
+                let pawn = Piece {
+                    ptype: PieceType::Pawn,
+                    pcolour: !side,
+                };
+                hash ^= self.get_piece_hash(&pawn, idx);
+            }
+            MoveType::Castle(c) => {
+                let rook = Piece {
+                    ptype: PieceType::Rook,
+                    pcolour: side,
+                };
+                hash ^= self.get_piece_hash(&rook, c.rook_from); // remove rook from its starting position
+                hash ^= self.get_piece_hash(&rook, c.rook_to); // set rook to new position
+            }
             _ => {}
         }
-        if piece.ptype == PieceType::Rook {
-            if position.movegen_flags.black_castle_long && mv.from == LONG_BLACK_ROOK_START {
-                hash ^= self.black_castle_long;
-            } else if position.movegen_flags.black_castle_short && mv.from == SHORT_BLACK_ROOK_START {
-                hash ^= self.black_castle_short;
-            } else if position.movegen_flags.white_castle_long && mv.from == LONG_WHITE_ROOK_START {
-                hash ^= self.white_castle_long;
-            } else if position.movegen_flags.white_castle_short && mv.from == SHORT_WHITE_ROOK_START {
-                hash ^= self.white_castle_short;
+        // todo also check if the starting rook is captured
+        if position.movegen_flags.black_castle_long
+            && (mv.from == LONG_BLACK_ROOK_START || mv.to == LONG_BLACK_ROOK_START)
+        {
+            hash ^= self.black_castle_long;
+        } else if position.movegen_flags.black_castle_short
+            && (mv.from == SHORT_BLACK_ROOK_START || mv.to == SHORT_BLACK_ROOK_START)
+        {
+            hash ^= self.black_castle_short;
+        } else if position.movegen_flags.white_castle_long
+            && (mv.from == LONG_WHITE_ROOK_START || mv.to == LONG_WHITE_ROOK_START)
+        {
+            hash ^= self.white_castle_long;
+        } else if position.movegen_flags.white_castle_short
+            && (mv.from == SHORT_WHITE_ROOK_START || mv.to == SHORT_WHITE_ROOK_START)
+        {
+            hash ^= self.white_castle_short;
+        }
+        // reset castling flags on first king move (including castling which sets both flags false for the moving side)
+        if piece.ptype == PieceType::King {
+            if piece.pcolour == PieceColour::White {
+                if position.movegen_flags.white_castle_long {
+                    hash ^= self.white_castle_long
+                }
+                if position.movegen_flags.white_castle_short {
+                    hash ^= self.white_castle_short
+                }
+            } else {
+                if position.movegen_flags.black_castle_long {
+                    hash ^= self.black_castle_long
+                }
+                if position.movegen_flags.black_castle_short {
+                    hash ^= self.black_castle_short
+                }
             }
         }
-        hash ^= self.get_piece_hash(&piece, mv.to);  // set moving piece in new position
+        hash ^= self.get_piece_hash(&piece, mv.to); // set moving piece in new position
         hash ^= self.black_to_move; // switch sides
         hash
     }
@@ -175,8 +203,15 @@ impl ZobristHashTable {
         hash
     }
 
-    fn board_state_hash(&self, current_hash: PositionHash, occurrences: u8, halfmove_count: u32) -> PositionHash {
-        current_hash ^ self.get_occurrences_hash(occurrences) ^ self.get_halfmove_count_hash(halfmove_count)
+    fn board_state_hash(
+        &self,
+        current_hash: PositionHash,
+        occurrences: u8,
+        halfmove_count: u32,
+    ) -> PositionHash {
+        current_hash
+            ^ self.get_occurrences_hash(occurrences)
+            ^ self.get_halfmove_count_hash(halfmove_count)
     }
 
     #[inline(always)]
@@ -190,7 +225,7 @@ impl ZobristHashTable {
             1 => self.occurrences[0],
             2 => self.occurrences[1],
             3 => self.occurrences[2],
-            _ => unreachable!()
+            _ => unreachable!(),
         }
     }
 
