@@ -105,7 +105,7 @@ pub struct CastleMove {
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
 pub enum MoveType {
     EnPassant(usize),
-    Promotion(PieceType),
+    Promotion(PieceType, Option<PieceType>),
     Castle(CastleMove),
     DoublePawnPush,
     PawnPush,
@@ -119,14 +119,20 @@ pub trait MoveMap {
 }
 
 #[inline(always)]
-fn pawn_promotion(mv_map: &mut dyn MoveMap, i: usize, piece: &Piece, mv: i32) {
+fn pawn_promotion(
+    mv_map: &mut dyn MoveMap,
+    i: usize,
+    piece: &Piece,
+    mv: i32,
+    capture: Option<PieceType>,
+) {
     for ptype in PROMOTION_PIECE_TYPES {
         mv_map.add_move(
             &(Move {
                 piece: *piece,
                 from: i,
                 to: mv as usize,
-                move_type: MoveType::Promotion(ptype),
+                move_type: MoveType::Promotion(ptype, capture),
             }),
         );
     }
@@ -235,7 +241,7 @@ pub fn movegen(
                     // push mv if the square is empty
                     if is_square_empty(pos, mv as usize) {
                         if pawn_is_promotion_square(mv, piece) {
-                            pawn_promotion(mv_map, i, piece, mv);
+                            pawn_promotion(mv_map, i, piece, mv, None);
                         } else {
                             mv_map.add_move(
                                 &(Move {
@@ -282,7 +288,7 @@ pub fn movegen(
                         if piece.pcolour != mv_square_piece.pcolour || defending {
                             if pawn_is_promotion_square(mv, piece) && !defending {
                                 // no need to do this if defending, we can just do it once below regardless
-                                pawn_promotion(mv_map, i, piece, mv);
+                                pawn_promotion(mv_map, i, piece, mv, Some(mv_square_piece.ptype));
                             } else {
                                 mv_map.add_move(
                                     &(Move {

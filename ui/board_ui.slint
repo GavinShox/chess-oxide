@@ -372,8 +372,8 @@ export component Board_UI inherits Window {
                                             if root.make-move() == true { // side effect makes move but only returns true if move is valid
                                                 root.refresh-position();
                 
-                                                // root.engine-made-move = false;
-                                                // root.engine-make-move();
+                                                root.engine-made-move = false;
+                                                root.engine-make-move();
                                             }
                                             
                                             // reset variables even if move was invalid

@@ -318,7 +318,7 @@ fn sorted_move_indexes(moves: &[Move], captures_only: bool) -> Vec<usize> {
                     1,
                 )
             }
-            MoveType::Promotion(promotion_type) => get_piece_value(&promotion_type),
+            MoveType::Promotion(promotion_type, _) => get_piece_value(&promotion_type), // TODO maybe potential capture should be taken into account
             _ => 0,
         };
 

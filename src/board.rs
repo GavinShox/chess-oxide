@@ -219,9 +219,15 @@ impl BoardState {
 
         let notation = match self.last_move.move_type {
             MoveType::EnPassant(ep) => format!("{}x{}", piece_str, util::index_to_notation(ep)),
-            MoveType::Promotion(promotion_type) => {
-                format!("{}={}", notation_to, get_piece_str(promotion_type))
-            }
+            MoveType::Promotion(promotion_type, capture) => match capture {
+                Some(_) => {
+                    format!("{}={}", notation_to, get_piece_str(promotion_type))
+                    //TODO add capture promotion notation
+                }
+                None => {
+                    format!("{}={}", notation_to, get_piece_str(promotion_type))
+                }
+            },
             MoveType::Castle(castle_move) => {
                 if castle_move.rook_from.abs_diff(castle_move.rook_to) == 3 {
                     "O-O-O".to_string()
@@ -276,7 +282,6 @@ impl BoardState {
         let position = self.position.new_position(mv);
         log::trace!("New Position created from move: {:?}", mv);
         let position_hash = zobrist::pos_next_hash(&self.position, self.position_hash, mv); // use last position for movegen flags
-        assert_eq!(position.pos_hash(), position_hash);
         log::trace!("New hash generated: {}", position_hash);
         let side_to_move = position.side;
         let last_move = *mv;

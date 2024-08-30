@@ -21,8 +21,11 @@ fn get_all_legal_positions(
             MoveType::EnPassant(_) => {
                 *en_passant += 1;
             }
-            MoveType::Promotion(_) => {
+            MoveType::Promotion(_, capture) => {
                 *promotions += 1;
+                if capture.is_some() {
+                    *captures += 1;
+                }
             }
             MoveType::Castle(_) => {
                 *castles += 1;

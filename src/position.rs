@@ -182,7 +182,7 @@ impl Position {
                 new_pos.pos64[castle_mv.rook_to] = new_pos.pos64[castle_mv.rook_from];
                 new_pos.pos64[castle_mv.rook_from] = Square::Empty;
             }
-            MoveType::Promotion(ptype) => match &mut new_pos.pos64[mv.from] {
+            MoveType::Promotion(ptype, _) => match &mut new_pos.pos64[mv.from] {
                 Square::Piece(p) => {
                     p.ptype = ptype;
                 }

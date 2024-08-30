@@ -93,14 +93,23 @@ impl ZobristHashTable {
             hash ^= self.en_passant_table[idx % 8] // remove existing en passant index
         }
         match mv.move_type {
-            // TODO promotions not working, promotions can also be captures
-            MoveType::Promotion(ptype) => {
+            MoveType::Promotion(ptype, capture) => {
+                // remove piece to be captured
+                if let Some(c) = capture {
+                    hash ^= self.get_piece_hash(
+                        &Piece {
+                            ptype: c,
+                            pcolour: !side,
+                        },
+                        mv.to,
+                    )
+                }
                 piece = Piece {
                     pcolour: side,
                     ptype,
                 }
             } // set piece to promoted type
-            MoveType::DoublePawnPush => hash ^= self.en_passant_table[mv.to % 8],  // set en passant index
+            MoveType::DoublePawnPush => hash ^= self.en_passant_table[mv.to % 8], // set en passant index
             MoveType::Capture(p) => {
                 hash ^= self.get_piece_hash(
                     &Piece {
@@ -128,20 +137,23 @@ impl ZobristHashTable {
             }
             _ => {}
         }
-        // todo also check if the starting rook is captured
+
         if position.movegen_flags.black_castle_long
             && (mv.from == LONG_BLACK_ROOK_START || mv.to == LONG_BLACK_ROOK_START)
         {
             hash ^= self.black_castle_long;
-        } else if position.movegen_flags.black_castle_short
+        }
+        if position.movegen_flags.black_castle_short
             && (mv.from == SHORT_BLACK_ROOK_START || mv.to == SHORT_BLACK_ROOK_START)
         {
             hash ^= self.black_castle_short;
-        } else if position.movegen_flags.white_castle_long
+        }
+        if position.movegen_flags.white_castle_long
             && (mv.from == LONG_WHITE_ROOK_START || mv.to == LONG_WHITE_ROOK_START)
         {
             hash ^= self.white_castle_long;
-        } else if position.movegen_flags.white_castle_short
+        }
+        if position.movegen_flags.white_castle_short
             && (mv.from == SHORT_WHITE_ROOK_START || mv.to == SHORT_WHITE_ROOK_START)
         {
             hash ^= self.white_castle_short;
