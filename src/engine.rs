@@ -2,6 +2,7 @@ use std::cmp;
 
 use crate::board::*;
 use crate::movegen::*;
+use crate::util;
 use crate::zobrist::PositionHash;
 
 // avoid int overflows when operating on these values i.e. negating, +/- checkmate depth etc.
@@ -14,6 +15,7 @@ struct Nodes {
     negamax_prunes: u64,
     quiescence_nodes: u64,
     quiescence_prunes: u64,
+    transposition_table_hits: u64,
 }
 impl Nodes {
     fn new() -> Self {
@@ -22,6 +24,7 @@ impl Nodes {
             negamax_prunes: 0,
             quiescence_nodes: 0,
             quiescence_prunes: 0,
+            transposition_table_hits: 0,
         }
     }
 
@@ -91,7 +94,17 @@ pub fn choose_move<'a>(
         log::info!("Negamax prunes: {}", nodes.negamax_prunes);
         log::info!("Quiescence nodes: {}", nodes.quiescence_nodes);
         log::info!("Quiescence prunes: {}", nodes.quiescence_prunes);
+        log::info!(
+            "Transposition table hits: {}",
+            nodes.transposition_table_hits
+        );
     }
+    log::debug!(
+        "Transposition table: Entries -> {}, Size on heap -> {}, Total allocated on heap -> {}",
+        tt.len(),
+        util::bytes_to_str(tt.heap_size()),
+        util::bytes_to_str(tt.heap_alloc_size())
+    );
     log::info!(
         "Engine chose move: {:?} with eval: {} @ depth {}",
         mv,
@@ -222,6 +235,9 @@ fn negamax(
     // transposition table lookup
     let alpha_orig = alpha;
     if let Some((bound_type, tt_depth, tt_eval)) = tt.get(bs.board_hash) {
+        if cfg!(feature = "debug_engine_logging") {
+            nodes.transposition_table_hits += 1;
+        }
         let tt_eval = *tt_eval;
         if *tt_depth >= depth {
             match bound_type {

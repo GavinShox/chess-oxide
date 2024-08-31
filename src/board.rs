@@ -447,12 +447,6 @@ impl Board {
             engine::choose_move(&self.current_state, depth, &mut self.transposition_table);
         let mv = *engine_move;
         log::info!("Engine move chosen: {:?} @ eval: {}", engine_move, eval);
-        log::debug!(
-            "Transposition table: Entries -> {}, Size on heap -> {}, Total allocated on heap -> {}",
-            self.transposition_table.len(),
-            util::bytes_to_str(self.transposition_table.heap_size()),
-            util::bytes_to_str(self.transposition_table.heap_alloc_size())
-        );
 
         self.make_move(&mv)
     }
