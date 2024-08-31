@@ -394,7 +394,6 @@ impl Default for Board {
 impl Board {
     pub fn new() -> Self {
         let current_state = BoardState::new_starting();
-        log::info!("New starting BoardState created");
 
         let mut state_history: Vec<BoardState> = Vec::new();
         log::info!("State history created");
