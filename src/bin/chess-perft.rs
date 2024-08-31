@@ -24,7 +24,6 @@ fn main() {
             duration
         );
     }
-    println!("Total time elapsed in position perft: {:?} (after {} iterations)\nAverage time per iteration: {:?}", total_pos_perft_time, pos_perft_iterations, total_pos_perft_time / pos_perft_iterations);
 
     let engine_iterations = 10;
     let mut total_engine_time = Duration::new(0, 0);
@@ -35,10 +34,12 @@ fn main() {
         let duration = start.elapsed();
         total_engine_time += duration;
         println!(
-            "Time elapsed in engine perft iteration {}: {:?}",
+            "Time elapsed in engine perft iteration {}: {:?}\n",
             i + 1,
             duration
         );
     }
+    println!("Total time elapsed in position perft: {:?} (after {} iterations)\nAverage time per iteration: {:?}", total_pos_perft_time, pos_perft_iterations, total_pos_perft_time / pos_perft_iterations);
+    println!();
     println!("Total time elapsed in engine perft: {:?} (after {} iterations)\nAverage time per iteration: {:?}", total_engine_time, engine_iterations, total_engine_time / engine_iterations);
 }
