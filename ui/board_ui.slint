@@ -306,7 +306,7 @@ export component Board_UI inherits Window {
             alignment: center;
             spacing: 10px;
             HorizontalLayout {
-                spacing: 1px;
+                spacing: 5px;
                 alignment: center;
                 Button {
                     text: "\u{eb52}";
@@ -372,12 +372,13 @@ export component Board_UI inherits Window {
                     width: (square-size * board-size) + square-size;
                     height: (square-size * board-size) + square-size;
                     clip: true;
+                    background: root.board-theme.dark-square.darker(0.5);
                     VerticalLayout {
                         alignment: center;
                         for row in board-size: HorizontalLayout {
                             alignment: center;
                             Text {
-                                text: (board-size - row) + " ";
+                                text: root.player-colour == PieceColour-UI.White ? (board-size - row) + " " : (row + 1) + " ";
                                 font-size: 14px;
                                 font-weight: 500;
                                 vertical-alignment: center;
@@ -449,7 +450,8 @@ export component Board_UI inherits Window {
                         HorizontalLayout {
                             alignment: center;
                             // left padding to align with board, not ideal but looks good enough to not annoy me
-                            for file in ["  a", "  b", "  c", "  d", "  e", "  f", "  g", "  h"]: Text {
+                            property <[string]> files: root.player-colour == PieceColour-UI.White ? ["  a", "  b", "  c", "  d", "  e", "  f", "  g", "  h"] : ["  h", "  g", "  f", "  e", "  d", "  c", "  b", "  a"];
+                            for file in files: Text {
                                 text: file;
                                 font-size: 14px;
                                 font-weight: 500;
@@ -463,9 +465,9 @@ export component Board_UI inherits Window {
                 HorizontalLayout {
                     width: board.width;
                     alignment: center;
-                    spacing: 1px;
+                    spacing: 5px;
                     fen_export := LineEdit {
-                        width: 70%;
+                        width: 65%;
                         visible: true;
                         font-size: 10px;
                         text: root.fen;
