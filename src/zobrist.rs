@@ -7,10 +7,11 @@ use crate::{movegen::*, Position};
 // static table, to ensure all positions that are equal have the same hashes for the duration of the program
 #[dynamic]
 static ZOBRIST_HASH_TABLE: ZobristHashTable = ZobristHashTable::new();
+
 // using 64 bit hashes
 pub type PositionHash = u64;
 
-// zobrist hash of full Position, used to initialise the board
+// zobrist hash of full Position, used to initialise a position hash
 pub fn pos_hash(pos: &Position) -> PositionHash {
     ZOBRIST_HASH_TABLE.full_position_hash(pos)
 }
@@ -79,7 +80,7 @@ impl ZobristHashTable {
         }
     }
 
-    pub fn next_hash(
+    fn next_hash(
         &self,
         position: &Position,
         current_hash: PositionHash,
@@ -181,7 +182,7 @@ impl ZobristHashTable {
         hash
     }
 
-    pub fn full_position_hash(&self, pos: &Position) -> PositionHash {
+    fn full_position_hash(&self, pos: &Position) -> PositionHash {
         let mut hash = 0;
         for (i, s) in pos.pos64.iter().enumerate() {
             match s {
