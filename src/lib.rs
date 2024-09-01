@@ -3,10 +3,11 @@ mod engine;
 mod errors;
 mod mailbox;
 mod movegen;
-pub mod perft;
+mod perft;
 mod position;
-pub mod test;
 mod util;
 mod zobrist;
+
+pub mod test;
 
 pub use {board::*, movegen::*, perft::*, position::*, util::print_board};
