@@ -69,25 +69,19 @@ component PieceImg inherits Image {
         }
         if piece.piece-type == PieceType_UI.Queen {
             return piece.piece-colour == PieceColour_UI.White ? @image-url("resources/qlt45.svg") : @image-url("resources/qdt45.svg");
-
         }
         if piece.piece-type == PieceType_UI.Rook {
             return piece.piece-colour == PieceColour_UI.White ? @image-url("resources/rlt45.svg") : @image-url("resources/rdt45.svg");
-
         }
         if piece.piece-type == PieceType_UI.Bishop {
             return piece.piece-colour == PieceColour_UI.White ? @image-url("resources/blt45.svg") : @image-url("resources/bdt45.svg");
-
         }
         if piece.piece-type == PieceType_UI.Knight {
             return piece.piece-colour == PieceColour_UI.White ? @image-url("resources/nlt45.svg") : @image-url("resources/ndt45.svg");
-
         }
         if piece.piece-type == PieceType_UI.Pawn {
             return piece.piece-colour == PieceColour_UI.White ? @image-url("resources/plt45.svg") : @image-url("resources/pdt45.svg");
-
         }
-        
         return @image-url("");
     }
 
@@ -104,8 +98,7 @@ component Square inherits Rectangle {
     public pure function get-square-background() -> color {
         if (Math.mod(Math.floor(index / 8), 2) == 0) {
             return Math.mod(index, 2) == 0 ? light-square : dark-square;
-        }
-        else {
+        } else {
             return Math.mod(index, 2) == 0 ? dark-square : light-square;
         }
     }
@@ -113,6 +106,12 @@ component Square inherits Rectangle {
     background: get-square-background();
 
     animate background { duration: 50ms; }
+    animate border-color {
+        duration: 500ms;
+        easing: ease-in-out-quad;
+        delay: 250ms;
+    }
+    //animate border-width { duration: 500ms; easing: ease-in-out-bounce; delay: 100ms;}
 }
 
 export component SettingsDialog_UI inherits Dialog {
@@ -138,13 +137,17 @@ export component SettingsDialog_UI inherits Dialog {
                 font-size: 12px;
                 vertical-alignment: center;
             }
+
             ComboBox {
                 height: 25px;
                 model: [2, 3, 4, 5, 6, 7];
                 current-value: 5;
-                selected => { set-depth(self.current-value); }
+                selected => {
+                    set-depth(self.current-value);
+                }
             }
         }
+
         HorizontalLayout {
             alignment: center;
             spacing: 10px;
@@ -153,6 +156,7 @@ export component SettingsDialog_UI inherits Dialog {
                 font-size: 12px;
                 vertical-alignment: center;
             }
+
             ComboBox {
                 model: ["Wood", "Sky Blue", "Sea Green", "Purple", "Red"];
                 current-value: "Wood";
@@ -160,26 +164,25 @@ export component SettingsDialog_UI inherits Dialog {
                 selected => {
                     if (self.current-value == "Wood") {
                         set-theme(BoardThemes.wood);
-                    }
-                    else if (self.current-value == "Sky Blue") {
+                    } else if (self.current-value == "Sky Blue") {
                         set-theme(BoardThemes.sky-blue);
-                    }
-                    else if (self.current-value == "Sea Green") {
+                    } else if (self.current-value == "Sea Green") {
                         set-theme(BoardThemes.sea-green);
-                    }
-                    else if (self.current-value == "Purple") {
+                    } else if (self.current-value == "Purple") {
                         set-theme(BoardThemes.purple);
-                    }
-                    else if (self.current-value == "Red") {
+                    } else if (self.current-value == "Red") {
                         set-theme(BoardThemes.red);
                     }
                 }
             }
-        } 
+        }
+
         StandardButton {
             kind: ok;
-            clicked => { close(); }
-        }   
+            clicked => {
+                close();
+            }
+        }
     }
 }
 
@@ -194,7 +197,8 @@ export component ImportFen_UI inherits Dialog {
     in property <bool> error: false;
     in property <string> error-message: "";
     in property <string> fen_str <=> fen.text;
-    in property <bool> as-white <=> side.checked;//side.current-value == "White" ? true : false;
+    in property <bool> as-white <=> side.checked;
+    //side.current-value == "White" ? true : false;
 
     callback import-fen(string);
     callback close();
@@ -202,11 +206,12 @@ export component ImportFen_UI inherits Dialog {
     VerticalLayout {
         alignment: center;
         spacing: 10px;
-        fen:= LineEdit {
+        fen := LineEdit {
             text: "";
             placeholder-text: "Enter FEN";
             read-only: false;
         }
+
         Text {
             text: "Error: " + error-message;
             color: red;
@@ -215,26 +220,33 @@ export component ImportFen_UI inherits Dialog {
             wrap: word-wrap;
             vertical-alignment: center;
         }
+
         HorizontalLayout {
             alignment: center;
             spacing: 10px;
-            StandardButton { 
-                kind: ok; 
-                clicked => { import-fen(fen.text); }
+            StandardButton {
+                kind: ok;
+                clicked => {
+                    import-fen(fen.text);
+                }
             }
-            StandardButton { 
-                kind: cancel; 
-                clicked => { close(); }
+
+            StandardButton {
+                kind: cancel;
+                clicked => {
+                    close();
+                }
             }
         }
+
         HorizontalLayout {
             alignment: center;
             Text {
                 text: "Play as white ";
                 vertical-alignment: center;
             }
+
             side := CheckBox {
-                //text: "Play as white:";
                 checked: true;
             }
         }
@@ -248,7 +260,7 @@ export component Board_UI inherits Window {
     //background: rgb(218, 235, 235);
 
     property <int> board-size: 8;
-    property <length> square-size: 50px;
+    property <length> square-size: 64px;
 
     in-out property <[Piece_UI]> position;
     out property <int> selected-from-square: -1;
@@ -258,7 +270,8 @@ export component Board_UI inherits Window {
     in-out property <PieceColour-UI> player-colour: PieceColour-UI.White;
     in-out property <[MoveNotation-UI]> move-history;
     in property <string> fen;
-    in-out property <string> depth: "5"; // default depth
+    in-out property <string> depth: "5";
+    // default depth
     in-out property <string> gamestate;
     in property <BoardTheme> board-theme: BoardThemes.wood;
 
@@ -281,8 +294,7 @@ export component Board_UI inherits Window {
 
         if player-colour == side-to-move-colour {
             root.engine-made-move = true;
-        } 
-        else {
+        } else {
             root.engine-made-move = false;
             root.engine-make-move();
         }
@@ -301,29 +313,34 @@ export component Board_UI inherits Window {
                     width: 5%;
                     height: 25px;
                     padding: 10px;
-                    clicked => { settings-dialog(); }
+                    clicked => {
+                        settings-dialog();
+                    }
                 }
+
                 Button {
                     text: "New Game (white)";
                     width: 25%;
                     height: 25px;
                     padding: 10px;
-                    clicked => { 
+                    clicked => {
                         root.new-game();
                         root.reset-properties(PieceColour-UI.White, PieceColour-UI.White);
-                     }
+                    }
                 }
+
                 Button {
                     text: "New Game (black)";
                     width: 25%;
                     height: 25px;
                     padding: 10px;
-                    clicked => { 
+                    clicked => {
                         root.new-game();
-                        root.reset-properties(PieceColour-UI.Black, PieceColour-UI.White); 
+                        root.reset-properties(PieceColour-UI.Black, PieceColour-UI.White);
                     }
                 }
             }
+
             Rectangle {
                 //background: rgb(218, 235, 235);
                 game-info := Text {
@@ -332,64 +349,75 @@ export component Board_UI inherits Window {
                     font-size: 20px;
                 }
             }
+
             VerticalLayout {
                 spacing: 10px;
-                width: board.width;
+                //width: board.width;
+                
+                    // VerticalLayout {
+                    //     for rank in ["8", "7", "6", "5", "4", "3", "2", "1"]: Text {
+                    //         text: rank;
+                    //         font-size: 12px;
+                    //         font-weight: 500;
+                    //         height: square-size;
+                    //         vertical-alignment: center;
+                    //         horizontal-alignment: center;
+                    //     }
+                    // }
 
                 board := Rectangle {
                     border-color: black;
                     border-width: 1px;
-                    border-radius: 5px;
-                    width: square-size * board-size;
-                    height: square-size * board-size;
+                    border-radius: 10px;
+                    width: (square-size * board-size) + square-size;
+                    height: (square-size * board-size) + square-size;
                     clip: true;
                     VerticalLayout {
                         alignment: center;
                         for row in board-size: HorizontalLayout {
                             alignment: center;
-                            spacing: 0px;
+                            Text {
+                                text: (board-size - row) + " ";
+                                font-size: 14px;
+                                font-weight: 500;
+                                vertical-alignment: center;
+                            }
+
                             for sq in board-size: square := Square {
                                 index: sq + (row * board-size);
                                 width: square-size;
                                 height: square-size;
                                 theme: root.board-theme;
-                                
                                 piece-img := PieceImg {
                                     piece: root.position[parent.index];
                                     width: parent.width;
                                     height: parent.height;
                                 }
-                
+
                                 ta := TouchArea {
                                     height: 100%;
                                     width: 100%;
                                     clicked => {
                                         if root.selected-from-square == -1 {
                                             root.selected-from-square = square.index;
-                                        }
-                                        else if root.selected-from-square >= 0 && root.selected-to-square == -1 && root.engine-made-move {
+                                        } else if root.selected-from-square >= 0 && root.selected-to-square == -1 && root.engine-made-move {
                                             root.selected-to-square = square.index;
-                                            if root.make-move() == true { // side effect makes move but only returns true if move is valid
+                                            if root.make-move() == true {
+                                                // side effect makes move but only returns true if move is valid
                                                 root.refresh-position();
-                
                                                 root.engine-made-move = false;
                                                 root.engine-make-move();
-                                            }
-                                            
-                                            // reset variables even if move was invalid
+                                            }// reset variables even if move was invalid
                                             root.selected-from-square = -1;
                                             root.selected-to-square = -1;
-            
                                             // reselect square if there was a players piece there
                                             if root.position[square.index].piece-colour == root.player-colour {
                                                 root.selected-from-square = square.index;
                                             }
-                                        }
-                                        // shouldnt reach this else
+                                        }// shouldnt reach this else
                                         else {
                                             root.selected-from-square = -1;
                                             root.selected-to-square = -1;
-                                        
                                         }
                                     }
                                     // moved => {
@@ -399,12 +427,11 @@ export component Board_UI inherits Window {
                                     //     }
                                     // }
                                 }
-                
+
                                 states [
                                     last-move when root.last-move.from-square == square.index || root.last-move.to-square == square.index: {
                                         square.border-color: salmon;
                                         square.border-width: 2px;
-                
                                     }
                                     clicked-from when root.selected-from-square == square.index && root.engine-made-move: {
                                         square.background: square.get-square-background().darker(0.2);
@@ -416,25 +443,47 @@ export component Board_UI inherits Window {
                                         ta.enabled: false;
                                     }
                                 ]
-                
                             }
-                
                         }
-            
+
+                        HorizontalLayout {
+                            alignment: center;
+                            // left padding to align with board, not ideal but looks good enough to not annoy me
+                            for file in ["  a", "  b", "  c", "  d", "  e", "  f", "  g", "  h"]: Text {
+                                text: file;
+                                font-size: 14px;
+                                font-weight: 500;
+                                width: square-size;
+                                horizontal-alignment: center;
+                            }
+                        }
                     }
-        
                 }
-    
-                fen_export := LineEdit {
-                    visible: true;
-                    font-size: 10px;
-                    text: root.fen;
-                    read-only: true;
-                    horizontal-alignment: center;
+
+                HorizontalLayout {
+                    width: board.width;
+                    alignment: center;
+                    spacing: 1px;
+                    fen_export := LineEdit {
+                        width: 70%;
+                        visible: true;
+                        font-size: 10px;
+                        text: root.fen;
+                        read-only: true;
+                        horizontal-alignment: center;
+                    }
+
+                    Button {
+                        width: 30%;
+                        text: "Import FEN";
+                        clicked => {
+                            import-fen-dialog();
+                        }
+                    }
                 }
-    
             }
         }
+
         VerticalLayout {
             padding: 10px;
             spacing: 10px;
@@ -444,23 +493,18 @@ export component Board_UI inherits Window {
                 font-size: 18px;
                 font-weight: 500;
             }
+
             Rectangle {
                 border-color: black;
                 border-radius: 5px;
                 border-width: 1px;
-                max-width: 100px;
-                
+                width: 200px;
                 ListView {
                     for move in move-history: Text {
-                        text: " " + move.move-number + ". " + move.notation1 + " " + move.notation2;//Math.mod(i+1, 2) == 0 ? move-history[i - 1] + " " + move : ((i / 2) + 1) + ".";
-                        font-size: 14px;
+                        text: " " + move.move-number + ". " + move.notation1 + " " + move.notation2;
+                        //Math.mod(i+1, 2) == 0 ? move-history[i - 1] + " " + move : ((i / 2) + 1) + ".";
+                        font-size: 16px;
                     }
-                }    
-            }
-            Button {
-                text: "Import FEN";
-                clicked => {
-                    import-fen-dialog();
                 }
             }
         }
