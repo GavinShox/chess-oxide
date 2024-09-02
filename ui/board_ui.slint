@@ -39,6 +39,543 @@ export struct MoveNotation_UI {
     notation2: string,
 }
 
+export struct PieceTheme {
+    wK: image,
+    bK: image,
+    wQ: image,
+    bQ: image,
+    wR: image,
+    bR: image,
+    wB: image,
+    bB: image,
+    wN: image,
+    bN: image,
+    wP: image,
+    bP: image,
+}
+
+global PieceThemes {
+    out property <PieceTheme> default: {
+        wK: @image-url("resources/piece/default/wK.svg"),
+        bK: @image-url("resources/piece/default/bK.svg"),
+        wQ: @image-url("resources/piece/default/wQ.svg"),
+        bQ: @image-url("resources/piece/default/bQ.svg"),
+        wR: @image-url("resources/piece/default/wR.svg"),
+        bR: @image-url("resources/piece/default/bR.svg"),
+        wB: @image-url("resources/piece/default/wB.svg"),
+        bB: @image-url("resources/piece/default/bB.svg"),
+        wN: @image-url("resources/piece/default/wN.svg"),
+        bN: @image-url("resources/piece/default/bN.svg"),
+        wP: @image-url("resources/piece/default/wP.svg"),
+        bP: @image-url("resources/piece/default/bP.svg"),
+    };
+    out property <PieceTheme> alpha: {
+        wK: @image-url("resources/piece/alpha/wK.svg"),
+        bK: @image-url("resources/piece/alpha/bK.svg"),
+        wQ: @image-url("resources/piece/alpha/wQ.svg"),
+        bQ: @image-url("resources/piece/alpha/bQ.svg"),
+        wR: @image-url("resources/piece/alpha/wR.svg"),
+        bR: @image-url("resources/piece/alpha/bR.svg"),
+        wB: @image-url("resources/piece/alpha/wB.svg"),
+        bB: @image-url("resources/piece/alpha/bB.svg"),
+        wN: @image-url("resources/piece/alpha/wN.svg"),
+        bN: @image-url("resources/piece/alpha/bN.svg"),
+        wP: @image-url("resources/piece/alpha/wP.svg"),
+        bP: @image-url("resources/piece/alpha/bP.svg"),
+    };
+    out property <PieceTheme> anarcandy: {
+        wK: @image-url("resources/piece/anarcandy/wK.svg"),
+        bK: @image-url("resources/piece/anarcandy/bK.svg"),
+        wQ: @image-url("resources/piece/anarcandy/wQ.svg"),
+        bQ: @image-url("resources/piece/anarcandy/bQ.svg"),
+        wR: @image-url("resources/piece/anarcandy/wR.svg"),
+        bR: @image-url("resources/piece/anarcandy/bR.svg"),
+        wB: @image-url("resources/piece/anarcandy/wB.svg"),
+        bB: @image-url("resources/piece/anarcandy/bB.svg"),
+        wN: @image-url("resources/piece/anarcandy/wN.svg"),
+        bN: @image-url("resources/piece/anarcandy/bN.svg"),
+        wP: @image-url("resources/piece/anarcandy/wP.svg"),
+        bP: @image-url("resources/piece/anarcandy/bP.svg"),
+    };
+    out property <PieceTheme> caliente: {
+        wK: @image-url("resources/piece/caliente/wK.svg"),
+        bK: @image-url("resources/piece/caliente/bK.svg"),
+        wQ: @image-url("resources/piece/caliente/wQ.svg"),
+        bQ: @image-url("resources/piece/caliente/bQ.svg"),
+        wR: @image-url("resources/piece/caliente/wR.svg"),
+        bR: @image-url("resources/piece/caliente/bR.svg"),
+        wB: @image-url("resources/piece/caliente/wB.svg"),
+        bB: @image-url("resources/piece/caliente/bB.svg"),
+        wN: @image-url("resources/piece/caliente/wN.svg"),
+        bN: @image-url("resources/piece/caliente/bN.svg"),
+        wP: @image-url("resources/piece/caliente/wP.svg"),
+        bP: @image-url("resources/piece/caliente/bP.svg"),
+    };
+    out property <PieceTheme> california: {
+        wK: @image-url("resources/piece/california/wK.svg"),
+        bK: @image-url("resources/piece/california/bK.svg"),
+        wQ: @image-url("resources/piece/california/wQ.svg"),
+        bQ: @image-url("resources/piece/california/bQ.svg"),
+        wR: @image-url("resources/piece/california/wR.svg"),
+        bR: @image-url("resources/piece/california/bR.svg"),
+        wB: @image-url("resources/piece/california/wB.svg"),
+        bB: @image-url("resources/piece/california/bB.svg"),
+        wN: @image-url("resources/piece/california/wN.svg"),
+        bN: @image-url("resources/piece/california/bN.svg"),
+        wP: @image-url("resources/piece/california/wP.svg"),
+        bP: @image-url("resources/piece/california/bP.svg"),
+    };
+    out property <PieceTheme> cardinal: {
+        wK: @image-url("resources/piece/cardinal/wK.svg"),
+        bK: @image-url("resources/piece/cardinal/bK.svg"),
+        wQ: @image-url("resources/piece/cardinal/wQ.svg"),
+        bQ: @image-url("resources/piece/cardinal/bQ.svg"),
+        wR: @image-url("resources/piece/cardinal/wR.svg"),
+        bR: @image-url("resources/piece/cardinal/bR.svg"),
+        wB: @image-url("resources/piece/cardinal/wB.svg"),
+        bB: @image-url("resources/piece/cardinal/bB.svg"),
+        wN: @image-url("resources/piece/cardinal/wN.svg"),
+        bN: @image-url("resources/piece/cardinal/bN.svg"),
+        wP: @image-url("resources/piece/cardinal/wP.svg"),
+        bP: @image-url("resources/piece/cardinal/bP.svg"),
+    };
+    out property <PieceTheme> cburnett: {
+        wK: @image-url("resources/piece/cburnett/wK.svg"),
+        bK: @image-url("resources/piece/cburnett/bK.svg"),
+        wQ: @image-url("resources/piece/cburnett/wQ.svg"),
+        bQ: @image-url("resources/piece/cburnett/bQ.svg"),
+        wR: @image-url("resources/piece/cburnett/wR.svg"),
+        bR: @image-url("resources/piece/cburnett/bR.svg"),
+        wB: @image-url("resources/piece/cburnett/wB.svg"),
+        bB: @image-url("resources/piece/cburnett/bB.svg"),
+        wN: @image-url("resources/piece/cburnett/wN.svg"),
+        bN: @image-url("resources/piece/cburnett/bN.svg"),
+        wP: @image-url("resources/piece/cburnett/wP.svg"),
+        bP: @image-url("resources/piece/cburnett/bP.svg"),
+    };
+    out property <PieceTheme> celtic: {
+        wK: @image-url("resources/piece/celtic/wK.svg"),
+        bK: @image-url("resources/piece/celtic/bK.svg"),
+        wQ: @image-url("resources/piece/celtic/wQ.svg"),
+        bQ: @image-url("resources/piece/celtic/bQ.svg"),
+        wR: @image-url("resources/piece/celtic/wR.svg"),
+        bR: @image-url("resources/piece/celtic/bR.svg"),
+        wB: @image-url("resources/piece/celtic/wB.svg"),
+        bB: @image-url("resources/piece/celtic/bB.svg"),
+        wN: @image-url("resources/piece/celtic/wN.svg"),
+        bN: @image-url("resources/piece/celtic/bN.svg"),
+        wP: @image-url("resources/piece/celtic/wP.svg"),
+        bP: @image-url("resources/piece/celtic/bP.svg"),
+    };
+    out property <PieceTheme> chess7: {
+        wK: @image-url("resources/piece/chess7/wK.svg"),
+        bK: @image-url("resources/piece/chess7/bK.svg"),
+        wQ: @image-url("resources/piece/chess7/wQ.svg"),
+        bQ: @image-url("resources/piece/chess7/bQ.svg"),
+        wR: @image-url("resources/piece/chess7/wR.svg"),
+        bR: @image-url("resources/piece/chess7/bR.svg"),
+        wB: @image-url("resources/piece/chess7/wB.svg"),
+        bB: @image-url("resources/piece/chess7/bB.svg"),
+        wN: @image-url("resources/piece/chess7/wN.svg"),
+        bN: @image-url("resources/piece/chess7/bN.svg"),
+        wP: @image-url("resources/piece/chess7/wP.svg"),
+        bP: @image-url("resources/piece/chess7/bP.svg"),
+    };
+    out property <PieceTheme> chessnut: {
+        wK: @image-url("resources/piece/chessnut/wK.svg"),
+        bK: @image-url("resources/piece/chessnut/bK.svg"),
+        wQ: @image-url("resources/piece/chessnut/wQ.svg"),
+        bQ: @image-url("resources/piece/chessnut/bQ.svg"),
+        wR: @image-url("resources/piece/chessnut/wR.svg"),
+        bR: @image-url("resources/piece/chessnut/bR.svg"),
+        wB: @image-url("resources/piece/chessnut/wB.svg"),
+        bB: @image-url("resources/piece/chessnut/bB.svg"),
+        wN: @image-url("resources/piece/chessnut/wN.svg"),
+        bN: @image-url("resources/piece/chessnut/bN.svg"),
+        wP: @image-url("resources/piece/chessnut/wP.svg"),
+        bP: @image-url("resources/piece/chessnut/bP.svg"),
+    };
+    out property <PieceTheme> companion: {
+        wK: @image-url("resources/piece/companion/wK.svg"),
+        bK: @image-url("resources/piece/companion/bK.svg"),
+        wQ: @image-url("resources/piece/companion/wQ.svg"),
+        bQ: @image-url("resources/piece/companion/bQ.svg"),
+        wR: @image-url("resources/piece/companion/wR.svg"),
+        bR: @image-url("resources/piece/companion/bR.svg"),
+        wB: @image-url("resources/piece/companion/wB.svg"),
+        bB: @image-url("resources/piece/companion/bB.svg"),
+        wN: @image-url("resources/piece/companion/wN.svg"),
+        bN: @image-url("resources/piece/companion/bN.svg"),
+        wP: @image-url("resources/piece/companion/wP.svg"),
+        bP: @image-url("resources/piece/companion/bP.svg"),
+    };
+    out property <PieceTheme> cooke: {
+        wK: @image-url("resources/piece/cooke/wK.svg"),
+        bK: @image-url("resources/piece/cooke/bK.svg"),
+        wQ: @image-url("resources/piece/cooke/wQ.svg"),
+        bQ: @image-url("resources/piece/cooke/bQ.svg"),
+        wR: @image-url("resources/piece/cooke/wR.svg"),
+        bR: @image-url("resources/piece/cooke/bR.svg"),
+        wB: @image-url("resources/piece/cooke/wB.svg"),
+        bB: @image-url("resources/piece/cooke/bB.svg"),
+        wN: @image-url("resources/piece/cooke/wN.svg"),
+        bN: @image-url("resources/piece/cooke/bN.svg"),
+        wP: @image-url("resources/piece/cooke/wP.svg"),
+        bP: @image-url("resources/piece/cooke/bP.svg"),
+    };
+    out property <PieceTheme> disguised: {
+        wK: @image-url("resources/piece/disguised/wK.svg"),
+        bK: @image-url("resources/piece/disguised/bK.svg"),
+        wQ: @image-url("resources/piece/disguised/wQ.svg"),
+        bQ: @image-url("resources/piece/disguised/bQ.svg"),
+        wR: @image-url("resources/piece/disguised/wR.svg"),
+        bR: @image-url("resources/piece/disguised/bR.svg"),
+        wB: @image-url("resources/piece/disguised/wB.svg"),
+        bB: @image-url("resources/piece/disguised/bB.svg"),
+        wN: @image-url("resources/piece/disguised/wN.svg"),
+        bN: @image-url("resources/piece/disguised/bN.svg"),
+        wP: @image-url("resources/piece/disguised/wP.svg"),
+        bP: @image-url("resources/piece/disguised/bP.svg"),
+    };
+    out property <PieceTheme> dubrovny: {
+        wK: @image-url("resources/piece/dubrovny/wK.svg"),
+        bK: @image-url("resources/piece/dubrovny/bK.svg"),
+        wQ: @image-url("resources/piece/dubrovny/wQ.svg"),
+        bQ: @image-url("resources/piece/dubrovny/bQ.svg"),
+        wR: @image-url("resources/piece/dubrovny/wR.svg"),
+        bR: @image-url("resources/piece/dubrovny/bR.svg"),
+        wB: @image-url("resources/piece/dubrovny/wB.svg"),
+        bB: @image-url("resources/piece/dubrovny/bB.svg"),
+        wN: @image-url("resources/piece/dubrovny/wN.svg"),
+        bN: @image-url("resources/piece/dubrovny/bN.svg"),
+        wP: @image-url("resources/piece/dubrovny/wP.svg"),
+        bP: @image-url("resources/piece/dubrovny/bP.svg"),
+    };
+    out property <PieceTheme> fantasy: {
+        wK: @image-url("resources/piece/fantasy/wK.svg"),
+        bK: @image-url("resources/piece/fantasy/bK.svg"),
+        wQ: @image-url("resources/piece/fantasy/wQ.svg"),
+        bQ: @image-url("resources/piece/fantasy/bQ.svg"),
+        wR: @image-url("resources/piece/fantasy/wR.svg"),
+        bR: @image-url("resources/piece/fantasy/bR.svg"),
+        wB: @image-url("resources/piece/fantasy/wB.svg"),
+        bB: @image-url("resources/piece/fantasy/bB.svg"),
+        wN: @image-url("resources/piece/fantasy/wN.svg"),
+        bN: @image-url("resources/piece/fantasy/bN.svg"),
+        wP: @image-url("resources/piece/fantasy/wP.svg"),
+        bP: @image-url("resources/piece/fantasy/bP.svg"),
+    };
+    out property <PieceTheme> fresca: {
+        wK: @image-url("resources/piece/fresca/wK.svg"),
+        bK: @image-url("resources/piece/fresca/bK.svg"),
+        wQ: @image-url("resources/piece/fresca/wQ.svg"),
+        bQ: @image-url("resources/piece/fresca/bQ.svg"),
+        wR: @image-url("resources/piece/fresca/wR.svg"),
+        bR: @image-url("resources/piece/fresca/bR.svg"),
+        wB: @image-url("resources/piece/fresca/wB.svg"),
+        bB: @image-url("resources/piece/fresca/bB.svg"),
+        wN: @image-url("resources/piece/fresca/wN.svg"),
+        bN: @image-url("resources/piece/fresca/bN.svg"),
+        wP: @image-url("resources/piece/fresca/wP.svg"),
+        bP: @image-url("resources/piece/fresca/bP.svg"),
+    };
+    out property <PieceTheme> gioco: {
+        wK: @image-url("resources/piece/gioco/wK.svg"),
+        bK: @image-url("resources/piece/gioco/bK.svg"),
+        wQ: @image-url("resources/piece/gioco/wQ.svg"),
+        bQ: @image-url("resources/piece/gioco/bQ.svg"),
+        wR: @image-url("resources/piece/gioco/wR.svg"),
+        bR: @image-url("resources/piece/gioco/bR.svg"),
+        wB: @image-url("resources/piece/gioco/wB.svg"),
+        bB: @image-url("resources/piece/gioco/bB.svg"),
+        wN: @image-url("resources/piece/gioco/wN.svg"),
+        bN: @image-url("resources/piece/gioco/bN.svg"),
+        wP: @image-url("resources/piece/gioco/wP.svg"),
+        bP: @image-url("resources/piece/gioco/bP.svg"),
+    };
+    out property <PieceTheme> governor: {
+        wK: @image-url("resources/piece/governor/wK.svg"),
+        bK: @image-url("resources/piece/governor/bK.svg"),
+        wQ: @image-url("resources/piece/governor/wQ.svg"),
+        bQ: @image-url("resources/piece/governor/bQ.svg"),
+        wR: @image-url("resources/piece/governor/wR.svg"),
+        bR: @image-url("resources/piece/governor/bR.svg"),
+        wB: @image-url("resources/piece/governor/wB.svg"),
+        bB: @image-url("resources/piece/governor/bB.svg"),
+        wN: @image-url("resources/piece/governor/wN.svg"),
+        bN: @image-url("resources/piece/governor/bN.svg"),
+        wP: @image-url("resources/piece/governor/wP.svg"),
+        bP: @image-url("resources/piece/governor/bP.svg"),
+    };
+    out property <PieceTheme> horsey: {
+        wK: @image-url("resources/piece/horsey/wK.svg"),
+        bK: @image-url("resources/piece/horsey/bK.svg"),
+        wQ: @image-url("resources/piece/horsey/wQ.svg"),
+        bQ: @image-url("resources/piece/horsey/bQ.svg"),
+        wR: @image-url("resources/piece/horsey/wR.svg"),
+        bR: @image-url("resources/piece/horsey/bR.svg"),
+        wB: @image-url("resources/piece/horsey/wB.svg"),
+        bB: @image-url("resources/piece/horsey/bB.svg"),
+        wN: @image-url("resources/piece/horsey/wN.svg"),
+        bN: @image-url("resources/piece/horsey/bN.svg"),
+        wP: @image-url("resources/piece/horsey/wP.svg"),
+        bP: @image-url("resources/piece/horsey/bP.svg"),
+    };
+
+    out property <PieceTheme> icpieces: {
+        wK: @image-url("resources/piece/icpieces/wK.svg"),
+        bK: @image-url("resources/piece/icpieces/bK.svg"),
+        wQ: @image-url("resources/piece/icpieces/wQ.svg"),
+        bQ: @image-url("resources/piece/icpieces/bQ.svg"),
+        wR: @image-url("resources/piece/icpieces/wR.svg"),
+        bR: @image-url("resources/piece/icpieces/bR.svg"),
+        wB: @image-url("resources/piece/icpieces/wB.svg"),
+        bB: @image-url("resources/piece/icpieces/bB.svg"),
+        wN: @image-url("resources/piece/icpieces/wN.svg"),
+        bN: @image-url("resources/piece/icpieces/bN.svg"),
+        wP: @image-url("resources/piece/icpieces/wP.svg"),
+        bP: @image-url("resources/piece/icpieces/bP.svg"),
+    };
+    out property <PieceTheme> kiwen-suwi: {
+        wK: @image-url("resources/piece/kiwen-suwi/wK.svg"),
+        bK: @image-url("resources/piece/kiwen-suwi/bK.svg"),
+        wQ: @image-url("resources/piece/kiwen-suwi/wQ.svg"),
+        bQ: @image-url("resources/piece/kiwen-suwi/bQ.svg"),
+        wR: @image-url("resources/piece/kiwen-suwi/wR.svg"),
+        bR: @image-url("resources/piece/kiwen-suwi/bR.svg"),
+        wB: @image-url("resources/piece/kiwen-suwi/wB.svg"),
+        bB: @image-url("resources/piece/kiwen-suwi/bB.svg"),
+        wN: @image-url("resources/piece/kiwen-suwi/wN.svg"),
+        bN: @image-url("resources/piece/kiwen-suwi/bN.svg"),
+        wP: @image-url("resources/piece/kiwen-suwi/wP.svg"),
+        bP: @image-url("resources/piece/kiwen-suwi/bP.svg"),
+    };
+    out property <PieceTheme> kosal: {
+        wK: @image-url("resources/piece/kosal/wK.svg"),
+        bK: @image-url("resources/piece/kosal/bK.svg"),
+        wQ: @image-url("resources/piece/kosal/wQ.svg"),
+        bQ: @image-url("resources/piece/kosal/bQ.svg"),
+        wR: @image-url("resources/piece/kosal/wR.svg"),
+        bR: @image-url("resources/piece/kosal/bR.svg"),
+        wB: @image-url("resources/piece/kosal/wB.svg"),
+        bB: @image-url("resources/piece/kosal/bB.svg"),
+        wN: @image-url("resources/piece/kosal/wN.svg"),
+        bN: @image-url("resources/piece/kosal/bN.svg"),
+        wP: @image-url("resources/piece/kosal/wP.svg"),
+        bP: @image-url("resources/piece/kosal/bP.svg"),
+    };
+    out property <PieceTheme> leipzig: {
+        wK: @image-url("resources/piece/leipzig/wK.svg"),
+        bK: @image-url("resources/piece/leipzig/bK.svg"),
+        wQ: @image-url("resources/piece/leipzig/wQ.svg"),
+        bQ: @image-url("resources/piece/leipzig/bQ.svg"),
+        wR: @image-url("resources/piece/leipzig/wR.svg"),
+        bR: @image-url("resources/piece/leipzig/bR.svg"),
+        wB: @image-url("resources/piece/leipzig/wB.svg"),
+        bB: @image-url("resources/piece/leipzig/bB.svg"),
+        wN: @image-url("resources/piece/leipzig/wN.svg"),
+        bN: @image-url("resources/piece/leipzig/bN.svg"),
+        wP: @image-url("resources/piece/leipzig/wP.svg"),
+        bP: @image-url("resources/piece/leipzig/bP.svg"),
+    };
+    out property <PieceTheme> letter: {
+        wK: @image-url("resources/piece/letter/wK.svg"),
+        bK: @image-url("resources/piece/letter/bK.svg"),
+        wQ: @image-url("resources/piece/letter/wQ.svg"),
+        bQ: @image-url("resources/piece/letter/bQ.svg"),
+        wR: @image-url("resources/piece/letter/wR.svg"),
+        bR: @image-url("resources/piece/letter/bR.svg"),
+        wB: @image-url("resources/piece/letter/wB.svg"),
+        bB: @image-url("resources/piece/letter/bB.svg"),
+        wN: @image-url("resources/piece/letter/wN.svg"),
+        bN: @image-url("resources/piece/letter/bN.svg"),
+        wP: @image-url("resources/piece/letter/wP.svg"),
+        bP: @image-url("resources/piece/letter/bP.svg"),
+    };
+    out property <PieceTheme> maestro: {
+        wK: @image-url("resources/piece/maestro/wK.svg"),
+        bK: @image-url("resources/piece/maestro/bK.svg"),
+        wQ: @image-url("resources/piece/maestro/wQ.svg"),
+        bQ: @image-url("resources/piece/maestro/bQ.svg"),
+        wR: @image-url("resources/piece/maestro/wR.svg"),
+        bR: @image-url("resources/piece/maestro/bR.svg"),
+        wB: @image-url("resources/piece/maestro/wB.svg"),
+        bB: @image-url("resources/piece/maestro/bB.svg"),
+        wN: @image-url("resources/piece/maestro/wN.svg"),
+        bN: @image-url("resources/piece/maestro/bN.svg"),
+        wP: @image-url("resources/piece/maestro/wP.svg"),
+        bP: @image-url("resources/piece/maestro/bP.svg"),
+    };
+    out property <PieceTheme> merida: {
+        wK: @image-url("resources/piece/merida/wK.svg"),
+        bK: @image-url("resources/piece/merida/bK.svg"),
+        wQ: @image-url("resources/piece/merida/wQ.svg"),
+        bQ: @image-url("resources/piece/merida/bQ.svg"),
+        wR: @image-url("resources/piece/merida/wR.svg"),
+        bR: @image-url("resources/piece/merida/bR.svg"),
+        wB: @image-url("resources/piece/merida/wB.svg"),
+        bB: @image-url("resources/piece/merida/bB.svg"),
+        wN: @image-url("resources/piece/merida/wN.svg"),
+        bN: @image-url("resources/piece/merida/bN.svg"),
+        wP: @image-url("resources/piece/merida/wP.svg"),
+        bP: @image-url("resources/piece/merida/bP.svg"),
+    };
+    out property <PieceTheme> monarchy: {
+        wK: @image-url("resources/piece/monarchy/wK.svg"),
+        bK: @image-url("resources/piece/monarchy/bK.svg"),
+        wQ: @image-url("resources/piece/monarchy/wQ.svg"),
+        bQ: @image-url("resources/piece/monarchy/bQ.svg"),
+        wR: @image-url("resources/piece/monarchy/wR.svg"),
+        bR: @image-url("resources/piece/monarchy/bR.svg"),
+        wB: @image-url("resources/piece/monarchy/wB.svg"),
+        bB: @image-url("resources/piece/monarchy/bB.svg"),
+        wN: @image-url("resources/piece/monarchy/wN.svg"),
+        bN: @image-url("resources/piece/monarchy/bN.svg"),
+        wP: @image-url("resources/piece/monarchy/wP.svg"),
+        bP: @image-url("resources/piece/monarchy/bP.svg"),
+    };
+    out property <PieceTheme> mono: {
+        wK: @image-url("resources/piece/mono/K.svg"),
+        bK: @image-url("resources/piece/mono/K.svg"),
+        wQ: @image-url("resources/piece/mono/Q.svg"),
+        bQ: @image-url("resources/piece/mono/Q.svg"),
+        wR: @image-url("resources/piece/mono/R.svg"),
+        bR: @image-url("resources/piece/mono/R.svg"),
+        wB: @image-url("resources/piece/mono/B.svg"),
+        bB: @image-url("resources/piece/mono/B.svg"),
+        wN: @image-url("resources/piece/mono/N.svg"),
+        bN: @image-url("resources/piece/mono/N.svg"),
+        wP: @image-url("resources/piece/mono/P.svg"),
+        bP: @image-url("resources/piece/mono/P.svg"),
+    };
+    out property <PieceTheme> mpchess: {
+        wK: @image-url("resources/piece/mpchess/wK.svg"),
+        bK: @image-url("resources/piece/mpchess/bK.svg"),
+        wQ: @image-url("resources/piece/mpchess/wQ.svg"),
+        bQ: @image-url("resources/piece/mpchess/bQ.svg"),
+        wR: @image-url("resources/piece/mpchess/wR.svg"),
+        bR: @image-url("resources/piece/mpchess/bR.svg"),
+        wB: @image-url("resources/piece/mpchess/wB.svg"),
+        bB: @image-url("resources/piece/mpchess/bB.svg"),
+        wN: @image-url("resources/piece/mpchess/wN.svg"),
+        bN: @image-url("resources/piece/mpchess/bN.svg"),
+        wP: @image-url("resources/piece/mpchess/wP.svg"),
+        bP: @image-url("resources/piece/mpchess/bP.svg"),
+    };
+    out property <PieceTheme> pirouetti: {
+        wK: @image-url("resources/piece/pirouetti/wK.svg"),
+        bK: @image-url("resources/piece/pirouetti/bK.svg"),
+        wQ: @image-url("resources/piece/pirouetti/wQ.svg"),
+        bQ: @image-url("resources/piece/pirouetti/bQ.svg"),
+        wR: @image-url("resources/piece/pirouetti/wR.svg"),
+        bR: @image-url("resources/piece/pirouetti/bR.svg"),
+        wB: @image-url("resources/piece/pirouetti/wB.svg"),
+        bB: @image-url("resources/piece/pirouetti/bB.svg"),
+        wN: @image-url("resources/piece/pirouetti/wN.svg"),
+        bN: @image-url("resources/piece/pirouetti/bN.svg"),
+        wP: @image-url("resources/piece/pirouetti/wP.svg"),
+        bP: @image-url("resources/piece/pirouetti/bP.svg"),
+    };
+    out property <PieceTheme> pixel: {
+        wK: @image-url("resources/piece/pixel/wK.svg"),
+        bK: @image-url("resources/piece/pixel/bK.svg"),
+        wQ: @image-url("resources/piece/pixel/wQ.svg"),
+        bQ: @image-url("resources/piece/pixel/bQ.svg"),
+        wR: @image-url("resources/piece/pixel/wR.svg"),
+        bR: @image-url("resources/piece/pixel/bR.svg"),
+        wB: @image-url("resources/piece/pixel/wB.svg"),
+        bB: @image-url("resources/piece/pixel/bB.svg"),
+        wN: @image-url("resources/piece/pixel/wN.svg"),
+        bN: @image-url("resources/piece/pixel/bN.svg"),
+        wP: @image-url("resources/piece/pixel/wP.svg"),
+        bP: @image-url("resources/piece/pixel/bP.svg"),
+    };
+    out property <PieceTheme> reillycraig: {
+        wK: @image-url("resources/piece/reillycraig/wK.svg"),
+        bK: @image-url("resources/piece/reillycraig/bK.svg"),
+        wQ: @image-url("resources/piece/reillycraig/wQ.svg"),
+        bQ: @image-url("resources/piece/reillycraig/bQ.svg"),
+        wR: @image-url("resources/piece/reillycraig/wR.svg"),
+        bR: @image-url("resources/piece/reillycraig/bR.svg"),
+        wB: @image-url("resources/piece/reillycraig/wB.svg"),
+        bB: @image-url("resources/piece/reillycraig/bB.svg"),
+        wN: @image-url("resources/piece/reillycraig/wN.svg"),
+        bN: @image-url("resources/piece/reillycraig/bN.svg"),
+        wP: @image-url("resources/piece/reillycraig/wP.svg"),
+        bP: @image-url("resources/piece/reillycraig/bP.svg"),
+    };
+    out property <PieceTheme> riohacha: {
+        wK: @image-url("resources/piece/riohacha/wK.svg"),
+        bK: @image-url("resources/piece/riohacha/bK.svg"),
+        wQ: @image-url("resources/piece/riohacha/wQ.svg"),
+        bQ: @image-url("resources/piece/riohacha/bQ.svg"),
+        wR: @image-url("resources/piece/riohacha/wR.svg"),
+        bR: @image-url("resources/piece/riohacha/bR.svg"),
+        wB: @image-url("resources/piece/riohacha/wB.svg"),
+        bB: @image-url("resources/piece/riohacha/bB.svg"),
+        wN: @image-url("resources/piece/riohacha/wN.svg"),
+        bN: @image-url("resources/piece/riohacha/bN.svg"),
+        wP: @image-url("resources/piece/riohacha/wP.svg"),
+        bP: @image-url("resources/piece/riohacha/bP.svg"),
+    };
+    out property <PieceTheme> shapes: {
+        wK: @image-url("resources/piece/shapes/wK.svg"),
+        bK: @image-url("resources/piece/shapes/bK.svg"),
+        wQ: @image-url("resources/piece/shapes/wQ.svg"),
+        bQ: @image-url("resources/piece/shapes/bQ.svg"),
+        wR: @image-url("resources/piece/shapes/wR.svg"),
+        bR: @image-url("resources/piece/shapes/bR.svg"),
+        wB: @image-url("resources/piece/shapes/wB.svg"),
+        bB: @image-url("resources/piece/shapes/bB.svg"),
+        wN: @image-url("resources/piece/shapes/wN.svg"),
+        bN: @image-url("resources/piece/shapes/bN.svg"),
+        wP: @image-url("resources/piece/shapes/wP.svg"),
+        bP: @image-url("resources/piece/shapes/bP.svg"),
+    };
+    out property <PieceTheme> spatial: {
+        wK: @image-url("resources/piece/spatial/wK.svg"),
+        bK: @image-url("resources/piece/spatial/bK.svg"),
+        wQ: @image-url("resources/piece/spatial/wQ.svg"),
+        bQ: @image-url("resources/piece/spatial/bQ.svg"),
+        wR: @image-url("resources/piece/spatial/wR.svg"),
+        bR: @image-url("resources/piece/spatial/bR.svg"),
+        wB: @image-url("resources/piece/spatial/wB.svg"),
+        bB: @image-url("resources/piece/spatial/bB.svg"),
+        wN: @image-url("resources/piece/spatial/wN.svg"),
+        bN: @image-url("resources/piece/spatial/bN.svg"),
+        wP: @image-url("resources/piece/spatial/wP.svg"),
+        bP: @image-url("resources/piece/spatial/bP.svg"),
+    };
+    out property <PieceTheme> staunty: {
+        wK: @image-url("resources/piece/staunty/wK.svg"),
+        bK: @image-url("resources/piece/staunty/bK.svg"),
+        wQ: @image-url("resources/piece/staunty/wQ.svg"),
+        bQ: @image-url("resources/piece/staunty/bQ.svg"),
+        wR: @image-url("resources/piece/staunty/wR.svg"),
+        bR: @image-url("resources/piece/staunty/bR.svg"),
+        wB: @image-url("resources/piece/staunty/wB.svg"),
+        bB: @image-url("resources/piece/staunty/bB.svg"),
+        wN: @image-url("resources/piece/staunty/wN.svg"),
+        bN: @image-url("resources/piece/staunty/bN.svg"),
+        wP: @image-url("resources/piece/staunty/wP.svg"),
+        bP: @image-url("resources/piece/staunty/bP.svg"),
+    };
+    out property <PieceTheme> tatiana: {
+        wK: @image-url("resources/piece/tatiana/wK.svg"),
+        bK: @image-url("resources/piece/tatiana/bK.svg"),
+        wQ: @image-url("resources/piece/tatiana/wQ.svg"),
+        bQ: @image-url("resources/piece/tatiana/bQ.svg"),
+        wR: @image-url("resources/piece/tatiana/wR.svg"),
+        bR: @image-url("resources/piece/tatiana/bR.svg"),
+        wB: @image-url("resources/piece/tatiana/wB.svg"),
+        bB: @image-url("resources/piece/tatiana/bB.svg"),
+        wN: @image-url("resources/piece/tatiana/wN.svg"),
+        bN: @image-url("resources/piece/tatiana/bN.svg"),
+        wP: @image-url("resources/piece/tatiana/wP.svg"),
+        bP: @image-url("resources/piece/tatiana/bP.svg"),
+    };
+}
+
 global BoardThemes {
     out property <BoardTheme> wood: {
         dark-square: Colors.burlywood,
@@ -63,30 +600,31 @@ global BoardThemes {
 }
 
 component PieceImg inherits Image {
+    in property <Piece_UI> piece;
+    in property <PieceTheme> piece-theme: PieceThemes.staunty;
+    source: get-piece-img(piece);
+
     pure function get-piece-img(piece: Piece_UI) -> image {
         if piece.piece-type == PieceType_UI.King {
-            return piece.piece-colour == PieceColour_UI.White ? @image-url("resources/klt45.svg") : @image-url("resources/kdt45.svg");
+            return piece.piece-colour == PieceColour_UI.White ? piece-theme.wK : piece-theme.bK;
         }
         if piece.piece-type == PieceType_UI.Queen {
-            return piece.piece-colour == PieceColour_UI.White ? @image-url("resources/qlt45.svg") : @image-url("resources/qdt45.svg");
+            return piece.piece-colour == PieceColour_UI.White ? piece-theme.wQ : piece-theme.bQ;
         }
         if piece.piece-type == PieceType_UI.Rook {
-            return piece.piece-colour == PieceColour_UI.White ? @image-url("resources/rlt45.svg") : @image-url("resources/rdt45.svg");
+            return piece.piece-colour == PieceColour_UI.White ? piece-theme.wR : piece-theme.bR;
         }
         if piece.piece-type == PieceType_UI.Bishop {
-            return piece.piece-colour == PieceColour_UI.White ? @image-url("resources/blt45.svg") : @image-url("resources/bdt45.svg");
+            return piece.piece-colour == PieceColour_UI.White ? piece-theme.wB : piece-theme.bB;
         }
         if piece.piece-type == PieceType_UI.Knight {
-            return piece.piece-colour == PieceColour_UI.White ? @image-url("resources/nlt45.svg") : @image-url("resources/ndt45.svg");
+            return piece.piece-colour == PieceColour_UI.White ? piece-theme.wN : piece-theme.bN;
         }
         if piece.piece-type == PieceType_UI.Pawn {
-            return piece.piece-colour == PieceColour_UI.White ? @image-url("resources/plt45.svg") : @image-url("resources/pdt45.svg");
+            return piece.piece-colour == PieceColour_UI.White ? piece-theme.wP : piece-theme.bP;
         }
         return @image-url("");
     }
-
-    in property <Piece_UI> piece;
-    source: get-piece-img(piece);
 }
 
 component Square inherits Rectangle {
@@ -125,6 +663,7 @@ export component SettingsDialog_UI inherits Dialog {
     callback close();
     callback set-theme(BoardTheme);
     callback set-depth(string);
+    callback set-piece-theme(PieceTheme);
 
     VerticalLayout {
         alignment: start;
@@ -172,6 +711,137 @@ export component SettingsDialog_UI inherits Dialog {
                         set-theme(BoardThemes.purple);
                     } else if (self.current-value == "Red") {
                         set-theme(BoardThemes.red);
+                    }
+                }
+            }
+        }
+
+        HorizontalLayout {
+            alignment: center;
+            spacing: 10px;
+            Text {
+                text: "Piece Theme: ";
+                font-size: 12px;
+                vertical-alignment: center;
+            }
+
+            ComboBox {
+                model: [
+                    "Default",
+                    "Alpha",
+                    "Anarcandy",
+                    "Caliente",
+                    "California",
+                    "Cardinal",
+                    "Cburnett",
+                    "Celtic",
+                    "Chess7",
+                    "Chessnut",
+                    "Companion",
+                    "Cooke",
+                    "Disguised",
+                    "Dubrovny",
+                    "Fantasy",
+                    "Fresca",
+                    "Gioco",
+                    "Governor",
+                    "Horsey",
+                    "Icpieces",
+                    "Kiwen-suwi",
+                    "Kosal",
+                    "Leipzig",
+                    "Letter",
+                    "Maestro",
+                    "Merida",
+                    "Monarchy",
+                    "Mono",
+                    "Mpchess",
+                    "Pirouetti",
+                    "Pixel",
+                    "Reillycraig",
+                    "Riohacha",
+                    "Shapes",
+                    "Spatial",
+                    "Staunty",
+                    "Tatiana"
+                ];
+                current-value: "Default";
+                height: 25px;
+                selected => {
+                    if (self.current-value == "Default") {
+                        set-piece-theme(PieceThemes.default);
+                    } else if (self.current-value == "Alpha") {
+                        set-piece-theme(PieceThemes.alpha);
+                    } else if (self.current-value == "Anarcandy") {
+                        set-piece-theme(PieceThemes.anarcandy);
+                    } else if (self.current-value == "Caliente") {
+                        set-piece-theme(PieceThemes.caliente);
+                    } else if (self.current-value == "California") {
+                        set-piece-theme(PieceThemes.california);
+                    } else if (self.current-value == "Cardinal") {
+                        set-piece-theme(PieceThemes.cardinal);
+                    } else if (self.current-value == "Cburnett") {
+                        set-piece-theme(PieceThemes.cburnett);
+                    } else if (self.current-value == "Celtic") {
+                        set-piece-theme(PieceThemes.celtic);
+                    } else if (self.current-value == "Chess7") {
+                        set-piece-theme(PieceThemes.chess7);
+                    } else if (self.current-value == "Chessnut") {
+                        set-piece-theme(PieceThemes.chessnut);
+                    } else if (self.current-value == "Companion") {
+                        set-piece-theme(PieceThemes.companion);
+                    } else if (self.current-value == "Cooke") {
+                        set-piece-theme(PieceThemes.cooke);
+                    } else if (self.current-value == "Disguised") {
+                        set-piece-theme(PieceThemes.disguised);
+                    } else if (self.current-value == "Dubrovny") {
+                        set-piece-theme(PieceThemes.dubrovny);
+                    } else if (self.current-value == "Fantasy") {
+                        set-piece-theme(PieceThemes.fantasy);
+                    } else if (self.current-value == "Fresca") {
+                        set-piece-theme(PieceThemes.fresca);
+                    } else if (self.current-value == "Gioco") {
+                        set-piece-theme(PieceThemes.gioco);
+                    } else if (self.current-value == "Governor") {
+                        set-piece-theme(PieceThemes.governor);
+                    } else if (self.current-value == "Horsey") {
+                        set-piece-theme(PieceThemes.horsey);
+                    } else if (self.current-value == "Icpieces") {
+                        set-piece-theme(PieceThemes.icpieces);
+                    } else if (self.current-value == "Kiwen-suwi") {
+                        set-piece-theme(PieceThemes.kiwen-suwi);
+                    } else if (self.current-value == "Kosal") {
+                        set-piece-theme(PieceThemes.kosal);
+                    } else if (self.current-value == "Leipzig") {
+                        set-piece-theme(PieceThemes.leipzig);
+                    } else if (self.current-value == "Letter") {
+                        set-piece-theme(PieceThemes.letter);
+                    } else if (self.current-value == "Maestro") {
+                        set-piece-theme(PieceThemes.maestro);
+                    } else if (self.current-value == "Merida") {
+                        set-piece-theme(PieceThemes.merida);
+                    } else if (self.current-value == "Monarchy") {
+                        set-piece-theme(PieceThemes.monarchy);
+                    } else if (self.current-value == "Mono") {
+                        set-piece-theme(PieceThemes.mono);
+                    } else if (self.current-value == "Mpchess") {
+                        set-piece-theme(PieceThemes.mpchess);
+                    } else if (self.current-value == "Pirouetti") {
+                        set-piece-theme(PieceThemes.pirouetti);
+                    } else if (self.current-value == "Pixel") {
+                        set-piece-theme(PieceThemes.pixel);
+                    } else if (self.current-value == "Reillycraig") {
+                        set-piece-theme(PieceThemes.reillycraig);
+                    } else if (self.current-value == "Riohacha") {
+                        set-piece-theme(PieceThemes.riohacha);
+                    } else if (self.current-value == "Shapes") {
+                        set-piece-theme(PieceThemes.shapes);
+                    } else if (self.current-value == "Spatial") {
+                        set-piece-theme(PieceThemes.spatial);
+                    } else if (self.current-value == "Staunty") {
+                        set-piece-theme(PieceThemes.staunty);
+                    } else if (self.current-value == "Tatiana") {
+                        set-piece-theme(PieceThemes.tatiana);
                     }
                 }
             }
@@ -274,7 +944,7 @@ export component Board_UI inherits Window {
     // default depth
     in-out property <string> gamestate;
     in property <BoardTheme> board-theme: BoardThemes.wood;
-
+    in property <PieceTheme> piece-theme: PieceThemes.default;
     callback new-game();
     callback make-move() -> bool;
     callback engine-make-move();
@@ -393,6 +1063,7 @@ export component Board_UI inherits Window {
                                     piece: root.position[parent.index];
                                     width: parent.width;
                                     height: parent.height;
+                                    piece-theme: root.piece-theme;
                                 }
 
                                 ta := TouchArea {
