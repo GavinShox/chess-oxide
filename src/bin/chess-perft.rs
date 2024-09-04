@@ -25,7 +25,7 @@ fn main() {
         );
     }
 
-    let engine_iterations = 10;
+    let engine_iterations = 5;
     let mut total_engine_time = Duration::new(0, 0);
     for i in 0..engine_iterations {
         let start = Instant::now();
