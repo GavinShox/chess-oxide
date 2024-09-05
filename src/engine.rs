@@ -46,7 +46,7 @@ enum BoundType {
 
 #[derive(Debug)]
 pub struct TranspositionTable {
-    table: ahash::AHashMap<PositionHash, (BoundType, i32, i32)>,
+    table: ahash::AHashMap<PositionHash, (BoundType, i32, i32, Move)>,
 }
 impl TranspositionTable {
     pub fn new() -> Self {
@@ -61,19 +61,26 @@ impl TranspositionTable {
 
     // size of actual stored data, memory allocated on heap may be larger
     pub fn heap_size(&self) -> usize {
-        self.table.len() * std::mem::size_of::<(PositionHash, (BoundType, i32, i32))>()
+        self.table.len() * std::mem::size_of::<(PositionHash, (BoundType, i32, i32, Move))>()
     }
 
     // size of allocated memory
     pub fn heap_alloc_size(&self) -> usize {
-        self.table.capacity() * std::mem::size_of::<(PositionHash, (BoundType, i32, i32))>()
+        self.table.capacity() * std::mem::size_of::<(PositionHash, (BoundType, i32, i32, Move))>()
     }
 
-    fn insert(&mut self, hash: PositionHash, bound_type: BoundType, depth: i32, eval: i32) {
-        self.table.insert(hash, (bound_type, depth, eval));
+    fn insert(
+        &mut self,
+        hash: PositionHash,
+        bound_type: BoundType,
+        depth: i32,
+        eval: i32,
+        mv: Move,
+    ) {
+        self.table.insert(hash, (bound_type, depth, eval, mv));
     }
 
-    fn get(&self, hash: PositionHash) -> Option<&(BoundType, i32, i32)> {
+    fn get(&self, hash: PositionHash) -> Option<&(BoundType, i32, i32, Move)> {
         self.table.get(&hash)
     }
 }
@@ -129,7 +136,7 @@ fn quiescence(
     }
     alpha = cmp::max(alpha, max_eval);
     let moves = &bs.legal_moves;
-    for i in sorted_move_indexes(moves, true) {
+    for i in sorted_move_indexes(moves, true, &NULL_MOVE) {
         let mv = moves[i];
         let child_bs = bs.next_state(&mv).unwrap();
         let eval = -quiescence(&child_bs, depth - 1, -beta, -alpha, !maxi_colour, nodes);
@@ -182,7 +189,7 @@ fn negamax_root<'a>(
 
     let mut best_move = &bs.legal_moves[0];
     let mut max_eval = MIN;
-    for i in sorted_move_indexes(&bs.legal_moves, false) {
+    for i in sorted_move_indexes(&bs.legal_moves, false, &NULL_MOVE) {
         let mv = &bs.legal_moves[i];
         // println!("evaluating move: {:?}", mv);
         let child_bs = bs.next_state(mv).unwrap();
@@ -234,7 +241,8 @@ fn negamax(
     // TODO ADD MOVE ORDERING WITH BEST MOVE IN TRANSPOSITION TABLE?
     // transposition table lookup
     let alpha_orig = alpha;
-    if let Some((bound_type, tt_depth, tt_eval)) = tt.get(bs.board_hash) {
+    let mut best_move: Move = NULL_MOVE; // will be set on tt hit
+    if let Some((bound_type, tt_depth, tt_eval, tt_mv)) = tt.get(bs.board_hash) {
         if cfg!(feature = "debug_engine_logging") {
             nodes.transposition_table_hits += 1;
         }
@@ -255,6 +263,7 @@ fn negamax(
                 return tt_eval;
             }
         }
+        best_move = *tt_mv;
     }
     if bs.is_checkmate() {
         if cfg!(feature = "debug_engine_logging") {
@@ -275,7 +284,9 @@ fn negamax(
     }
 
     let mut max_eval = MIN;
-    for i in sorted_move_indexes(&bs.legal_moves, false) {
+    let moves = sorted_move_indexes(&bs.legal_moves, false, &best_move);
+
+    for i in moves {
         let mv = &bs.legal_moves[i];
         let child_bs = bs.next_state(mv).unwrap();
         let eval = -negamax(
@@ -290,6 +301,7 @@ fn negamax(
         );
         if eval > max_eval {
             max_eval = eval;
+            best_move = *mv;
         }
         alpha = cmp::max(alpha, max_eval);
 
@@ -305,12 +317,31 @@ fn negamax(
     }
 
     let tt_eval = max_eval;
+    let tt_best_move = best_move;
     if tt_eval <= alpha_orig {
-        tt.insert(bs.board_hash, BoundType::Upper, depth, tt_eval);
+        tt.insert(
+            bs.board_hash,
+            BoundType::Upper,
+            depth,
+            tt_eval,
+            tt_best_move,
+        );
     } else if tt_eval >= beta {
-        tt.insert(bs.board_hash, BoundType::Lower, depth, tt_eval);
+        tt.insert(
+            bs.board_hash,
+            BoundType::Lower,
+            depth,
+            tt_eval,
+            tt_best_move,
+        );
     } else {
-        tt.insert(bs.board_hash, BoundType::Exact, depth, tt_eval);
+        tt.insert(
+            bs.board_hash,
+            BoundType::Exact,
+            depth,
+            tt_eval,
+            tt_best_move,
+        );
     }
 
     // println!("max_eval: {}", max_eval);
@@ -318,11 +349,15 @@ fn negamax(
     max_eval
 }
 
-fn sorted_move_indexes(moves: &[Move], captures_only: bool) -> Vec<usize> {
+fn sorted_move_indexes(moves: &[Move], captures_only: bool, tt_mv: &Move) -> Vec<usize> {
     let mut move_scores: Vec<(usize, i32)> = Vec::with_capacity(moves.len());
 
     for (index, mv) in moves.iter().enumerate() {
         if captures_only && !matches!(mv.move_type, MoveType::Capture(_)) {
+            continue;
+        }
+        if mv == tt_mv {
+            move_scores.push((index, MAX)); // tt move should be searched first
             continue;
         }
 
