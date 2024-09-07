@@ -22,7 +22,6 @@ fn ui_convert_piece_colour(colour: chess::PieceColour) -> PieceColourUI {
     match colour {
         chess::PieceColour::White => PieceColourUI::White,
         chess::PieceColour::Black => PieceColourUI::Black,
-        chess::PieceColour::None => PieceColourUI::None,
     }
 }
 
@@ -53,10 +52,6 @@ fn ui_convert_piece(piece: chess::Piece) -> PieceUI {
                 piece_colour: PieceColourUI::White,
                 piece_type: PieceTypeUI::King,
             },
-            chess::PieceType::None => PieceUI {
-                piece_colour: PieceColourUI::None,
-                piece_type: PieceTypeUI::None,
-            },
         },
         chess::PieceColour::Black => match piece.ptype {
             chess::PieceType::Pawn => PieceUI {
@@ -83,14 +78,6 @@ fn ui_convert_piece(piece: chess::Piece) -> PieceUI {
                 piece_colour: PieceColourUI::Black,
                 piece_type: PieceTypeUI::King,
             },
-            chess::PieceType::None => PieceUI {
-                piece_colour: PieceColourUI::None,
-                piece_type: PieceTypeUI::None,
-            },
-        },
-        chess::PieceColour::None => PieceUI {
-            piece_colour: PieceColourUI::None,
-            piece_type: PieceTypeUI::None,
         },
     }
 }

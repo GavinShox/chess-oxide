@@ -394,7 +394,6 @@ fn get_piece_value(ptype: &PieceType) -> i32 {
         PieceType::Rook => 500,
         PieceType::Queen => 900,
         PieceType::King => 20000,
-        PieceType::None => unreachable!(),
     }
 }
 
@@ -457,7 +456,6 @@ fn get_piece_pos_value(i: usize, piece: &Piece, is_endgame: bool) -> i32 {
                 KING_MIDDLE_POS_VALUES[side_adjusted_idx]
             }
         }
-        PieceType::None => unreachable!(),
     }
 }
 

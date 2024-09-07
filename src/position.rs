@@ -631,34 +631,27 @@ impl Position {
                         PieceType::Pawn => match p.pcolour {
                             PieceColour::White => fen_str.push('P'),
                             PieceColour::Black => fen_str.push('p'),
-                            _ => unreachable!(),
                         },
                         PieceType::Knight => match p.pcolour {
                             PieceColour::White => fen_str.push('N'),
                             PieceColour::Black => fen_str.push('n'),
-                            _ => unreachable!(),
                         },
                         PieceType::Bishop => match p.pcolour {
                             PieceColour::White => fen_str.push('B'),
                             PieceColour::Black => fen_str.push('b'),
-                            _ => unreachable!(),
                         },
                         PieceType::Rook => match p.pcolour {
                             PieceColour::White => fen_str.push('R'),
                             PieceColour::Black => fen_str.push('r'),
-                            _ => unreachable!(),
                         },
                         PieceType::Queen => match p.pcolour {
                             PieceColour::White => fen_str.push('Q'),
                             PieceColour::Black => fen_str.push('q'),
-                            _ => unreachable!(),
                         },
                         PieceType::King => match p.pcolour {
                             PieceColour::White => fen_str.push('K'),
                             PieceColour::Black => fen_str.push('k'),
-                            _ => unreachable!(),
                         },
-                        PieceType::None => unreachable!(),
                     }
                 }
                 Square::Empty => {

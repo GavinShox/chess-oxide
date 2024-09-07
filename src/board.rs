@@ -107,7 +107,6 @@ impl BoardState {
                             PieceColour::Black => {
                                 bking_num += 1;
                             }
-                            PieceColour::None => unreachable!(),
                         }
                     }
                 }
@@ -211,7 +210,6 @@ impl BoardState {
                 PieceType::Rook => "R".to_string(),
                 PieceType::Queen => "Q".to_string(),
                 PieceType::King => "K".to_string(),
-                PieceType::None => "".to_string(),
             }
         };
 
