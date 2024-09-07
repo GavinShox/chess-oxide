@@ -2,11 +2,13 @@ use rand::Rng;
 
 use static_init::dynamic;
 
-use crate::{movegen::*, Position};
+use crate::movegen::*;
+use crate::position::Position;
+use crate::magic;
 
 // static table, to ensure all positions that are equal have the same hashes for the duration of the program
 #[dynamic]
-static ZOBRIST_HASH_TABLE: ZobristHashTable = ZobristHashTable::new();
+static ZOBRIST_HASH_TABLE: ZobristHashTable = ZobristHashTable::with_polyglot_magic();
 
 // using 64 bit hashes
 pub type PositionHash = u64;
@@ -33,7 +35,7 @@ pub fn board_state_hash(
 struct ZobristHashTable {
     pos_table: [[PositionHash; 12]; 64],
     en_passant_table: [PositionHash; 8], // 8 possible files that an en passant move can be made
-    black_to_move: PositionHash,
+    white_to_move: PositionHash,
     white_castle_long: PositionHash,
     black_castle_long: PositionHash,
     white_castle_short: PositionHash,
@@ -54,7 +56,7 @@ impl ZobristHashTable {
         for i in 0..8 {
             en_passant_table[i] = rng.gen();
         }
-        let black_to_move = rng.gen();
+        let white_to_move = rng.gen();
         let white_castle_long = rng.gen();
         let black_castle_long = rng.gen();
         let white_castle_short = rng.gen();
@@ -70,11 +72,35 @@ impl ZobristHashTable {
         Self {
             pos_table,
             en_passant_table,
-            black_to_move,
+            white_to_move,
             white_castle_long,
             black_castle_long,
             white_castle_short,
             black_castle_short,
+            halfmove_count,
+            occurrences,
+        }
+    }
+
+    pub fn with_polyglot_magic() -> Self {
+        // rng for halfmove_count and occurrences as they are not defined in polyglot zobrist keys
+        let mut rng = rand::thread_rng();
+        let mut halfmove_count: [PositionHash; 100] = [0; 100];
+        for i in 0..100 {
+            halfmove_count[i] = rng.gen();
+        }
+        let mut occurrences: [PositionHash; 3] = [0; 3];
+        for i in 0..3 {
+            occurrences[i] = rng.gen();
+        }
+        Self {
+            pos_table: magic::POLYGLOT_MAGIC_POS_TABLE,
+            en_passant_table: magic::POLYGLOT_MAGIC_EN_PASSANT_TABLE,
+            white_to_move: magic::POLYGLOT_MAGIC_WHITE_TO_MOVE,
+            white_castle_long: magic::POLYGLOT_MAGIC_WHITE_CASTLE_LONG,
+            black_castle_long: magic::POLYGLOT_MAGIC_BLACK_CASTLE_LONG,
+            white_castle_short: magic::POLYGLOT_MAGIC_WHITE_CASTLE_SHORT,
+            black_castle_short: magic::POLYGLOT_MAGIC_BLACK_CASTLE_SHORT,
             halfmove_count,
             occurrences,
         }
@@ -178,7 +204,7 @@ impl ZobristHashTable {
             }
         }
         hash ^= self.get_piece_hash(&piece, mv.to); // set moving piece in new position
-        hash ^= self.black_to_move; // switch sides
+        hash ^= self.white_to_move; // switch sides
         hash
     }
 
@@ -209,8 +235,8 @@ impl ZobristHashTable {
         if pos.movegen_flags.en_passant.is_some() {
             hash ^= self.en_passant_table[pos.movegen_flags.en_passant.unwrap() % 8];
         }
-        if pos.side == PieceColour::Black {
-            hash ^= self.black_to_move;
+        if pos.side == PieceColour::White {
+            hash ^= self.white_to_move;
         }
 
         hash

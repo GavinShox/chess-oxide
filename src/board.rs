@@ -56,7 +56,7 @@ pub struct BoardState {
     pub last_move: Move,
     pub legal_moves: Vec<Move>,
     pub board_hash: u64,
-    position_hash: u64,
+    pub position_hash: u64,
     position: Position,
     move_count: u32,
     halfmove_count: u32,
@@ -68,7 +68,7 @@ impl BoardState {
         let position = Position::new_starting();
         log::info!("New starting Position created");
         let position_hash: PositionHash = position.pos_hash();
-        let board_hash = position_hash ^ 1; // (^0) starting position doesnt need a unique hash as pos cant repeat //TODO atm just for clarity xor with occurences and halfmove count
+        let board_hash = zobrist::board_state_hash(position_hash, 1, 0); // default 1 occurrence and 0 halfmove count
         let side_to_move = position.side;
         // deref all legal moves, performance isn't as important here, so avoid lifetime specifiers to make things easier to look at
         let legal_moves = position.get_legal_moves().to_vec();
@@ -168,7 +168,7 @@ impl BoardState {
             }
         }
 
-        let board_hash = position_hash ^ 1 ^ (halfmove_count as u64); // FEN doesnt store position occurrence info, so set to 1
+        let board_hash = zobrist::board_state_hash(position_hash, 1, halfmove_count);//position_hash ^ 1 ^ (halfmove_count as u64); // FEN doesnt store position occurrence info, so set to 1
 
         log::info!("New BoardState created from FEN");
         Ok(BoardState {
@@ -286,7 +286,7 @@ impl BoardState {
         let side_to_move = position.side;
         let last_move = *mv;
         // deref all legal moves
-        let legal_moves = position.get_legal_moves().to_vec();
+        let legal_moves = position.get_legal_moves();
         log::trace!("Legal moves generated: {legal_moves:?}");
 
         let move_count = if side_to_move == PieceColour::White {

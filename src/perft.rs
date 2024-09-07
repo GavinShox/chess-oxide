@@ -16,7 +16,7 @@ fn get_all_legal_positions(
     if depth == 0 || moves.is_empty() {
         return;
     }
-    for mv in moves {
+    for mv in &moves {
         match mv.move_type {
             MoveType::EnPassant(_) => {
                 *en_passant += 1;
