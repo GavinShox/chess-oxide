@@ -319,7 +319,7 @@ fn main() -> Result<(), slint::PlatformError> {
         let import_fen_dialog = import_fen_dialog_weak_import.upgrade().unwrap();
         let ui = ui_weak_import_fen.upgrade().unwrap();
 
-        let new_board = match board::Board::from_fen(&fen) {
+        let new_board = match board::Board::from_fen(&fen.trim()) {
             Ok(b) => {
                 import_fen_dialog.set_error(false);
                 import_fen_dialog.set_fen_str("".into());
