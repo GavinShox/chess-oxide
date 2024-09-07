@@ -300,7 +300,7 @@ impl Position {
         // return false;
     }
 
-    pub fn get_legal_moves(&self) -> Vec<Move> {
+    pub fn get_legal_moves(&self) -> Vec<&Move> {
         // let mut legal_moves = Vec::new();
         // for mv in &self.attack_map.0 {
         //     if self.is_move_legal(mv) {
@@ -309,12 +309,13 @@ impl Position {
         // }
 
         // legal_moves
-        let mut legal_indexes = vec![false; self.attack_map.0.len()];
-        for (i, mv) in self.attack_map.0.iter().enumerate() {
-            legal_indexes[i] = self.is_move_legal(mv);
+        let mut legal_moves = Vec::with_capacity(self.attack_map.0.len());
+        for mv in &self.attack_map.0 {
+            if self.is_move_legal(mv) {
+                legal_moves.push(mv);
+            }
         }
-        let mut keep = legal_indexes.iter(); // iter stored here so .next() properly increments below
-        self.attack_map.0.iter().filter(|_| *keep.next().unwrap()).cloned().collect()
+        legal_moves
     }
 
     // sets enpassant movegen flag to Some(idx of pawn that can be captured), if the move is a double pawn push

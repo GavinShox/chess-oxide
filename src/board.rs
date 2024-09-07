@@ -71,7 +71,7 @@ impl BoardState {
         let board_hash = zobrist::board_state_hash(position_hash, 1, 0); // default 1 occurrence and 0 halfmove count
         let side_to_move = position.side;
         // deref all legal moves, performance isn't as important here, so avoid lifetime specifiers to make things easier to look at
-        let legal_moves = position.get_legal_moves().to_vec();
+        let legal_moves = position.get_legal_moves().into_iter().cloned().collect();
         log::trace!("Legal moves generated: {legal_moves:?}");
         let mut position_occurences = ahash::AHashMap::default();
         position_occurences.insert(position_hash, 1);
@@ -134,7 +134,7 @@ impl BoardState {
         let position_hash: PositionHash = position.pos_hash();
         let side_to_move = position.side;
         // deref all legal moves, performance isn't as important here, so avoid lifetime specifiers to make things easier to look at
-        let legal_moves = position.get_legal_moves().to_vec();
+        let legal_moves = position.get_legal_moves().into_iter().cloned().collect();
         let mut position_occurences = ahash::AHashMap::default();
         position_occurences.insert(position_hash, 1);
 
@@ -286,7 +286,7 @@ impl BoardState {
         let side_to_move = position.side;
         let last_move = *mv;
         // deref all legal moves
-        let legal_moves = position.get_legal_moves();
+        let legal_moves = position.get_legal_moves().into_iter().cloned().collect();
         log::trace!("Legal moves generated: {legal_moves:?}");
 
         let move_count = if side_to_move == PieceColour::White {
