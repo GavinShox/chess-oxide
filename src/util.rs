@@ -96,7 +96,7 @@ pub fn print_board(bs: &BoardState) {
                     PieceType::King => {
                         print!("{}", bking);
                     }
-                }
+                },
             },
             Square::Empty => {
                 print!(" - ");

@@ -26,13 +26,12 @@ pub const SHORT_WHITE_ROOK_START: usize = 63;
 pub const BLACK_KING_START: usize = 4;
 pub const WHITE_KING_START: usize = 60;
 
-pub const NULL_PIECE: Piece = Piece {
-    pcolour: PieceColour::White,
-    ptype: PieceType::King,
-};
 // from and to are out of bounds
 pub const NULL_MOVE: Move = Move {
-    piece: NULL_PIECE,
+    piece: Piece {
+        ptype: PieceType::King,
+        pcolour: PieceColour::White,
+    }, // dummy piece
     from: usize::MAX,
     to: usize::MAX,
     move_type: MoveType::None,

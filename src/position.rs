@@ -675,7 +675,6 @@ impl Position {
         match self.side {
             PieceColour::White => fen_str.push('w'),
             PieceColour::Black => fen_str.push('b'),
-            _ => unreachable!(),
         }
         fen_str.push(' ');
 

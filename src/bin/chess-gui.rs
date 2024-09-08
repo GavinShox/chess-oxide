@@ -130,7 +130,10 @@ fn main() -> Result<(), slint::PlatformError> {
         {
             match s {
                 chess::Square::Piece(p) => ui_position.push(ui_convert_piece(*p)),
-                chess::Square::Empty => ui_position.push(ui_convert_piece(chess::NULL_PIECE)),
+                chess::Square::Empty => ui_position.push(PieceUI {
+                    piece_colour: PieceColourUI::None,
+                    piece_type: PieceTypeUI::None,
+                }),
             }
         }
         // reverse board if player is black
