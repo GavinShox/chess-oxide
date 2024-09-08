@@ -309,7 +309,7 @@ impl Position {
         // }
 
         // legal_moves
-        let mut legal_moves = Vec::new();
+        let mut legal_moves = Vec::with_capacity(self.attack_map.0.len());
         for mv in &self.attack_map.0 {
             if self.is_move_legal(mv) {
                 legal_moves.push(mv);
