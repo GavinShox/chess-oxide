@@ -300,7 +300,7 @@ impl Position {
         // return false;
     }
 
-    pub fn get_legal_moves(&self) -> &Vec<Move> {
+    pub fn get_legal_moves(&self) -> Vec<&Move> {
         // let mut legal_moves = Vec::new();
         // for mv in &self.attack_map.0 {
         //     if self.is_move_legal(mv) {
@@ -309,7 +309,13 @@ impl Position {
         // }
 
         // legal_moves
-        &self.attack_map.0
+        let mut legal_moves = Vec::new();
+        for mv in &self.attack_map.0 {
+            if self.is_move_legal(mv) {
+                legal_moves.push(mv);
+            }
+        }
+        legal_moves
     }
 
     // sets enpassant movegen flag to Some(idx of pawn that can be captured), if the move is a double pawn push
@@ -399,12 +405,12 @@ impl Position {
         // TODO this is very confusing, as defend map has to be updated before we can check legal moves, so outside this function it looks like circular logic
         // defend map has to be updated before we can check legal moves, but it is directly updsted above
         // prune illegal moves
-        let mut legal_indexes = vec![false; self.attack_map.0.len()];
-        for (i, mv) in self.attack_map.0.iter().enumerate() {
-            legal_indexes[i] = self.is_move_legal(mv);
-        }
-        let mut keep = legal_indexes.iter(); // iter stored here so .next() properly increments below
-        self.attack_map.0.retain(|_| *keep.next().unwrap());
+        // let mut legal_indexes = vec![false; self.attack_map.0.len()];
+        // for (i, mv) in self.attack_map.0.iter().enumerate() {
+        //     legal_indexes[i] = self.is_move_legal(mv);
+        // }
+        // let mut keep = legal_indexes.iter(); // iter stored here so .next() properly increments below
+        // self.attack_map.0.retain(|_| *keep.next().unwrap());
     }
 
     // partial implementation of the FEN format, last 2 fields are not used here
