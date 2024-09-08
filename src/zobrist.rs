@@ -2,9 +2,9 @@ use rand::Rng;
 
 use static_init::dynamic;
 
+use crate::magic;
 use crate::movegen::*;
 use crate::position::Position;
-use crate::magic;
 
 // static table, to ensure all positions that are equal have the same hashes for the duration of the program
 #[dynamic]
@@ -15,10 +15,11 @@ pub type PositionHash = u64;
 
 // zobrist hash of full Position, used to initialise a position hash
 pub fn pos_hash(pos: &Position) -> PositionHash {
-    ZOBRIST_HASH_TABLE.full_position_hash(pos)
+    ZOBRIST_HASH_TABLE.polyglot_full_position_hash(pos)
 }
 
 // increment the zobrist hash of a Position, can be used when moves are made instead of calling pos_hash on the whole position every move
+// TODO Implement next_hash for polyglot zobrist keys
 pub fn pos_next_hash(pos: &Position, current_hash: PositionHash, mv: &Move) -> PositionHash {
     ZOBRIST_HASH_TABLE.next_hash(pos, current_hash, mv)
 }
@@ -104,6 +105,44 @@ impl ZobristHashTable {
             halfmove_count,
             occurrences,
         }
+    }
+
+    fn polyglot_full_position_hash(&self, pos: &Position) -> PositionHash {
+        let mut hash = 0;
+        for (i, s) in pos.pos64.iter().enumerate() {
+            match s {
+                Square::Piece(p) => {
+                    hash ^= self.get_piece_hash(p, i);
+                }
+                Square::Empty => {
+                    continue;
+                }
+            }
+        }
+        if pos.movegen_flags.white_castle_long {
+            hash ^= self.white_castle_long;
+        }
+        if pos.movegen_flags.black_castle_long {
+            hash ^= self.black_castle_long;
+        }
+        if pos.movegen_flags.white_castle_short {
+            hash ^= self.white_castle_short;
+        }
+        if pos.movegen_flags.black_castle_short {
+            hash ^= self.black_castle_short;
+        }
+        if pos.side == PieceColour::White {
+            hash ^= self.white_to_move;
+        }
+
+        for mv in pos.get_pseudo_legal_moves() {
+            if let MoveType::EnPassant(ep) = mv.move_type {
+                hash ^= self.en_passant_table[ep % 8];
+                break;
+            }
+        }
+
+        hash
     }
 
     fn next_hash(

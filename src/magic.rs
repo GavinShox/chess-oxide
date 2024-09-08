@@ -1691,22 +1691,16 @@ pub const POLYGLOT_MAGIC_WHITE_CASTLE_LONG: u64 = 17394508730963952016;
 pub const POLYGLOT_MAGIC_BLACK_CASTLE_LONG: u64 = 2231224496660291273;
 pub const POLYGLOT_MAGIC_WHITE_CASTLE_SHORT: u64 = 3591372000141165328;
 pub const POLYGLOT_MAGIC_BLACK_CASTLE_SHORT: u64 = 11925077963498648480;
-// FIXME not working
-// en passant
-// If the opponent has performed a double pawn push and there is now a pawn next to it belonging to the player to move then "enpassant" is the entry from RandomEnPassant whose offset is the file of the pushed pawn (counted from 0(=a) to 7(=h)). If this does not apply then enpassant=0.
 
-// Note that this is different from the FEN standard. In the FEN standard the presence of an "en passant target square" after a double pawn push is unconditional.
-
-// Also note that it is irrelevant if the potential en passant capturing move is legal or not (examples where it would not be legal are when the capturing pawn is pinned or when the double pawn push was a discovered check). 
 pub const POLYGLOT_MAGIC_EN_PASSANT_TABLE: [u64; 8] = [
-    7467898009369859339,
-    8630622898638529667,
-    15052228947759922034,
-    14929791059677233801,
-    2060923303336906913,
-    16488107566197090,
-    16292452481085749975,
     8127998803539291684,
+    16292452481085749975,
+    16488107566197090,
+    2060923303336906913,
+    14929791059677233801,
+    15052228947759922034,
+    8630622898638529667,
+    7467898009369859339,
 ];
 
 pub const POLYGLOT_MAGIC_WHITE_TO_MOVE: u64 = 17930561480947107081;

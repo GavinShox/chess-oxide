@@ -168,7 +168,7 @@ impl BoardState {
             }
         }
 
-        let board_hash = zobrist::board_state_hash(position_hash, 1, halfmove_count);//position_hash ^ 1 ^ (halfmove_count as u64); // FEN doesnt store position occurrence info, so set to 1
+        let board_hash = zobrist::board_state_hash(position_hash, 1, halfmove_count); //position_hash ^ 1 ^ (halfmove_count as u64); // FEN doesnt store position occurrence info, so set to 1
 
         log::info!("New BoardState created from FEN");
         Ok(BoardState {

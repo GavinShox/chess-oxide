@@ -1,13 +1,13 @@
 pub mod board;
 mod engine;
 mod errors;
+pub mod magic;
 mod mailbox;
 mod movegen;
 mod perft;
 mod position;
 mod util;
 mod zobrist;
-pub mod magic;
 
 pub mod test;
 

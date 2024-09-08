@@ -318,6 +318,10 @@ impl Position {
         legal_moves
     }
 
+    pub fn get_pseudo_legal_moves(&self) -> &Vec<Move> {
+        &self.attack_map.0
+    }
+
     // sets enpassant movegen flag to Some(idx of pawn that can be captured), if the move is a double pawn push
     fn set_en_passant_flag(&mut self, mv: &Move) {
         if mv.move_type == MoveType::DoublePawnPush {
