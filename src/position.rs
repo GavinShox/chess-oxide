@@ -201,11 +201,13 @@ impl Position {
         new_pos
     }
 
+    #[inline(always)]
     pub fn pos_hash(&self) -> PositionHash {
         zobrist::pos_hash(self)
     }
 
     // TODO maybe consolidate all movegen flag updates into one place if possible?
+    #[inline(always)]
     fn set_king_position(&mut self, mv: &Move) {
         if mv.piece.ptype == PieceType::King {
             if mv.piece.pcolour == PieceColour::White {
@@ -216,6 +218,7 @@ impl Position {
         }
     }
     // clone function for is_move_legal. Avoids expensive clone attack map
+    #[inline(always)]
     fn test_clone(&self) -> Self {
         Self {
             pos64: self.pos64,
@@ -255,9 +258,10 @@ impl Position {
         test_pos.pos64[mv.to] = self.pos64[mv.from];
         test_pos.pos64[mv.from] = Square::Empty;
 
-        !test_pos.is_in_check_legal_check()
+        !movegen_in_check(&test_pos.pos64, test_pos.get_king_idx())
     }
 
+    #[inline(always)]
     fn toggle_side(&mut self) {
         self.side = if self.side == PieceColour::White {
             PieceColour::Black
@@ -266,13 +270,12 @@ impl Position {
         };
     }
 
+    #[inline(always)]
     fn is_defended(&self, i: usize) -> bool {
         self.defend_map.0[i]
     }
-    // TODO seperate functions that rely on maps and the leegal check ones that dont. One is an incomplete state and the other is complete
-    fn is_in_check_legal_check(&self) -> bool {
-        movegen_in_check(&self.pos64, self.get_king_idx())
-    }
+
+    #[inline(always)]
     fn get_king_idx(&self) -> usize {
         if self.side == PieceColour::White {
             self.wking_idx
@@ -281,34 +284,12 @@ impl Position {
         }
     }
 
+    #[inline(always)]
     pub fn is_in_check(&self) -> bool {
         self.is_defended(self.get_king_idx())
-        //movegen_in_check(&self.position, side_king, self.side)
-        // for (i, s) in self.position.iter().enumerate() {
-        //     match s {
-        //         Square::Piece(p) => {
-        //             if matches!(p.ptype, PieceType::King) && p.pcolour == self.side {
-        //                 if self.is_defended(i) {
-        //                     return true;
-        //                 }
-        //                 break;
-        //             }
-        //         }
-        //         Square::Empty => {}
-        //     }
-        // }
-        // return false;
     }
 
     pub fn get_legal_moves(&self) -> Vec<&Move> {
-        // let mut legal_moves = Vec::new();
-        // for mv in &self.attack_map.0 {
-        //     if self.is_move_legal(mv) {
-        //         legal_moves.push(mv);
-        //     }
-        // }
-
-        // legal_moves
         let mut legal_moves = Vec::with_capacity(self.attack_map.0.len());
         for mv in &self.attack_map.0 {
             if self.is_move_legal(mv) {
@@ -319,6 +300,7 @@ impl Position {
     }
 
     // sets enpassant movegen flag to Some(idx of pawn that can be captured), if the move is a double pawn push
+    #[inline(always)]
     fn set_en_passant_flag(&mut self, mv: &Move) {
         if mv.move_type == MoveType::DoublePawnPush {
             self.movegen_flags.en_passant = Some(mv.to);
@@ -327,6 +309,7 @@ impl Position {
         }
     }
 
+    #[inline(always)]
     fn set_castle_flags(&mut self, mv: &Move) {
         if mv.piece.ptype == PieceType::King {
             if mv.piece.pcolour == PieceColour::White {
@@ -374,32 +357,19 @@ impl Position {
         self.defend_map.clear();
         self.attack_map.clear();
 
-        for (i, s) in self.pos64.iter().enumerate() {
-            match s {
-                Square::Piece(p) => {
-                    if p.pcolour != self.side {
-                        movegen(
-                            &self.pos64,
-                            &self.movegen_flags,
-                            p,
-                            i,
-                            true,
-                            &mut self.defend_map,
-                        );
-                    } else {
-                        movegen(
-                            &self.pos64,
-                            &self.movegen_flags,
-                            p,
-                            i,
-                            false,
-                            &mut self.attack_map,
-                        );
-                    }
-                }
-                Square::Empty => {
-                    continue;
-                }
+        let pos64 = &self.pos64;
+        let movegen_flags = &self.movegen_flags;
+        let side = self.side;
+
+        for (i, s) in pos64.iter().enumerate() {
+            if let Square::Piece(p) = s {
+                let is_defending = p.pcolour != side;
+                let map: &mut dyn MoveMap = if is_defending {
+                    &mut self.defend_map
+                } else {
+                    &mut self.attack_map
+                };
+                movegen(pos64, movegen_flags, p, i, is_defending, map);
             }
         }
         // TODO this is very confusing, as defend map has to be updated before we can check legal moves, so outside this function it looks like circular logic
