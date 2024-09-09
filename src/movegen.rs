@@ -81,6 +81,7 @@ pub struct MovegenFlags {
     pub black_castle_short: bool,
     pub black_castle_long: bool,
     pub en_passant: Option<usize>,
+    pub polyglot_en_passant: Option<usize>,
 }
 
 #[derive(Debug, PartialEq, Clone, Copy)]

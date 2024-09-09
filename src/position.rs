@@ -69,6 +69,7 @@ impl Position {
             black_castle_short: true,
             black_castle_long: true,
             en_passant: None,
+            polyglot_en_passant: None,
         };
 
         pos[0] = Square::Piece(Piece {
@@ -311,6 +312,13 @@ impl Position {
         } else {
             self.movegen_flags.en_passant = None;
         }
+        for mv in &self.attack_map.0 {
+            if let MoveType::EnPassant(ep) = mv.move_type {
+                self.movegen_flags.polyglot_en_passant = Some(ep);
+                return;
+            }
+        }
+        self.movegen_flags.polyglot_en_passant = None;
     }
 
     #[inline(always)]
@@ -515,6 +523,7 @@ impl Position {
             black_castle_short: false,
             black_castle_long: false,
             en_passant: None,
+            polyglot_en_passant: None,
         };
 
         // third field of FEN defines castling flags
@@ -561,6 +570,7 @@ impl Position {
                 ep_mv_idx - ABOVE_BELOW
             };
             movegen_flags.en_passant = Some(ep_flag);
+            movegen_flags.polyglot_en_passant = Some(ep_flag);
         }
 
         // Last two fields not used here, as they are out of scope of this struct.

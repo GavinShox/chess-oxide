@@ -134,12 +134,8 @@ impl ZobristHashTable {
         if pos.side == PieceColour::White {
             hash ^= self.white_to_move;
         }
-
-        for mv in pos.get_pseudo_legal_moves() {
-            if let MoveType::EnPassant(ep) = mv.move_type {
-                hash ^= self.en_passant_table[ep % 8];
-                break;
-            }
+        if pos.movegen_flags.polyglot_en_passant.is_some() {
+            hash ^= self.en_passant_table[pos.movegen_flags.polyglot_en_passant.unwrap() % 8];
         }
 
         hash
