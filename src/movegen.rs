@@ -26,13 +26,12 @@ pub const SHORT_WHITE_ROOK_START: usize = 63;
 pub const BLACK_KING_START: usize = 4;
 pub const WHITE_KING_START: usize = 60;
 
-pub const NULL_PIECE: Piece = Piece {
-    pcolour: PieceColour::None,
-    ptype: PieceType::None,
-};
 // from and to are out of bounds
 pub const NULL_MOVE: Move = Move {
-    piece: NULL_PIECE,
+    piece: Piece {
+        ptype: PieceType::King,
+        pcolour: PieceColour::White,
+    }, // dummy piece
     from: usize::MAX,
     to: usize::MAX,
     move_type: MoveType::None,
@@ -46,14 +45,12 @@ pub enum PieceType {
     Rook,
     Queen,
     King,
-    None,
 }
 
 #[derive(PartialEq, Eq, Debug, Clone, Copy)]
 pub enum PieceColour {
     White,
     Black,
-    None,
 }
 impl core::ops::Not for PieceColour {
     type Output = Self;
@@ -61,7 +58,6 @@ impl core::ops::Not for PieceColour {
         match self {
             PieceColour::White => PieceColour::Black,
             PieceColour::Black => PieceColour::White,
-            PieceColour::None => PieceColour::None,
         }
     }
 }
@@ -149,7 +145,6 @@ fn mb_get_pawn_push_offset(piece: &Piece) -> i32 {
     match piece.pcolour {
         PieceColour::White => -10,
         PieceColour::Black => 10,
-        PieceColour::None => unreachable!(),
     }
 }
 
@@ -160,7 +155,6 @@ fn mb_get_pawn_attack_offset(piece: &Piece) -> [i32; 2] {
     match piece.pcolour {
         PieceColour::White => WHITE_ATTACK_OFFSET,
         PieceColour::Black => BLACK_ATTACK_OFFSET,
-        PieceColour::None => unreachable!(),
     }
 }
 
@@ -173,9 +167,6 @@ fn mb_get_offset(piece: &Piece) -> Offset {
         PieceType::Rook => ROOK_OFFSET,
         PieceType::Queen => QUEEN_KING_OFFSET,
         PieceType::King => QUEEN_KING_OFFSET,
-        PieceType::None => {
-            unreachable!()
-        }
     }
 }
 
@@ -188,9 +179,6 @@ fn get_slide(piece: &Piece) -> bool {
         PieceType::Rook => true,
         PieceType::Queen => true,
         PieceType::King => false,
-        PieceType::None => {
-            unreachable!()
-        }
     }
 }
 
@@ -199,9 +187,6 @@ fn pawn_is_promotion_square(i: i32, piece: &Piece) -> bool {
     match piece.pcolour {
         PieceColour::White => i <= 7,
         PieceColour::Black => i >= 56,
-        PieceColour::None => {
-            unreachable!()
-        }
     }
 }
 
@@ -210,9 +195,6 @@ fn pawn_is_starting_rank(i: usize, piece: &Piece) -> bool {
     match piece.pcolour {
         PieceColour::White => i < 56 && i > 47,
         PieceColour::Black => i < 16 && i > 7,
-        PieceColour::None => {
-            unreachable!()
-        }
     }
 }
 

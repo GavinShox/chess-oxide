@@ -22,7 +22,6 @@ fn ui_convert_piece_colour(colour: chess::PieceColour) -> PieceColourUI {
     match colour {
         chess::PieceColour::White => PieceColourUI::White,
         chess::PieceColour::Black => PieceColourUI::Black,
-        chess::PieceColour::None => PieceColourUI::None,
     }
 }
 
@@ -53,10 +52,6 @@ fn ui_convert_piece(piece: chess::Piece) -> PieceUI {
                 piece_colour: PieceColourUI::White,
                 piece_type: PieceTypeUI::King,
             },
-            chess::PieceType::None => PieceUI {
-                piece_colour: PieceColourUI::None,
-                piece_type: PieceTypeUI::None,
-            },
         },
         chess::PieceColour::Black => match piece.ptype {
             chess::PieceType::Pawn => PieceUI {
@@ -83,14 +78,6 @@ fn ui_convert_piece(piece: chess::Piece) -> PieceUI {
                 piece_colour: PieceColourUI::Black,
                 piece_type: PieceTypeUI::King,
             },
-            chess::PieceType::None => PieceUI {
-                piece_colour: PieceColourUI::None,
-                piece_type: PieceTypeUI::None,
-            },
-        },
-        chess::PieceColour::None => PieceUI {
-            piece_colour: PieceColourUI::None,
-            piece_type: PieceTypeUI::None,
         },
     }
 }
@@ -143,7 +130,10 @@ fn main() -> Result<(), slint::PlatformError> {
         {
             match s {
                 chess::Square::Piece(p) => ui_position.push(ui_convert_piece(*p)),
-                chess::Square::Empty => ui_position.push(ui_convert_piece(chess::NULL_PIECE)),
+                chess::Square::Empty => ui_position.push(PieceUI {
+                    piece_colour: PieceColourUI::None,
+                    piece_type: PieceTypeUI::None,
+                }),
             }
         }
         // reverse board if player is black
@@ -327,7 +317,7 @@ fn main() -> Result<(), slint::PlatformError> {
         let import_fen_dialog = import_fen_dialog_weak_import.upgrade().unwrap();
         let ui = ui_weak_import_fen.upgrade().unwrap();
 
-        let new_board = match board::Board::from_fen(&fen) {
+        let new_board = match board::Board::from_fen(&fen.trim()) {
             Ok(b) => {
                 import_fen_dialog.set_error(false);
                 import_fen_dialog.set_fen_str("".into());

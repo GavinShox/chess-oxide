@@ -76,9 +76,6 @@ pub fn print_board(bs: &BoardState) {
                     PieceType::King => {
                         print!("{}", king);
                     }
-                    PieceType::None => {
-                        print!(" - ");
-                    }
                 },
                 PieceColour::Black => match p.ptype {
                     PieceType::Pawn => {
@@ -99,11 +96,7 @@ pub fn print_board(bs: &BoardState) {
                     PieceType::King => {
                         print!("{}", bking);
                     }
-                    PieceType::None => {
-                        print!(" - ");
-                    }
                 },
-                PieceColour::None => {}
             },
             Square::Empty => {
                 print!(" - ");
