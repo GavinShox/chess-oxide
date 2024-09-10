@@ -90,8 +90,8 @@ pub fn perft(pos: &Position, depth: i32) -> u64 {
 }
 
 pub fn engine_perft(bs: &BoardState, depth: i32) {
+    let mut tt = engine::TranspositionTable::new(); // not included in duration
     let start = Instant::now();
-    let mut tt = engine::TranspositionTable::new();
     let (eval, mv) = engine::choose_move(bs, depth, &mut tt);
     let duration = start.elapsed();
     println!(

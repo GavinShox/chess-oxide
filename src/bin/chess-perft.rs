@@ -29,7 +29,6 @@ fn main() {
     let mut total_engine_time = Duration::new(0, 0);
     for i in 0..engine_iterations {
         let start = Instant::now();
-        //chess::perft(&pos, 5);
         chess::engine_perft(&board.current_state, 7);
         let duration = start.elapsed();
         total_engine_time += duration;

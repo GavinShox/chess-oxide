@@ -137,7 +137,7 @@ fn quiescence(
     }
     alpha = cmp::max(alpha, max_eval);
     let moves = &bs.legal_moves;
-    for i in sorted_move_indexes(moves, true, &NULL_MOVE) {
+    for i in sorted_move_indexes(moves, true, &NULL_MOVE, &bs.last_move) {
         let mv = moves[i];
         let child_bs = bs.next_state(&mv).unwrap();
         let eval = -quiescence(&child_bs, depth - 1, -beta, -alpha, !maxi_colour, nodes);
@@ -189,7 +189,7 @@ fn negamax_root<'a>(
     let beta = MAX;
     let mut best_move = &bs.legal_moves[0];
     let mut max_eval = MIN;
-    for i in sorted_move_indexes(&bs.legal_moves, false, &NULL_MOVE) {
+    for i in sorted_move_indexes(&bs.legal_moves, false, &NULL_MOVE, &bs.last_move) {
         let mv = &bs.legal_moves[i];
         // println!("evaluating move: {:?}", mv);
         let child_bs = bs.next_state(mv).unwrap();
@@ -281,7 +281,7 @@ fn negamax(
     }
 
     let mut max_eval = MIN;
-    let moves = sorted_move_indexes(&bs.legal_moves, false, &best_move);
+    let moves = sorted_move_indexes(&bs.legal_moves, false, &best_move, &bs.last_move);
     for i in moves {
         let mv = &bs.legal_moves[i];
         let child_bs = bs.next_state(mv).unwrap();
@@ -344,7 +344,12 @@ fn negamax(
     max_eval
 }
 
-fn sorted_move_indexes(moves: &[Move], captures_only: bool, tt_mv: &Move) -> Vec<usize> {
+fn sorted_move_indexes(
+    moves: &[Move],
+    captures_only: bool,
+    tt_mv: &Move,
+    last_mv: &Move,
+) -> Vec<usize> {
     let mut move_scores: Vec<(usize, i32)> = Vec::with_capacity(moves.len());
 
     for (index, mv) in moves.iter().enumerate() {
@@ -358,11 +363,16 @@ fn sorted_move_indexes(moves: &[Move], captures_only: bool, tt_mv: &Move) -> Vec
 
         let mv_score = match mv.move_type {
             MoveType::Capture(capture_type) => {
+                let mv_ptype_value = get_piece_value(&mv.piece.ptype);
                 // prioritise captures, even when capturing with a more valuable piece. After trades it could still be good, so min 1
                 cmp::max(
-                    get_piece_value(&capture_type) - get_piece_value(&mv.piece.ptype),
+                    get_piece_value(&capture_type) - mv_ptype_value,
                     1,
                 )
+                // prioritize recaptures, with least valuable piece
+                + if mv.to == last_mv.to {
+                    10000 - mv_ptype_value
+                } else { 0 }
             }
             MoveType::Promotion(promotion_type, _) => get_piece_value(&promotion_type), // TODO maybe potential capture should be taken into account
             _ => 0,
