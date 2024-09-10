@@ -36,4 +36,4 @@ cargo run --bin chess-perft [--release]
 NOTE: GUI IS VERY BASIC AND JUST USED FOR TESTING
 
 ## License
-This project is licensed under the MIT License.
+This project is licensed under the MPL-2.0 License.
