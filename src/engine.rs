@@ -8,6 +8,7 @@ use crate::zobrist::PositionHash;
 // avoid int overflows when operating on these values i.e. negating, +/- checkmate depth etc.
 const MIN: i32 = i32::MIN + 1000;
 const MAX: i32 = i32::MAX - 1000;
+// max depth for quiescence search, best case it should be unlimited (only stopping when there are no more captures), but in practice it takes too long
 const QUIECENCE_DEPTH: i32 = 4;
 
 struct Nodes {
@@ -183,10 +184,9 @@ fn negamax_root<'a>(
         // stalemate
         return (0, &NULL_MOVE);
     }
+
     let mut alpha = MIN;
-
     let beta = MAX;
-
     let mut best_move = &bs.legal_moves[0];
     let mut max_eval = MIN;
     for i in sorted_move_indexes(&bs.legal_moves, false, &NULL_MOVE) {
@@ -220,14 +220,10 @@ fn negamax_root<'a>(
             break;
         }
     }
-    // println!("root");
-    // println!("root eval: {}", max_eval);
-    // println!("best move: {:?}", best_move);
-    //println!("pos occurences: {}", bs.get_occurences_of_current_position());
+
     (max_eval, best_move)
 }
 
-//todo maybe no need for BoardState here, only for root negamax?
 fn negamax(
     bs: &BoardState,
     depth: i32,
@@ -238,7 +234,6 @@ fn negamax(
     tt: &mut TranspositionTable,
     nodes: &mut Nodes,
 ) -> i32 {
-    // TODO ADD MOVE ORDERING WITH BEST MOVE IN TRANSPOSITION TABLE?
     // transposition table lookup
     let alpha_orig = alpha;
     let mut best_move: Move = NULL_MOVE; // will be set on tt hit
@@ -265,6 +260,8 @@ fn negamax(
         }
         best_move = *tt_mv;
     }
+
+    // check game over conditions returning immediately, or begin quiescence search
     if bs.is_checkmate() {
         if cfg!(feature = "debug_engine_logging") {
             nodes.negamax_nodes += 1;
@@ -285,7 +282,6 @@ fn negamax(
 
     let mut max_eval = MIN;
     let moves = sorted_move_indexes(&bs.legal_moves, false, &best_move);
-
     for i in moves {
         let mv = &bs.legal_moves[i];
         let child_bs = bs.next_state(mv).unwrap();
@@ -316,6 +312,7 @@ fn negamax(
         }
     }
 
+    // Insert new entry in transposition table
     let tt_eval = max_eval;
     let tt_best_move = best_move;
     if tt_eval <= alpha_orig {
@@ -343,8 +340,6 @@ fn negamax(
             tt_best_move,
         );
     }
-
-    // println!("max_eval: {}", max_eval);
 
     max_eval
 }
