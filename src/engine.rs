@@ -415,7 +415,7 @@ fn sorted_move_indexes(
         move_scores.push((index, mv_score));
     }
 
-    move_scores.sort_unstable_by(|a, b| b.1.cmp(&a.1));
+    move_scores.sort_by(|a, b| b.1.cmp(&a.1));
 
     move_scores
         .into_iter()
