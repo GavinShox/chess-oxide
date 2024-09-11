@@ -126,11 +126,29 @@ pub fn choose_move<'a>(
 fn quiescence(
     bs: &BoardState,
     depth: i32,
+    root_depth: i32,
     mut alpha: i32,
     beta: i32,
     maxi_colour: PieceColour,
     nodes: &mut Nodes,
 ) -> i32 {
+    // check game over conditions returning immediately, or continue quiescence search
+    if bs.is_checkmate() {
+        if cfg!(feature = "debug_engine_logging") {
+            nodes.quiescence_nodes += 1;
+        }
+        return if bs.side_to_move == maxi_colour {
+            MIN + root_depth
+        } else {
+            MAX - root_depth
+        };
+    } else if bs.is_draw() {
+        if cfg!(feature = "debug_engine_logging") {
+            nodes.quiescence_nodes += 1;
+        }
+        return 0; // stalemate
+    }
+
     let mut max_eval = evaluate(bs, maxi_colour);
     if max_eval >= beta || depth == 0 {
         return max_eval;
@@ -140,7 +158,15 @@ fn quiescence(
     for i in sorted_move_indexes(moves, true, &NULL_MOVE, &bs.last_move) {
         let mv = moves[i];
         let child_bs = bs.next_state(&mv).unwrap();
-        let eval = -quiescence(&child_bs, depth - 1, -beta, -alpha, !maxi_colour, nodes);
+        let eval = -quiescence(
+            &child_bs,
+            depth - 1,
+            root_depth + 1,
+            -beta,
+            -alpha,
+            !maxi_colour,
+            nodes,
+        );
         max_eval = cmp::max(max_eval, eval);
         alpha = cmp::max(alpha, max_eval);
 
@@ -196,10 +222,10 @@ fn negamax_root<'a>(
         let eval = -negamax(
             &child_bs,
             depth - 1,
+            1,
             -beta,
             -alpha,
             !maxi_colour,
-            1,
             tt,
             nodes,
         );
@@ -227,10 +253,10 @@ fn negamax_root<'a>(
 fn negamax(
     bs: &BoardState,
     depth: i32,
+    root_depth: i32,
     mut alpha: i32,
     mut beta: i32,
     maxi_colour: PieceColour,
-    root_depth: i32,
     tt: &mut TranspositionTable,
     nodes: &mut Nodes,
 ) -> i32 {
@@ -277,7 +303,15 @@ fn negamax(
         }
         return 0; // stalemate
     } else if depth == 0 {
-        return quiescence(bs, QUIECENCE_DEPTH, alpha, beta, maxi_colour, nodes);
+        return quiescence(
+            bs,
+            QUIECENCE_DEPTH,
+            root_depth + 1,
+            alpha,
+            beta,
+            maxi_colour,
+            nodes,
+        );
     }
 
     let mut max_eval = MIN;
@@ -288,10 +322,10 @@ fn negamax(
         let eval = -negamax(
             &child_bs,
             depth - 1,
+            root_depth + 1,
             -beta,
             -alpha,
             !maxi_colour,
-            root_depth + 1,
             tt,
             nodes,
         );
