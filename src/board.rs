@@ -57,9 +57,9 @@ pub struct BoardState {
     pub legal_moves: Vec<Move>,
     pub board_hash: u64,
     position_hash: u64,
-    position: Position,
+    pub position: Position, // pub for testing
     move_count: u32,
-    halfmove_count: u32,
+    pub halfmove_count: u32,
     position_occurences: ahash::AHashMap<PositionHash, u8>,
 }
 // TODO benchmark hash generation, does this commit regress performance?
@@ -192,6 +192,10 @@ impl BoardState {
         fen_str
     }
 
+    pub fn get_pseudo_legal_moves(&self) -> &Vec<Move> {
+        self.position.get_pseudo_legal_moves()
+    }
+
     pub fn last_move_as_notation(&self) -> Result<String, BoardStateError> {
         if self.last_move == NULL_MOVE {
             return Err(BoardStateError::NullMove(
@@ -246,6 +250,73 @@ impl BoardState {
         } else {
             Ok(notation)
         }
+    }
+
+    pub fn get_legal_moves(&self) -> Vec<&Move> {
+        self.position.get_legal_moves()
+    }
+
+    // lazily do legality check on pseudo legal moves as the iterator is used
+    pub fn lazy_legal_moves_iter(&self) -> impl Iterator<Item = &Move> {
+        self.position
+            .get_pseudo_legal_moves()
+            .iter()
+            .filter(|mv| self.position.is_move_legal(mv))
+    }
+
+    pub fn fast_next_state(&self, mv: &Move) -> Result<Self, BoardStateError> {
+        if mv == &NULL_MOVE {
+            log::error!("&NULL_MOVE was passed as an argument to BoardState::next_state()");
+            return Err(BoardStateError::NullMove(
+                "&NULL_MOVE was passed as an argument to BoardState::next_state()".to_string(),
+            ));
+        }
+
+        let position = self.position.new_position(mv);
+        log::trace!("New Position created from move: {:?}", mv);
+        let position_hash = zobrist::pos_next_hash(&self.position, self.position_hash, mv); // use last position for movegen flags
+        log::trace!("New hash generated: {}", position_hash);
+        let side_to_move = position.side;
+        let last_move = *mv;
+        // deref all legal moves
+        let legal_moves = Vec::with_capacity(0); // empty vec as we don't need to generate legal moves ahead of time
+
+        let move_count = if side_to_move == PieceColour::White {
+            self.move_count + 1
+        } else {
+            self.move_count
+        };
+
+        let halfmove_reset = matches!(
+            mv.move_type,
+            MoveType::PawnPush | MoveType::DoublePawnPush | MoveType::Capture(_)
+        );
+        let halfmove_count = if halfmove_reset {
+            0
+        } else {
+            self.halfmove_count + 1
+        };
+
+        let mut position_occurences = self.position_occurences.clone();
+        let po = position_occurences.entry(position_hash).or_insert(0);
+        *po += 1;
+
+        let board_hash = zobrist::board_state_hash(position_hash, *po, halfmove_count);
+        //let board_hash = position_hash ^ (*po as u64) ^ (halfmove_count as u64);
+        log::trace!("Board hash: {}", board_hash);
+
+        log::trace!("New BoardState created from move: {:?}", mv);
+        Ok(Self {
+            side_to_move,
+            last_move,
+            legal_moves,
+            position,
+            board_hash,
+            position_hash,
+            move_count,
+            halfmove_count,
+            position_occurences,
+        })
     }
 
     pub fn next_state(&self, mv: &Move) -> Result<Self, BoardStateError> {

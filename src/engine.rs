@@ -126,21 +126,57 @@ pub fn choose_move<'a>(
 fn quiescence(
     bs: &BoardState,
     depth: i32,
+    root_depth: i32,
     mut alpha: i32,
     beta: i32,
     maxi_colour: PieceColour,
     nodes: &mut Nodes,
 ) -> i32 {
+    let pseudo_legal_moves = bs.get_pseudo_legal_moves();
+    let moves_lazy_iter = bs.lazy_legal_moves_iter();
+    let empty = moves_lazy_iter.peekable().peek().is_none();
+
+    if bs.is_in_check() && empty {
+        if cfg!(feature = "debug_engine_logging") {
+            nodes.quiescence_nodes += 1;
+        }
+        // add root depth? TODO
+        return if bs.side_to_move == maxi_colour {
+            MIN
+        } else {
+            MAX
+        };
+    } else if (empty && !bs.is_in_check())
+        || bs.halfmove_count >= 100
+        || bs.get_occurences_of_current_position() >= 3
+    {
+        if cfg!(feature = "debug_engine_logging") {
+            nodes.quiescence_nodes += 1;
+        }
+        return 0; // stalemate
+    }
+
     let mut max_eval = evaluate(bs, maxi_colour);
     if max_eval >= beta || depth == 0 {
         return max_eval;
     }
     alpha = cmp::max(alpha, max_eval);
-    let moves = &bs.legal_moves;
-    for i in sorted_move_indexes(moves, true, &NULL_MOVE, &bs.last_move) {
-        let mv = moves[i];
-        let child_bs = bs.next_state(&mv).unwrap();
-        let eval = -quiescence(&child_bs, depth - 1, -beta, -alpha, !maxi_colour, nodes);
+
+    for i in sorted_move_indexes(&pseudo_legal_moves, true, &NULL_MOVE, &bs.last_move) {
+        let mv = &pseudo_legal_moves[i];
+        if !bs.position.is_move_legal(&mv) {
+            continue; // skip illegal moves
+        }
+        let child_bs = bs.fast_next_state(&mv).unwrap();
+        let eval = -quiescence(
+            &child_bs,
+            depth - 1,
+            root_depth + 1,
+            -beta,
+            -alpha,
+            !maxi_colour,
+            nodes,
+        );
         max_eval = cmp::max(max_eval, eval);
         alpha = cmp::max(alpha, max_eval);
 
@@ -165,7 +201,11 @@ fn negamax_root<'a>(
     tt: &mut TranspositionTable,
     nodes: &mut Nodes,
 ) -> (i32, &'a Move) {
-    if bs.is_checkmate() {
+    let pseudo_legal_moves = bs.get_pseudo_legal_moves();
+    let moves_lazy_iter = bs.lazy_legal_moves_iter();
+    let empty = moves_lazy_iter.peekable().peek().is_none();
+
+    if bs.is_in_check() && empty {
         if cfg!(feature = "debug_engine_logging") {
             nodes.negamax_nodes += 1;
         }
@@ -177,22 +217,25 @@ fn negamax_root<'a>(
             },
             &NULL_MOVE,
         );
-    } else if bs.is_draw() {
+    } else if (empty && !bs.is_in_check())
+        || bs.halfmove_count >= 100
+        || bs.get_occurences_of_current_position() >= 3
+    {
         if cfg!(feature = "debug_engine_logging") {
             nodes.negamax_nodes += 1;
         }
-        // stalemate
-        return (0, &NULL_MOVE);
+        return (0, &NULL_MOVE); // stalemate
     }
-
     let mut alpha = MIN;
     let beta = MAX;
     let mut best_move = &bs.legal_moves[0];
     let mut max_eval = MIN;
-    for i in sorted_move_indexes(&bs.legal_moves, false, &NULL_MOVE, &bs.last_move) {
-        let mv = &bs.legal_moves[i];
-        // println!("evaluating move: {:?}", mv);
-        let child_bs = bs.next_state(mv).unwrap();
+    for i in sorted_move_indexes(&pseudo_legal_moves, false, &NULL_MOVE, &bs.last_move) {
+        let mv = &pseudo_legal_moves[i];
+        if !bs.position.is_move_legal(&mv) {
+            continue; // skip illegal moves
+        }
+        let child_bs = bs.fast_next_state(mv).unwrap();
         let eval = -negamax(
             &child_bs,
             depth - 1,
@@ -261,8 +304,11 @@ fn negamax(
         best_move = *tt_mv;
     }
 
+    let pseudo_legal_moves = bs.get_pseudo_legal_moves();
+    let moves_lazy_iter = bs.lazy_legal_moves_iter();
+    let empty = moves_lazy_iter.peekable().peek().is_none();
     // check game over conditions returning immediately, or begin quiescence search
-    if bs.is_checkmate() {
+    if bs.is_in_check() && empty {
         if cfg!(feature = "debug_engine_logging") {
             nodes.negamax_nodes += 1;
         }
@@ -271,20 +317,35 @@ fn negamax(
         } else {
             MAX - root_depth
         };
-    } else if bs.is_draw() {
+    } else if (empty && !bs.is_in_check())
+        || bs.halfmove_count >= 100
+        || bs.get_occurences_of_current_position() >= 3
+    {
         if cfg!(feature = "debug_engine_logging") {
             nodes.negamax_nodes += 1;
         }
         return 0; // stalemate
     } else if depth == 0 {
-        return quiescence(bs, QUIECENCE_DEPTH, alpha, beta, maxi_colour, nodes);
+        return quiescence(
+            bs,
+            QUIECENCE_DEPTH,
+            root_depth + 1,
+            alpha,
+            beta,
+            maxi_colour,
+            nodes,
+        );
     }
 
     let mut max_eval = MIN;
-    let moves = sorted_move_indexes(&bs.legal_moves, false, &best_move, &bs.last_move);
+    let moves = sorted_move_indexes(&pseudo_legal_moves, false, &best_move, &bs.last_move); // sort pseudo legal moves instead of consuming the lazy iterator
     for i in moves {
-        let mv = &bs.legal_moves[i];
-        let child_bs = bs.next_state(mv).unwrap();
+        let mv = &pseudo_legal_moves[i];
+        if !bs.position.is_move_legal(&mv) {
+            continue; // skip illegal moves
+        }
+
+        let child_bs = bs.fast_next_state(mv).unwrap();
         let eval = -negamax(
             &child_bs,
             depth - 1,
@@ -381,7 +442,7 @@ fn sorted_move_indexes(
         move_scores.push((index, mv_score));
     }
 
-    move_scores.sort_unstable_by(|a, b| b.1.cmp(&a.1));
+    move_scores.sort_by(|a, b| b.1.cmp(&a.1));
 
     move_scores
         .into_iter()
