@@ -57,7 +57,7 @@ pub struct BoardState {
     pub legal_moves: Vec<Move>,
     pub board_hash: u64,
     position_hash: u64,
-    pub position: Position, // pub for testing
+    position: Position, // pub for testing
     move_count: u32,
     pub halfmove_count: u32,
     position_occurences: ahash::AHashMap<PositionHash, u8>,
@@ -256,6 +256,11 @@ impl BoardState {
         self.position.get_legal_moves()
     }
 
+    // checks if a move would create a legal position, does not check for boardstate legality
+    pub fn is_move_legal_position(&self, mv: &Move) -> bool {
+        self.position.is_move_legal(mv)
+    }
+
     // lazily do legality check on pseudo legal moves as the iterator is used
     pub fn lazy_legal_moves_iter(&self) -> impl Iterator<Item = &Move> {
         self.position
@@ -264,7 +269,9 @@ impl BoardState {
             .filter(|mv| self.position.is_move_legal(mv))
     }
 
-    pub fn fast_next_state(&self, mv: &Move) -> Result<Self, BoardStateError> {
+    // next state without legality and gamestate checks done (legal_moves is empty) Only error is NULL_MOVE check
+    // USERS MUST CHECK IF GAMESTATE IS VALID (E.G THREEFOLD REPETITION, 50 MOVE RULE) AS THIS FUNCTION DOES NOT
+    pub fn fast_next_state_unchecked(&self, mv: &Move) -> Result<Self, BoardStateError> {
         if mv == &NULL_MOVE {
             log::error!("&NULL_MOVE was passed as an argument to BoardState::next_state()");
             return Err(BoardStateError::NullMove(

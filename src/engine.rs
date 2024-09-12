@@ -136,15 +136,14 @@ fn quiescence(
     let moves_lazy_iter = bs.lazy_legal_moves_iter();
     let empty = moves_lazy_iter.peekable().peek().is_none();
 
-    if bs.is_in_check() && empty {
+    if empty && bs.is_in_check() {
         if cfg!(feature = "debug_engine_logging") {
             nodes.quiescence_nodes += 1;
         }
-        // add root depth? TODO
         return if bs.side_to_move == maxi_colour {
-            MIN
+            MIN + root_depth
         } else {
-            MAX
+            MAX - root_depth
         };
     } else if (empty && !bs.is_in_check())
         || bs.halfmove_count >= 100
@@ -164,10 +163,10 @@ fn quiescence(
 
     for i in sorted_move_indexes(&pseudo_legal_moves, true, &NULL_MOVE, &bs.last_move) {
         let mv = &pseudo_legal_moves[i];
-        if !bs.position.is_move_legal(&mv) {
+        if !bs.is_move_legal_position(&mv) {
             continue; // skip illegal moves
         }
-        let child_bs = bs.fast_next_state(&mv).unwrap();
+        let child_bs = bs.fast_next_state_unchecked(&mv).unwrap();
         let eval = -quiescence(
             &child_bs,
             depth - 1,
@@ -232,10 +231,10 @@ fn negamax_root<'a>(
     let mut max_eval = MIN;
     for i in sorted_move_indexes(&pseudo_legal_moves, false, &NULL_MOVE, &bs.last_move) {
         let mv = &pseudo_legal_moves[i];
-        if !bs.position.is_move_legal(&mv) {
+        if !bs.is_move_legal_position(&mv) {
             continue; // skip illegal moves
         }
-        let child_bs = bs.fast_next_state(mv).unwrap();
+        let child_bs = bs.fast_next_state_unchecked(mv).unwrap();
         let eval = -negamax(
             &child_bs,
             depth - 1,
@@ -341,11 +340,11 @@ fn negamax(
     let moves = sorted_move_indexes(&pseudo_legal_moves, false, &best_move, &bs.last_move); // sort pseudo legal moves instead of consuming the lazy iterator
     for i in moves {
         let mv = &pseudo_legal_moves[i];
-        if !bs.position.is_move_legal(&mv) {
+        if !bs.is_move_legal_position(&mv) {
             continue; // skip illegal moves
         }
 
-        let child_bs = bs.fast_next_state(mv).unwrap();
+        let child_bs = bs.fast_next_state_unchecked(mv).unwrap();
         let eval = -negamax(
             &child_bs,
             depth - 1,
