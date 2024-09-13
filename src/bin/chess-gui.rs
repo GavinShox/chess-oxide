@@ -243,16 +243,15 @@ fn main() -> Result<(), slint::PlatformError> {
             .lock()
             .unwrap()
             .current_state
-            .legal_moves
-            .clone()
+            .get_legal_moves()
         {
             // ui indexes are reversed if player is black
             if ui.get_player_colour() == PieceColour_UI::Black {
                 if mv.from as i32 == 63 - from && mv.to as i32 == 63 - to {
-                    legal_mv = mv;
+                    legal_mv = *mv;
                 }
             } else if mv.from as i32 == from && mv.to as i32 == to {
-                legal_mv = mv;
+                legal_mv = *mv;
             }
         }
         // make move and return true if successful

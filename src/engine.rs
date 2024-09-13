@@ -133,26 +133,29 @@ fn quiescence(
     nodes: &mut Nodes,
 ) -> i32 {
     let pseudo_legal_moves = bs.get_pseudo_legal_moves();
-    let moves_lazy_iter = bs.lazy_legal_moves_iter();
-    let empty = moves_lazy_iter.peekable().peek().is_none();
-
-    if empty && bs.is_in_check() {
-        if cfg!(feature = "debug_engine_logging") {
-            nodes.quiescence_nodes += 1;
+    // check game over conditions returning immediately, or begin quiescence search
+    match bs.get_gamestate() {
+        GameState::Checkmate => {
+            if cfg!(feature = "debug_engine_logging") {
+                nodes.quiescence_nodes += 1;
+            }
+            return if bs.side_to_move == maxi_colour {
+                MIN + root_depth
+            } else {
+                MAX - root_depth
+            };
         }
-        return if bs.side_to_move == maxi_colour {
-            MIN + root_depth
-        } else {
-            MAX - root_depth
-        };
-    } else if (empty && !bs.is_in_check())
-        || bs.halfmove_count >= 100
-        || bs.get_occurences_of_current_position() >= 3
-    {
-        if cfg!(feature = "debug_engine_logging") {
-            nodes.quiescence_nodes += 1;
+        // draw states
+        GameState::Stalemate
+        | GameState::Repetition
+        | GameState::FiftyMove
+        | GameState::InsufficientMaterial => {
+            if cfg!(feature = "debug_engine_logging") {
+                nodes.quiescence_nodes += 1;
+            }
+            return 0; // stalemate
         }
-        return 0; // stalemate
+        _ => {}
     }
 
     let mut max_eval = evaluate(bs, maxi_colour);
@@ -166,7 +169,7 @@ fn quiescence(
         if !bs.is_move_legal_position(&mv) {
             continue; // skip illegal moves
         }
-        let child_bs = bs.fast_next_state_unchecked(&mv).unwrap();
+        let child_bs = bs.lazy_next_state_unchecked(&mv);
         let eval = -quiescence(
             &child_bs,
             depth - 1,
@@ -201,40 +204,43 @@ fn negamax_root<'a>(
     nodes: &mut Nodes,
 ) -> (i32, &'a Move) {
     let pseudo_legal_moves = bs.get_pseudo_legal_moves();
-    let moves_lazy_iter = bs.lazy_legal_moves_iter();
-    let empty = moves_lazy_iter.peekable().peek().is_none();
-
-    if bs.is_in_check() && empty {
-        if cfg!(feature = "debug_engine_logging") {
-            nodes.negamax_nodes += 1;
+    // check game over conditions returning immediately, or begin quiescence search
+    match bs.get_gamestate() {
+        GameState::Checkmate => {
+            if cfg!(feature = "debug_engine_logging") {
+                nodes.negamax_nodes += 1;
+            }
+            return (
+                if bs.side_to_move == maxi_colour {
+                    MIN
+                } else {
+                    MAX
+                },
+                &NULL_MOVE,
+            );
         }
-        return (
-            if bs.side_to_move == maxi_colour {
-                MIN
-            } else {
-                MAX
-            },
-            &NULL_MOVE,
-        );
-    } else if (empty && !bs.is_in_check())
-        || bs.halfmove_count >= 100
-        || bs.get_occurences_of_current_position() >= 3
-    {
-        if cfg!(feature = "debug_engine_logging") {
-            nodes.negamax_nodes += 1;
+        // draw states
+        GameState::Stalemate
+        | GameState::Repetition
+        | GameState::FiftyMove
+        | GameState::InsufficientMaterial => {
+            if cfg!(feature = "debug_engine_logging") {
+                nodes.negamax_nodes += 1;
+            }
+            return (0, &NULL_MOVE); // stalemate
         }
-        return (0, &NULL_MOVE); // stalemate
+        _ => {}
     }
     let mut alpha = MIN;
     let beta = MAX;
-    let mut best_move = &bs.legal_moves[0];
+    let mut best_move = &NULL_MOVE;
     let mut max_eval = MIN;
     for i in sorted_move_indexes(&pseudo_legal_moves, false, &NULL_MOVE, &bs.last_move) {
         let mv = &pseudo_legal_moves[i];
         if !bs.is_move_legal_position(&mv) {
             continue; // skip illegal moves
         }
-        let child_bs = bs.fast_next_state_unchecked(mv).unwrap();
+        let child_bs = bs.lazy_next_state_unchecked(mv);
         let eval = -negamax(
             &child_bs,
             depth - 1,
@@ -304,27 +310,32 @@ fn negamax(
     }
 
     let pseudo_legal_moves = bs.get_pseudo_legal_moves();
-    let moves_lazy_iter = bs.lazy_legal_moves_iter();
-    let empty = moves_lazy_iter.peekable().peek().is_none();
     // check game over conditions returning immediately, or begin quiescence search
-    if bs.is_in_check() && empty {
-        if cfg!(feature = "debug_engine_logging") {
-            nodes.negamax_nodes += 1;
+    match bs.get_gamestate() {
+        GameState::Checkmate => {
+            if cfg!(feature = "debug_engine_logging") {
+                nodes.negamax_nodes += 1;
+            }
+            return if bs.side_to_move == maxi_colour {
+                MIN + root_depth
+            } else {
+                MAX - root_depth
+            };
         }
-        return if bs.side_to_move == maxi_colour {
-            MIN + root_depth
-        } else {
-            MAX - root_depth
-        };
-    } else if (empty && !bs.is_in_check())
-        || bs.halfmove_count >= 100
-        || bs.get_occurences_of_current_position() >= 3
-    {
-        if cfg!(feature = "debug_engine_logging") {
-            nodes.negamax_nodes += 1;
+        // draw states
+        GameState::Stalemate
+        | GameState::Repetition
+        | GameState::FiftyMove
+        | GameState::InsufficientMaterial => {
+            if cfg!(feature = "debug_engine_logging") {
+                nodes.negamax_nodes += 1;
+            }
+            return 0; // stalemate
         }
-        return 0; // stalemate
-    } else if depth == 0 {
+        _ => {}
+    }
+
+    if depth == 0 {
         return quiescence(
             bs,
             QUIECENCE_DEPTH,
@@ -344,7 +355,7 @@ fn negamax(
             continue; // skip illegal moves
         }
 
-        let child_bs = bs.fast_next_state_unchecked(mv).unwrap();
+        let child_bs = bs.lazy_next_state_unchecked(mv);
         let eval = -negamax(
             &child_bs,
             depth - 1,

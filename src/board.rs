@@ -54,13 +54,14 @@ impl fmt::Display for GameState {
 pub struct BoardState {
     pub side_to_move: PieceColour,
     pub last_move: Move,
-    pub legal_moves: Vec<Move>,
+    legal_moves: Vec<Move>,
     pub board_hash: u64,
     position_hash: u64,
     position: Position, // pub for testing
     move_count: u32,
-    pub halfmove_count: u32,
+    halfmove_count: u32,
     position_occurences: ahash::AHashMap<PositionHash, u8>,
+    lazy_legal_moves: bool,
 }
 // TODO benchmark hash generation, does this commit regress performance?
 impl BoardState {
@@ -86,6 +87,7 @@ impl BoardState {
             last_move: NULL_MOVE,
             legal_moves,
             position_occurences,
+            lazy_legal_moves: false,
         }
     }
 
@@ -180,6 +182,7 @@ impl BoardState {
             position_hash,
             board_hash,
             position_occurences,
+            lazy_legal_moves: false,
         })
     }
 
@@ -252,33 +255,22 @@ impl BoardState {
         }
     }
 
-    pub fn get_legal_moves(&self) -> Vec<&Move> {
-        self.position.get_legal_moves()
-    }
-
     // checks if a move would create a legal position, does not check for boardstate legality
     pub fn is_move_legal_position(&self, mv: &Move) -> bool {
         self.position.is_move_legal(mv)
     }
 
     // lazily do legality check on pseudo legal moves as the iterator is used
-    pub fn lazy_legal_moves_iter(&self) -> impl Iterator<Item = &Move> {
+    pub fn lazy_get_legal_moves(&self) -> impl Iterator<Item = &Move> {
         self.position
             .get_pseudo_legal_moves()
             .iter()
             .filter(|mv| self.position.is_move_legal(mv))
     }
 
-    // next state without legality and gamestate checks done (legal_moves is empty) Only error is NULL_MOVE check
+    // next state without legality and gamestate checks done (legal_moves is empty), may panic if unreachable code is hit e.g. in zobrist hash generation if position occurrences ever gets above 3
     // USERS MUST CHECK IF GAMESTATE IS VALID (E.G THREEFOLD REPETITION, 50 MOVE RULE) AS THIS FUNCTION DOES NOT
-    pub fn fast_next_state_unchecked(&self, mv: &Move) -> Result<Self, BoardStateError> {
-        if mv == &NULL_MOVE {
-            log::error!("&NULL_MOVE was passed as an argument to BoardState::next_state()");
-            return Err(BoardStateError::NullMove(
-                "&NULL_MOVE was passed as an argument to BoardState::next_state()".to_string(),
-            ));
-        }
-
+    pub fn lazy_next_state_unchecked(&self, mv: &Move) -> Self {
         let position = self.position.new_position(mv);
         log::trace!("New Position created from move: {:?}", mv);
         let position_hash = zobrist::pos_next_hash(&self.position, self.position_hash, mv); // use last position for movegen flags
@@ -313,7 +305,7 @@ impl BoardState {
         log::trace!("Board hash: {}", board_hash);
 
         log::trace!("New BoardState created from move: {:?}", mv);
-        Ok(Self {
+        Self {
             side_to_move,
             last_move,
             legal_moves,
@@ -323,7 +315,12 @@ impl BoardState {
             move_count,
             halfmove_count,
             position_occurences,
-        })
+            lazy_legal_moves: true,
+        }
+    }
+
+    pub fn lazy_next_state(&self, mv: &Move) -> Result<Self, BoardStateError> {
+        todo!()
     }
 
     pub fn next_state(&self, mv: &Move) -> Result<Self, BoardStateError> {
@@ -400,7 +397,26 @@ impl BoardState {
             move_count,
             halfmove_count,
             position_occurences,
+            lazy_legal_moves: false,
         })
+    }
+
+    fn gen_legal_moves(&mut self) {
+        self.legal_moves = self
+            .position
+            .get_legal_moves()
+            .into_iter()
+            .cloned()
+            .collect();
+    }
+
+    pub fn get_legal_moves(&mut self) -> &[Move] {
+        if self.lazy_legal_moves {
+            log::warn!("get_legal_moves called on BoardState with lazy_legal_moves flag set, generating and saving vec with all legal moves, and unsetting flag");
+            self.gen_legal_moves();
+            self.lazy_legal_moves = false;
+        }
+        &self.legal_moves
     }
 
     pub fn get_occurences_of_current_position(&self) -> u8 {
@@ -410,15 +426,18 @@ impl BoardState {
             .unwrap_or(&1)
     }
     // TODO add check for insufficient material
-    // TODO improve performance for use in engine.rs
     pub fn get_gamestate(&self) -> GameState {
-        let legal_move_len = self.legal_moves.len();
+        let legal_moves_empty = if self.lazy_legal_moves {
+            self.lazy_get_legal_moves().peekable().peek().is_none()
+        } else {
+            self.legal_moves.is_empty()
+        };
         let is_in_check = self.position.is_in_check();
 
         // checkmate has to be checked for first, as it supercedes other states like the 50 move rule
-        if is_in_check && legal_move_len == 0 {
+        if is_in_check && legal_moves_empty {
             GameState::Checkmate
-        } else if !is_in_check && legal_move_len == 0 {
+        } else if !is_in_check && legal_moves_empty {
             GameState::Stalemate
         } else if self.halfmove_count >= 100 {
             GameState::FiftyMove
@@ -428,25 +447,45 @@ impl BoardState {
             GameState::Check
         } else if false {
             //placeholder
-            // check for insufficient material TODO
             GameState::InsufficientMaterial
         } else {
             GameState::Active
         }
     }
 
-    pub fn is_in_check(&self) -> bool {
+    fn is_in_check(&self) -> bool {
         self.position.is_in_check()
     }
 
-    pub fn is_checkmate(&self) -> bool {
-        self.legal_moves.is_empty() && self.position.is_in_check()
+    fn is_checkmate(&self) -> bool {
+        return if self.lazy_legal_moves {
+            self.lazy_is_checkmate()
+        } else {
+            self.legal_moves.is_empty() && self.position.is_in_check()
+        };
     }
 
-    pub fn is_draw(&self) -> bool {
-        (self.legal_moves.is_empty() && !self.position.is_in_check())
-            || self.halfmove_count >= 100
+    fn is_draw(&self) -> bool {
+        return if self.lazy_legal_moves {
+            self.lazy_is_draw()
+        } else {
+            (self.legal_moves.is_empty() && !self.position.is_in_check())
+                || self.halfmove_count >= 100
+                || self.get_occurences_of_current_position() >= 3
+        };
+    }
+
+    // is_checkmate only checking if the lazy legal moves iterator returns None on peek
+    fn lazy_is_checkmate(&self) -> bool {
+        self.lazy_get_legal_moves().peekable().peek().is_none() && self.position.is_in_check()
+    }
+
+    // is draw only checking if the lazy legal moves iterator returns None on peek
+    fn lazy_is_draw(&self) -> bool {
+        self.halfmove_count >= 100
             || self.get_occurences_of_current_position() >= 3
+            || (self.lazy_get_legal_moves().peekable().peek().is_none()
+                && !self.position.is_in_check())
     }
 
     pub fn get_pos64(&self) -> &Pos64 {
