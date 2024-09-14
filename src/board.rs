@@ -57,13 +57,13 @@ pub struct BoardState {
     legal_moves: Vec<Move>,
     pub board_hash: u64,
     position_hash: u64,
-    position: Position, // pub for testing
+    position: Position,
     move_count: u32,
     halfmove_count: u32,
     position_occurences: ahash::AHashMap<PositionHash, u8>,
     lazy_legal_moves: bool,
 }
-// TODO benchmark hash generation, does this commit regress performance?
+
 impl BoardState {
     pub fn new_starting() -> Self {
         let position = Position::new_starting();
