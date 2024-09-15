@@ -232,7 +232,7 @@ impl Position {
         }
     }
 
-    fn is_move_legal(&self, mv: &Move) -> bool {
+    pub fn is_move_legal(&self, mv: &Move) -> bool {
         // TODO defend map only used for castling, so maybe look at where defend map is necessary
 
         // tests before cloning position
@@ -287,6 +287,10 @@ impl Position {
     #[inline(always)]
     pub fn is_in_check(&self) -> bool {
         self.is_defended(self.get_king_idx())
+    }
+
+    pub fn get_pseudo_legal_moves(&self) -> &Vec<Move> {
+        &self.attack_map.0
     }
 
     pub fn get_legal_moves(&self) -> Vec<&Move> {
