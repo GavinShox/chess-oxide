@@ -7,6 +7,7 @@ mod perft;
 mod position;
 mod util;
 mod zobrist;
+mod transposition;
 
 pub mod test;
 
