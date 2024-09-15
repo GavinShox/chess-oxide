@@ -557,7 +557,7 @@ impl Board {
         Ok(game_state)
     }
 
-    pub fn make_engine_move(&mut self, depth: i32) -> Result<GameState, BoardStateError> {
+    pub fn make_engine_move(&mut self, depth: u8) -> Result<GameState, BoardStateError> {
         let (eval, engine_move) =
             engine::choose_move(&self.current_state, depth, &mut self.transposition_table);
         let mv = *engine_move;

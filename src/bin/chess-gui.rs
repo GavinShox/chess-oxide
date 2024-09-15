@@ -271,7 +271,7 @@ fn main() -> Result<(), slint::PlatformError> {
             .parse::<i32>()
             .unwrap();
         std::thread::spawn(move || {
-            if let Err(e) = bmem.lock().unwrap().make_engine_move(depth) {
+            if let Err(e) = bmem.lock().unwrap().make_engine_move(depth as u8) {
                 log::error!("BoardStateError on making engine move: {e}");
                 return;
             }

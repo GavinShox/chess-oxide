@@ -9,7 +9,7 @@ use crate::zobrist::PositionHash;
 const MIN: i32 = i32::MIN + 1000;
 const MAX: i32 = i32::MAX - 1000;
 // max depth for quiescence search, best case it should be unlimited (only stopping when there are no more captures), but in practice it takes too long
-const QUIECENCE_DEPTH: i32 = 4;
+const QUIECENCE_DEPTH: u8 = 4;
 
 struct Nodes {
     negamax_nodes: u64,
@@ -47,7 +47,7 @@ enum BoundType {
 
 #[derive(Debug)]
 pub struct TranspositionTable {
-    table: ahash::AHashMap<PositionHash, (BoundType, i32, i32, Move)>,
+    table: ahash::AHashMap<PositionHash, (BoundType, u8, i32, Move)>,
 }
 impl TranspositionTable {
     pub fn new() -> Self {
@@ -62,33 +62,33 @@ impl TranspositionTable {
 
     // size of actual stored data, memory allocated on heap may be larger
     pub fn heap_size(&self) -> usize {
-        self.table.len() * std::mem::size_of::<(PositionHash, (BoundType, i32, i32, Move))>()
+        self.table.len() * std::mem::size_of::<(PositionHash, (BoundType, u8, i32, Move))>()
     }
 
     // size of allocated memory
     pub fn heap_alloc_size(&self) -> usize {
-        self.table.capacity() * std::mem::size_of::<(PositionHash, (BoundType, i32, i32, Move))>()
+        self.table.capacity() * std::mem::size_of::<(PositionHash, (BoundType, u8, i32, Move))>()
     }
 
     fn insert(
         &mut self,
         hash: PositionHash,
         bound_type: BoundType,
-        depth: i32,
+        depth: u8,
         eval: i32,
         mv: Move,
     ) {
         self.table.insert(hash, (bound_type, depth, eval, mv));
     }
 
-    fn get(&self, hash: PositionHash) -> Option<&(BoundType, i32, i32, Move)> {
+    fn get(&self, hash: PositionHash) -> Option<&(BoundType, u8, i32, Move)> {
         self.table.get(&hash)
     }
 }
 
 pub fn choose_move<'a>(
     bs: &'a BoardState,
-    depth: i32,
+    depth: u8,
     tt: &mut TranspositionTable,
 ) -> (i32, &'a Move) {
     let mut nodes = Nodes::new();
@@ -125,7 +125,7 @@ pub fn choose_move<'a>(
 // TODO add checks (and maybe promotions) to quiescence search
 fn quiescence(
     bs: &BoardState,
-    depth: i32,
+    depth: u8,
     root_depth: i32,
     mut alpha: i32,
     beta: i32,
@@ -198,7 +198,7 @@ fn quiescence(
 
 fn negamax_root<'a>(
     bs: &'a BoardState,
-    depth: i32,
+    depth: u8,
     maxi_colour: PieceColour,
     tt: &mut TranspositionTable,
     nodes: &mut Nodes,
@@ -244,10 +244,10 @@ fn negamax_root<'a>(
         let eval = -negamax(
             &child_bs,
             depth - 1,
-            1,
             -beta,
             -alpha,
             !maxi_colour,
+            1,
             tt,
             nodes,
         );
@@ -274,11 +274,11 @@ fn negamax_root<'a>(
 
 fn negamax(
     bs: &BoardState,
-    depth: i32,
-    root_depth: i32,
+    depth: u8,
     mut alpha: i32,
     mut beta: i32,
     maxi_colour: PieceColour,
+    root_depth: i32,
     tt: &mut TranspositionTable,
     nodes: &mut Nodes,
 ) -> i32 {
@@ -308,6 +308,7 @@ fn negamax(
         }
         best_move = *tt_mv;
     }
+    // TODO checkmate stored in tt will have wrong eval, so the root depth should be recalculated, might need a checkmate flag in tt entry
 
     let pseudo_legal_moves = bs.get_pseudo_legal_moves();
     // check game over conditions returning immediately, or begin quiescence search
@@ -359,10 +360,10 @@ fn negamax(
         let eval = -negamax(
             &child_bs,
             depth - 1,
-            root_depth + 1,
             -beta,
             -alpha,
             !maxi_colour,
+            root_depth + 1,
             tt,
             nodes,
         );

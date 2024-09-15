@@ -5,7 +5,7 @@ use crate::{engine, movegen::*, BoardState};
 
 fn get_all_legal_positions(
     pos: &Position,
-    depth: i32,
+    depth: u8,
     nodes: &mut u64,
     promotions: &mut u64,
     castles: &mut u64,
@@ -53,7 +53,7 @@ fn get_all_legal_positions(
     }
 }
 
-pub fn perft(pos: &Position, depth: i32) -> u64 {
+pub fn perft(pos: &Position, depth: u8) -> u64 {
     let mut nodes: u64 = 0;
     let mut promotions: u64 = 0;
     let mut castles: u64 = 0;
@@ -89,7 +89,7 @@ pub fn perft(pos: &Position, depth: i32) -> u64 {
     nodes
 }
 
-pub fn engine_perft(bs: &BoardState, depth: i32) {
+pub fn engine_perft(bs: &BoardState, depth: u8) {
     let mut tt = engine::TranspositionTable::new(); // not included in duration
     let start = Instant::now();
     let (eval, mv) = engine::choose_move(bs, depth, &mut tt);
