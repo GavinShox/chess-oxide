@@ -244,10 +244,10 @@ fn negamax_root<'a>(
         let eval = -negamax(
             &child_bs,
             depth - 1,
+            1,
             -beta,
             -alpha,
             !maxi_colour,
-            1,
             tt,
             nodes,
         );
@@ -275,10 +275,10 @@ fn negamax_root<'a>(
 fn negamax(
     bs: &BoardState,
     depth: i32,
+    root_depth: i32,
     mut alpha: i32,
     mut beta: i32,
     maxi_colour: PieceColour,
-    root_depth: i32,
     tt: &mut TranspositionTable,
     nodes: &mut Nodes,
 ) -> i32 {
@@ -359,10 +359,10 @@ fn negamax(
         let eval = -negamax(
             &child_bs,
             depth - 1,
+            root_depth + 1,
             -beta,
             -alpha,
             !maxi_colour,
-            root_depth + 1,
             tt,
             nodes,
         );
