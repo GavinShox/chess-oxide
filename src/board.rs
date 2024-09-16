@@ -9,6 +9,7 @@ use crate::errors::BoardStateError;
 use crate::errors::FenParseError;
 use crate::movegen::*;
 use crate::position::*;
+use crate::transposition;
 use crate::util;
 use crate::zobrist;
 use crate::zobrist::PositionHash;
@@ -497,7 +498,7 @@ impl BoardState {
 pub struct Board {
     pub current_state: BoardState,
     pub state_history: Vec<BoardState>,
-    transposition_table: engine::TranspositionTable,
+    transposition_table: transposition::TranspositionTable,
 }
 
 impl Default for Board {
@@ -514,7 +515,7 @@ impl Board {
         log::info!("State history created");
         state_history.push(current_state.clone());
 
-        let transposition_table = engine::TranspositionTable::new();
+        let transposition_table = transposition::TranspositionTable::new();
         log::info!("Transposition table created");
         log::info!("New Board created");
         Board {
@@ -527,7 +528,7 @@ impl Board {
         let current_state = BoardState::from_fen(fen)?;
         let state_history: Vec<BoardState> = vec![current_state.clone()];
 
-        let transposition_table = engine::TranspositionTable::new();
+        let transposition_table = transposition::TranspositionTable::new();
         log::info!("New Board created from FEN: {}", fen);
         Ok(Board {
             current_state,

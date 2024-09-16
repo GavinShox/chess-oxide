@@ -11,4 +11,4 @@ mod transposition;
 
 pub mod test;
 
-pub use {board::*, movegen::*, perft::*, position::*, util::print_board};
+pub use {board::*, movegen::*, perft::*, position::*, util::print_board, transposition::*};

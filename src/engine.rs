@@ -1,13 +1,16 @@
 use std::cmp;
+use std::collections::btree_map::Entry;
 
 use crate::board::*;
 use crate::movegen::*;
 use crate::util;
 use crate::zobrist::PositionHash;
+use crate::transposition::*;
 
 // avoid int overflows when operating on these values i.e. negating, +/- checkmate depth etc.
 const MIN: i32 = i32::MIN + 1000;
 const MAX: i32 = i32::MAX - 1000;
+const CHECKMATE_VALUE: i32 = MAX / 2;
 // max depth for quiescence search, best case it should be unlimited (only stopping when there are no more captures), but in practice it takes too long
 const QUIECENCE_DEPTH: u8 = 4;
 
@@ -38,54 +41,6 @@ impl Nodes {
     }
 }
 
-#[derive(Debug)]
-enum BoundType {
-    Exact,
-    Lower,
-    Upper,
-}
-
-#[derive(Debug)]
-pub struct TranspositionTable {
-    table: ahash::AHashMap<PositionHash, (BoundType, u8, i32, Move)>,
-}
-impl TranspositionTable {
-    pub fn new() -> Self {
-        TranspositionTable {
-            table: ahash::AHashMap::default(),
-        }
-    }
-
-    pub fn len(&self) -> usize {
-        self.table.len()
-    }
-
-    // size of actual stored data, memory allocated on heap may be larger
-    pub fn heap_size(&self) -> usize {
-        self.table.len() * std::mem::size_of::<(PositionHash, (BoundType, u8, i32, Move))>()
-    }
-
-    // size of allocated memory
-    pub fn heap_alloc_size(&self) -> usize {
-        self.table.capacity() * std::mem::size_of::<(PositionHash, (BoundType, u8, i32, Move))>()
-    }
-
-    fn insert(
-        &mut self,
-        hash: PositionHash,
-        bound_type: BoundType,
-        depth: u8,
-        eval: i32,
-        mv: Move,
-    ) {
-        self.table.insert(hash, (bound_type, depth, eval, mv));
-    }
-
-    fn get(&self, hash: PositionHash) -> Option<&(BoundType, u8, i32, Move)> {
-        self.table.get(&hash)
-    }
-}
-
 pub fn choose_move<'a>(
     bs: &'a BoardState,
     depth: u8,
@@ -108,9 +63,8 @@ pub fn choose_move<'a>(
         );
     }
     log::debug!(
-        "Transposition table: Entries -> {}, Size on heap -> {}, Total allocated on heap -> {}",
+        "Transposition table: Entries -> {}, Size on heap -> {}",
         tt.len(),
-        util::bytes_to_str(tt.heap_size()),
         util::bytes_to_str(tt.heap_alloc_size())
     );
     log::info!(
@@ -285,28 +239,27 @@ fn negamax(
     // transposition table lookup
     let alpha_orig = alpha;
     let mut best_move: Move = NULL_MOVE; // will be set on tt hit
-    if let Some((bound_type, tt_depth, tt_eval, tt_mv)) = tt.get(bs.board_hash) {
+    if let Some(entry) = tt.get(bs.board_hash) {
         if cfg!(feature = "debug_engine_logging") {
             nodes.transposition_table_hits += 1;
         }
-        let tt_eval = *tt_eval;
-        if *tt_depth >= depth {
-            match bound_type {
+        if entry.depth >= depth {
+            match entry.bound_type {
                 BoundType::Exact => {
-                    return tt_eval;
+                    return entry.eval;
                 }
                 BoundType::Lower => {
-                    alpha = cmp::max(alpha, tt_eval);
+                    alpha = cmp::max(alpha, entry.eval);
                 }
                 BoundType::Upper => {
-                    beta = cmp::min(beta, tt_eval);
+                    beta = cmp::min(beta, entry.eval);
                 }
             }
             if alpha >= beta {
-                return tt_eval;
+                return entry.eval;
             }
         }
-        best_move = *tt_mv;
+        best_move = entry.mv;
     }
     // TODO checkmate stored in tt will have wrong eval, so the root depth should be recalculated, might need a checkmate flag in tt entry
 
@@ -385,33 +338,22 @@ fn negamax(
     }
 
     // Insert new entry in transposition table
-    let tt_eval = max_eval;
-    let tt_best_move = best_move;
-    if tt_eval <= alpha_orig {
-        tt.insert(
-            bs.board_hash,
-            BoundType::Upper,
-            depth,
-            tt_eval,
-            tt_best_move,
-        );
-    } else if tt_eval >= beta {
-        tt.insert(
-            bs.board_hash,
-            BoundType::Lower,
-            depth,
-            tt_eval,
-            tt_best_move,
-        );
-    } else {
-        tt.insert(
-            bs.board_hash,
-            BoundType::Exact,
-            depth,
-            tt_eval,
-            tt_best_move,
-        );
+    let mut entry = TableEntry {
+        hash: bs.board_hash,
+        bound_type: BoundType::Exact,  // set to exact, and change to another bound below if needed
+        depth,
+        eval: max_eval,
+        mv: best_move,
+        age: 0,
+        
+    };
+    // set bound type to Upper or Lower, otherwise it stays Exact
+    if entry.eval <= alpha_orig {
+        entry.bound_type = BoundType::Upper;
+    } else if entry.eval >= beta {
+        entry.bound_type = BoundType::Lower;
     }
+    tt.insert(entry);
 
     max_eval
 }
