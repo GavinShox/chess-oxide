@@ -28,7 +28,7 @@ fn main() {
     let engine_iterations = 5;
     let mut total_engine_time = Duration::new(0, 0);
     for i in 0..engine_iterations {
-        let tt = chess::TranspositionTable::new();
+        let tt = chess::TT::new();
         let start = Instant::now();
         chess::engine_perft(&board.current_state, 7, tt);
         let duration = start.elapsed();

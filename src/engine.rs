@@ -3,9 +3,9 @@ use std::collections::btree_map::Entry;
 
 use crate::board::*;
 use crate::movegen::*;
+use crate::transposition::*;
 use crate::util;
 use crate::zobrist::PositionHash;
-use crate::transposition::*;
 
 // avoid int overflows when operating on these values i.e. negating, +/- checkmate depth etc.
 const MIN: i32 = i32::MIN + 1000;
@@ -339,13 +339,11 @@ fn negamax(
 
     // Insert new entry in transposition table
     let mut entry = TableEntry {
-        hash: bs.board_hash,
-        bound_type: BoundType::Exact,  // set to exact, and change to another bound below if needed
+        bound_type: BoundType::Exact, // set to exact, and change to another bound below if needed
         depth,
         eval: max_eval,
         mv: best_move,
-        age: 0,
-        
+        valid: true,
     };
     // set bound type to Upper or Lower, otherwise it stays Exact
     if entry.eval <= alpha_orig {
@@ -353,7 +351,7 @@ fn negamax(
     } else if entry.eval >= beta {
         entry.bound_type = BoundType::Lower;
     }
-    tt.insert(entry);
+    tt.insert(bs.board_hash, entry);
 
     max_eval
 }

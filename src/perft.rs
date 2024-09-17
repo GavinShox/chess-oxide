@@ -1,8 +1,8 @@
 use std::time::Instant;
 
 use crate::position::Position;
-use crate::transposition::TranspositionTable;
-use crate::{engine, movegen::*, BoardState, transposition};
+use crate::transposition::TT;
+use crate::{engine, movegen::*, transposition, BoardState};
 
 fn get_all_legal_positions(
     pos: &Position,
@@ -90,7 +90,7 @@ pub fn perft(pos: &Position, depth: u8) -> u64 {
     nodes
 }
 
-pub fn engine_perft(bs: &BoardState, depth: u8, mut tt: TranspositionTable) {
+pub fn engine_perft(bs: &BoardState, depth: u8, mut tt: transposition::TranspositionTable) {
     // let mut tt = transposition::TranspositionTable::new(); // not included in duration
     let start = Instant::now();
     let (eval, mv) = engine::choose_move(bs, depth, &mut tt);
