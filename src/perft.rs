@@ -82,7 +82,7 @@ pub fn perft(pos: &Position, depth: u8) -> u64 {
     println!(" - Move types breakdown: ");
     println!(" - Promotions: {}", promotions);
     println!(" - Castles: {}", castles);
-    println!(" - En Passant: {}", castles);
+    println!(" - En Passant: {}", en_passant);
     println!(" - Captures: {}", captures);
     println!();
 
