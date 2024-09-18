@@ -21,7 +21,7 @@ pub fn pos_hash(pos: &Position) -> PositionHash {
 // increment the zobrist hash of a Position, can be used when moves are made instead of calling pos_hash on the whole position every move
 // TODO Implement next_hash for polyglot zobrist keys
 pub fn pos_next_hash(pos: &Position, current_hash: PositionHash, mv: &Move) -> PositionHash {
-    ZOBRIST_HASH_TABLE.next_hash(pos, current_hash, mv)
+    ZOBRIST_HASH_TABLE.polyglot_full_position_hash(pos)
 }
 
 // add BoardState information into a zobrist Position hash
@@ -84,16 +84,17 @@ impl ZobristHashTable {
     }
 
     pub fn with_polyglot_magic() -> Self {
-        // rng for halfmove_count and occurrences as they are not defined in polyglot zobrist keys
-        let mut rng = rand::thread_rng();
-        let mut halfmove_count: [PositionHash; 100] = [0; 100];
-        for i in 0..100 {
-            halfmove_count[i] = rng.gen();
-        }
-        let mut occurrences: [PositionHash; 3] = [0; 3];
-        for i in 0..3 {
-            occurrences[i] = rng.gen();
-        }
+        // // rng for halfmove_count and occurrences as they are not defined in polyglot zobrist keys
+        // let mut rng = rand::thread_rng();
+        // let mut halfmove_count: [PositionHash; 100] = [0; 100];
+        // for i in 0..100 {
+        //     halfmove_count[i] = rng.gen();
+        // }
+        // let mut occurrences: [PositionHash; 3] = [0; 3];
+        // for i in 0..3 {
+        //     occurrences[i] = rng.gen();
+        // }
+        // println!("{:?} {:?}", halfmove_count, occurrences);
         Self {
             pos_table: magic::POLYGLOT_MAGIC_POS_TABLE,
             en_passant_table: magic::POLYGLOT_MAGIC_EN_PASSANT_TABLE,
@@ -102,9 +103,111 @@ impl ZobristHashTable {
             black_castle_long: magic::POLYGLOT_MAGIC_BLACK_CASTLE_LONG,
             white_castle_short: magic::POLYGLOT_MAGIC_WHITE_CASTLE_SHORT,
             black_castle_short: magic::POLYGLOT_MAGIC_BLACK_CASTLE_SHORT,
-            halfmove_count,
-            occurrences,
+            halfmove_count: magic::MAGIC_HALFMOVE_COUNT_TABLE,
+            occurrences: magic::MAGIC_OCCURRENCES_TABLE,
         }
+    }
+
+    fn polyglot_next_hash(
+        &self,
+        position: &Position,
+        current_hash: PositionHash,
+        mv: &Move,
+    ) -> PositionHash {
+        let mut hash = current_hash;
+        let side = mv.piece.pcolour;
+        let mut piece = mv.piece;
+        hash ^= self.get_piece_hash(&mv.piece, mv.from); // remove the moving piece from position
+        if let Some(idx) = position.movegen_flags.en_passant {
+            hash ^= self.en_passant_table[idx % 8] // remove existing en passant index
+        }
+        match mv.move_type {
+            MoveType::Promotion(ptype, capture) => {
+                // remove piece to be captured
+                if let Some(c) = capture {
+                    hash ^= self.get_piece_hash(
+                        &Piece {
+                            ptype: c,
+                            pcolour: !side,
+                        },
+                        mv.to,
+                    )
+                }
+                piece = Piece {
+                    pcolour: side,
+                    ptype,
+                }
+            } // set piece to promoted type
+            MoveType::DoublePawnPush => hash ^= self.en_passant_table[mv.to % 8], // set en passant index
+            MoveType::Capture(p) => {
+                hash ^= self.get_piece_hash(
+                    &Piece {
+                        ptype: p,
+                        pcolour: !side,
+                    },
+                    mv.to,
+                )
+            } // remove captured piece
+            MoveType::EnPassant(idx) => {
+                // remove captured pawn
+                let pawn = Piece {
+                    ptype: PieceType::Pawn,
+                    pcolour: !side,
+                };
+                hash ^= self.get_piece_hash(&pawn, idx);
+            }
+            MoveType::Castle(c) => {
+                let rook = Piece {
+                    ptype: PieceType::Rook,
+                    pcolour: side,
+                };
+                hash ^= self.get_piece_hash(&rook, c.rook_from); // remove rook from its starting position
+                hash ^= self.get_piece_hash(&rook, c.rook_to); // set rook to new position
+            }
+            _ => {}
+        }
+
+        if position.movegen_flags.black_castle_long
+            && (mv.from == LONG_BLACK_ROOK_START || mv.to == LONG_BLACK_ROOK_START)
+        {
+            hash ^= self.black_castle_long;
+        }
+        if position.movegen_flags.black_castle_short
+            && (mv.from == SHORT_BLACK_ROOK_START || mv.to == SHORT_BLACK_ROOK_START)
+        {
+            hash ^= self.black_castle_short;
+        }
+        if position.movegen_flags.white_castle_long
+            && (mv.from == LONG_WHITE_ROOK_START || mv.to == LONG_WHITE_ROOK_START)
+        {
+            hash ^= self.white_castle_long;
+        }
+        if position.movegen_flags.white_castle_short
+            && (mv.from == SHORT_WHITE_ROOK_START || mv.to == SHORT_WHITE_ROOK_START)
+        {
+            hash ^= self.white_castle_short;
+        }
+        // reset castling flags on first king move (including castling which sets both flags false for the moving side)
+        if piece.ptype == PieceType::King {
+            if piece.pcolour == PieceColour::White {
+                if position.movegen_flags.white_castle_long {
+                    hash ^= self.white_castle_long
+                }
+                if position.movegen_flags.white_castle_short {
+                    hash ^= self.white_castle_short
+                }
+            } else {
+                if position.movegen_flags.black_castle_long {
+                    hash ^= self.black_castle_long
+                }
+                if position.movegen_flags.black_castle_short {
+                    hash ^= self.black_castle_short
+                }
+            }
+        }
+        hash ^= self.get_piece_hash(&piece, mv.to); // set moving piece in new position
+        hash ^= self.white_to_move; // switch sides
+        hash
     }
 
     fn polyglot_full_position_hash(&self, pos: &Position) -> PositionHash {
