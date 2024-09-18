@@ -57,7 +57,7 @@ pub struct BoardState {
     pub last_move: Move,
     legal_moves: Vec<Move>,
     pub board_hash: u64,
-    position_hash: u64,
+    pub position_hash: u64,
     position: Position,
     move_count: u32,
     halfmove_count: u32,

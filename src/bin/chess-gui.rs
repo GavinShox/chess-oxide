@@ -183,13 +183,21 @@ fn main() -> Result<(), slint::PlatformError> {
                 .into(),
         );
         log::debug!(
-            "FEN: {} generated from boardstate. boardstate hash: {}",
+            "FEN: {} generated from boardstate. boardstate hash: {:x}",
             ui.get_fen(),
             board_refresh_position
                 .lock()
                 .unwrap()
                 .current_state
                 .board_hash
+        );
+        log::debug!(
+            "Current position hash: {:x}",
+            board_refresh_position
+                .lock()
+                .unwrap()
+                .current_state
+                .position_hash
         );
 
         // only set last move in GUI if it is not NULL_MOVE, then unwrap() is safe
