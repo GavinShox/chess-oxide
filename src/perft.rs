@@ -1,7 +1,6 @@
 use std::time::Instant;
 
 use crate::position::Position;
-use crate::transposition::TT;
 use crate::{engine, movegen::*, transposition, BoardState};
 
 fn get_all_legal_positions(
@@ -83,17 +82,17 @@ pub fn perft(pos: &Position, depth: u8) -> u64 {
     println!(" - Move types breakdown: ");
     println!(" - Promotions: {}", promotions);
     println!(" - Castles: {}", castles);
-    println!(" - En Passant: {}", castles);
+    println!(" - En Passant: {}", en_passant);
     println!(" - Captures: {}", captures);
     println!();
 
     nodes
 }
 
-pub fn engine_perft(bs: &BoardState, depth: u8, mut tt: transposition::TranspositionTable) {
+pub fn engine_perft(bs: &BoardState, depth: u8, tt: &mut transposition::TranspositionTable) {
     // let mut tt = transposition::TranspositionTable::new(); // not included in duration
     let start = Instant::now();
-    let (eval, mv) = engine::choose_move(bs, depth, &mut tt);
+    let (eval, mv) = engine::choose_move(bs, depth, tt);
     let duration = start.elapsed();
     println!(
         "Engine perft at depth {} (took {:?} to complete):",
