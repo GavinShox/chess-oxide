@@ -274,7 +274,12 @@ impl BoardState {
     pub fn lazy_next_state_unchecked(&self, mv: &Move) -> Self {
         let position = self.position.new_position(mv);
         log::trace!("New Position created from move: {:?}", mv);
-        let position_hash = zobrist::pos_next_hash(&position, self.position_hash, mv); // use last position for movegen flags
+        let position_hash = zobrist::pos_next_hash(
+            &self.position.movegen_flags,
+            &position.movegen_flags,
+            self.position_hash,
+            mv,
+        );
         log::trace!("New hash generated: {}", position_hash);
         let side_to_move = position.side;
         let last_move = *mv;
@@ -355,7 +360,12 @@ impl BoardState {
 
         let position = self.position.new_position(mv);
         log::trace!("New Position created from move: {:?}", mv);
-        let position_hash = zobrist::pos_next_hash(&position, self.position_hash, mv); // use last position for movegen flags
+        let position_hash = zobrist::pos_next_hash(
+            &self.position.movegen_flags,
+            &position.movegen_flags,
+            self.position_hash,
+            mv,
+        );
         log::trace!("New hash generated: {}", position_hash);
         let side_to_move = position.side;
         let last_move = *mv;

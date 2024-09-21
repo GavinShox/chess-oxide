@@ -239,7 +239,7 @@ fn negamax(
     // transposition table lookup
     let alpha_orig = alpha;
     let mut best_move: Move = NULL_MOVE; // will be set on tt hit
-    if let Some(entry) = tt.get(bs.board_hash) {
+    if let Some(entry) = tt.get(&bs.board_hash) {
         if cfg!(feature = "debug_engine_logging") {
             nodes.transposition_table_hits += 1;
         }
@@ -351,7 +351,7 @@ fn negamax(
     } else if entry.eval >= beta {
         entry.bound_type = BoundType::Lower;
     }
-    tt.insert(bs.board_hash, entry);
+    tt.insert(&bs.board_hash, entry);
 
     max_eval
 }

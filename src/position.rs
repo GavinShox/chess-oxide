@@ -312,13 +312,18 @@ impl Position {
         } else {
             self.movegen_flags.en_passant = None;
         }
-        for mv in &self.attack_map.0 {
-            if let MoveType::EnPassant(ep) = mv.move_type {
-                self.movegen_flags.polyglot_en_passant = Some(ep);
-                return;
-            }
-        }
-        self.movegen_flags.polyglot_en_passant = None;
+        // for mv in &self.attack_map.0 {
+        //     if let MoveType::EnPassant(ep) = mv.move_type {
+        //         self.movegen_flags.polyglot_en_passant = Some(ep);
+        //         return;
+        //     }
+        // }
+        // self.movegen_flags.polyglot_en_passant = None;
+    }
+
+    #[inline(always)]
+    fn set_polyglot_ep(&mut self, ep: Option<usize>) {
+        self.movegen_flags.polyglot_en_passant = ep;
     }
 
     #[inline(always)]
@@ -372,7 +377,7 @@ impl Position {
         let pos64 = &self.pos64;
         let movegen_flags = &self.movegen_flags;
         let side = self.side;
-
+        let mut polyglot_ep: Option<usize> = None;
         for (i, s) in pos64.iter().enumerate() {
             if let Square::Piece(p) = s {
                 let is_defending = p.pcolour != side;
@@ -381,9 +386,19 @@ impl Position {
                 } else {
                     &mut self.attack_map
                 };
-                movegen(pos64, movegen_flags, p, i, is_defending, map);
+                movegen(
+                    pos64,
+                    movegen_flags,
+                    p,
+                    i,
+                    is_defending,
+                    map,
+                    &mut polyglot_ep,
+                );
             }
         }
+        self.set_polyglot_ep(polyglot_ep); // TODO refactor this so it makes sense. shouldnt really be set in gen_maps as its kind of hidden?
+
         // TODO this is very confusing, as defend map has to be updated before we can check legal moves, so outside this function it looks like circular logic
         // defend map has to be updated before we can check legal moves, but it is directly updsted above
         // prune illegal moves
@@ -570,7 +585,6 @@ impl Position {
                 ep_mv_idx - ABOVE_BELOW
             };
             movegen_flags.en_passant = Some(ep_flag);
-            movegen_flags.polyglot_en_passant = Some(ep_flag);
         }
 
         // Last two fields not used here, as they are out of scope of this struct.

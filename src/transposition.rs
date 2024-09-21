@@ -7,7 +7,7 @@ use crate::movegen::{Move, NULL_MOVE};
 use crate::util;
 use crate::zobrist::PositionHash;
 
-const DEFAULT_TABLE_SIZE_MB: usize = 500; // in MiB
+const DEFAULT_TABLE_SIZE_MB: usize = 200; // in MiB
 const NUM_BUCKETS: usize = 3;
 const UNINIT_ENTRY: TableEntry = TableEntry {
     bound_type: BoundType::Exact,
@@ -76,11 +76,11 @@ impl<T: TTData + Copy + Clone> TT<T> {
         }
     }
 
-    pub fn get(&self, hash: PositionHash) -> Option<&T> {
+    pub fn get(&self, hash: &PositionHash) -> Option<&T> {
         self.table[self.get_idx(hash)].get(self.get_bucket_hash(hash))
     }
 
-    pub fn insert(&mut self, hash: PositionHash, data: T) {
+    pub fn insert(&mut self, hash: &PositionHash, data: T) {
         let idx = self.get_idx(hash);
         let bucket_hash = self.get_bucket_hash(hash);
         // returns true if the bucket was empty, so we can increment entry_count
@@ -112,13 +112,13 @@ impl<T: TTData + Copy + Clone> TT<T> {
         (mb_size * 1024 * 1024) / std::mem::size_of::<Entry<T>>()
     }
 
-    fn get_idx(&self, hash: PositionHash) -> usize {
-        let idx_hash = util::high_bits(hash); // use high bits for index, and low bits for bucket collision handling
+    fn get_idx(&self, hash: &PositionHash) -> usize {
+        let idx_hash = util::high_bits(*hash); // use high bits for index, and low bits for bucket collision handling
         (idx_hash as usize) % self.table.len()
     }
 
-    fn get_bucket_hash(&self, hash: PositionHash) -> u32 {
-        util::low_bits(hash)
+    fn get_bucket_hash(&self, hash: &PositionHash) -> u32 {
+        util::low_bits(*hash)
     }
 }
 
