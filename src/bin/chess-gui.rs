@@ -183,7 +183,7 @@ fn main() -> Result<(), slint::PlatformError> {
                 .into(),
         );
         log::debug!(
-            "FEN: {} generated from boardstate. boardstate hash: {:x}",
+            "FEN: {} generated from boardstate with hash: {:016x}",
             ui.get_fen(),
             board_refresh_position
                 .lock()
@@ -192,7 +192,7 @@ fn main() -> Result<(), slint::PlatformError> {
                 .board_hash
         );
         log::debug!(
-            "Current position hash: {:x}",
+            "Current position hash: {:016x}",
             board_refresh_position
                 .lock()
                 .unwrap()
