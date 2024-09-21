@@ -19,7 +19,6 @@ pub fn pos_hash(pos: &Position) -> PositionHash {
 }
 
 // increment the zobrist hash of a Position, can be used when moves are made instead of calling pos_hash on the whole position every move
-// TODO Implement next_hash for polyglot zobrist keys
 pub fn pos_next_hash(
     last_movegen_flags: &MovegenFlags,
     new_movegen_flags: &MovegenFlags,
