@@ -1,11 +1,9 @@
 use std::cmp;
-use std::collections::btree_map::Entry;
 
 use crate::board::*;
 use crate::movegen::*;
 use crate::transposition::*;
 use crate::util;
-use crate::zobrist::PositionHash;
 
 // avoid int overflows when operating on these values i.e. negating, +/- checkmate depth etc.
 const MIN: i32 = i32::MIN + 1000;
@@ -63,8 +61,9 @@ pub fn choose_move<'a>(
         );
     }
     log::debug!(
-        "Transposition table: Entries -> {}, Size on heap -> {}",
+        "Transposition table: Entries -> {}/{}, Size on heap -> {}",
         tt.len(),
+        tt.size(),
         util::bytes_to_str(tt.heap_alloc_size())
     );
     log::info!(
@@ -118,7 +117,7 @@ fn quiescence(
     }
     alpha = cmp::max(alpha, max_eval);
 
-    for i in sorted_move_indexes(&pseudo_legal_moves, true, &NULL_MOVE, &bs.last_move) {
+    for i in sorted_move_indexes(&pseudo_legal_moves, true, &NULL_SHORT_MOVE, &bs.last_move) {
         let mv = &pseudo_legal_moves[i];
         if !bs.is_move_legal_position(&mv) {
             continue; // skip illegal moves
@@ -189,7 +188,7 @@ fn negamax_root<'a>(
     let beta = MAX;
     let mut best_move = &NULL_MOVE;
     let mut max_eval = MIN;
-    for i in sorted_move_indexes(&pseudo_legal_moves, false, &NULL_MOVE, &bs.last_move) {
+    for i in sorted_move_indexes(&pseudo_legal_moves, false, &NULL_SHORT_MOVE, &bs.last_move) {
         let mv = &pseudo_legal_moves[i];
         if !bs.is_move_legal_position(&mv) {
             continue; // skip illegal moves
@@ -238,7 +237,7 @@ fn negamax(
 ) -> i32 {
     // transposition table lookup
     let alpha_orig = alpha;
-    let mut best_move: Move = NULL_MOVE; // will be set on tt hit
+    let mut best_move = NULL_SHORT_MOVE; // will be set on tt hit
     if let Some(entry) = tt.get(&bs.board_hash) {
         if cfg!(feature = "debug_engine_logging") {
             nodes.transposition_table_hits += 1;
@@ -322,7 +321,7 @@ fn negamax(
         );
         if eval > max_eval {
             max_eval = eval;
-            best_move = *mv;
+            best_move = mv.short_move();
         }
         alpha = cmp::max(alpha, max_eval);
 
@@ -359,7 +358,7 @@ fn negamax(
 fn sorted_move_indexes(
     moves: &[Move],
     captures_only: bool,
-    tt_mv: &Move,
+    tt_mv: &ShortMove,
     last_mv: &Move,
 ) -> Vec<usize> {
     let mut move_scores: Vec<(usize, i32)> = Vec::with_capacity(moves.len());

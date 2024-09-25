@@ -3,17 +3,16 @@
 
 use std::vec;
 
-use crate::movegen::{Move, NULL_MOVE};
-use crate::util;
 use crate::zobrist::PositionHash;
+use crate::{util, ShortMove, NULL_SHORT_MOVE};
 
-const DEFAULT_TABLE_SIZE_MB: usize = 200; // in MiB
+const DEFAULT_TABLE_SIZE_MB: usize = 150; // in MiB
 const NUM_BUCKETS: usize = 3;
 const UNINIT_ENTRY: TableEntry = TableEntry {
     bound_type: BoundType::Exact,
     depth: 0,
     eval: 0,
-    mv: NULL_MOVE,
+    mv: NULL_SHORT_MOVE,
     valid: false,
 };
 
@@ -40,7 +39,7 @@ pub struct TableEntry {
     pub bound_type: BoundType,
     pub depth: u8,
     pub eval: i32,
-    pub mv: Move,
+    pub mv: ShortMove,
     pub valid: bool,
 }
 impl TTData for TableEntry {
@@ -61,6 +60,7 @@ impl TTData for TableEntry {
 pub struct TT<T> {
     table: Vec<Entry<T>>,
     entry_count: usize,
+    size_mb: usize,
 }
 impl<T: TTData + Copy + Clone> TT<T> {
     pub fn new() -> Self {
@@ -73,24 +73,31 @@ impl<T: TTData + Copy + Clone> TT<T> {
         Self {
             table,
             entry_count: 0,
+            size_mb,
         }
     }
 
     pub fn get(&self, hash: &PositionHash) -> Option<&T> {
-        self.table[self.get_idx(hash)].get(self.get_bucket_hash(hash))
+        if self.size_mb != 0 {
+            self.table[self.get_idx(hash)].get(self.get_bucket_hash(hash))
+        } else {
+            None
+        }
     }
 
     pub fn insert(&mut self, hash: &PositionHash, data: T) {
-        let idx = self.get_idx(hash);
-        let bucket_hash = self.get_bucket_hash(hash);
-        // returns true if the bucket was empty, so we can increment entry_count
-        if self.table[idx].insert(bucket_hash, data) {
-            self.entry_count += 1;
+        if self.size_mb != 0 {
+            let idx = self.get_idx(hash);
+            let bucket_hash = self.get_bucket_hash(hash);
+            // returns true if the bucket was empty, so we can increment entry_count
+            if self.table[idx].insert(bucket_hash, data) {
+                self.entry_count += 1;
+            }
         }
     }
 
     pub fn size(&self) -> usize {
-        self.table.len()
+        self.table.len() * NUM_BUCKETS
     }
 
     pub fn heap_alloc_size(&self) -> usize {
