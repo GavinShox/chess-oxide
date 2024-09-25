@@ -9,6 +9,7 @@ use crate::errors::BoardStateError;
 use crate::errors::FenParseError;
 use crate::movegen::*;
 use crate::position::*;
+use crate::transposition;
 use crate::util;
 use crate::zobrist;
 use crate::zobrist::PositionHash;
@@ -56,7 +57,7 @@ pub struct BoardState {
     pub last_move: Move,
     legal_moves: Vec<Move>,
     pub board_hash: u64,
-    position_hash: u64,
+    pub position_hash: u64,
     position: Position,
     move_count: u32,
     halfmove_count: u32,
@@ -273,7 +274,12 @@ impl BoardState {
     pub fn lazy_next_state_unchecked(&self, mv: &Move) -> Self {
         let position = self.position.new_position(mv);
         log::trace!("New Position created from move: {:?}", mv);
-        let position_hash = zobrist::pos_next_hash(&self.position, self.position_hash, mv); // use last position for movegen flags
+        let position_hash = zobrist::pos_next_hash(
+            &self.position.movegen_flags,
+            &position.movegen_flags,
+            self.position_hash,
+            mv,
+        );
         log::trace!("New hash generated: {}", position_hash);
         let side_to_move = position.side;
         let last_move = *mv;
@@ -354,7 +360,12 @@ impl BoardState {
 
         let position = self.position.new_position(mv);
         log::trace!("New Position created from move: {:?}", mv);
-        let position_hash = zobrist::pos_next_hash(&self.position, self.position_hash, mv); // use last position for movegen flags
+        let position_hash = zobrist::pos_next_hash(
+            &self.position.movegen_flags,
+            &position.movegen_flags,
+            self.position_hash,
+            mv,
+        );
         log::trace!("New hash generated: {}", position_hash);
         let side_to_move = position.side;
         let last_move = *mv;
@@ -497,7 +508,7 @@ impl BoardState {
 pub struct Board {
     pub current_state: BoardState,
     pub state_history: Vec<BoardState>,
-    transposition_table: engine::TranspositionTable,
+    transposition_table: transposition::TranspositionTable,
 }
 
 impl Default for Board {
@@ -514,7 +525,7 @@ impl Board {
         log::info!("State history created");
         state_history.push(current_state.clone());
 
-        let transposition_table = engine::TranspositionTable::new();
+        let transposition_table = transposition::TranspositionTable::new();
         log::info!("Transposition table created");
         log::info!("New Board created");
         Board {
@@ -527,7 +538,7 @@ impl Board {
         let current_state = BoardState::from_fen(fen)?;
         let state_history: Vec<BoardState> = vec![current_state.clone()];
 
-        let transposition_table = engine::TranspositionTable::new();
+        let transposition_table = transposition::TranspositionTable::new();
         log::info!("New Board created from FEN: {}", fen);
         Ok(Board {
             current_state,

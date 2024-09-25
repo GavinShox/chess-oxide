@@ -36,6 +36,12 @@ pub const NULL_MOVE: Move = Move {
     to: usize::MAX,
     move_type: MoveType::None,
 };
+// from and to are out of bounds
+pub const NULL_SHORT_MOVE: ShortMove = ShortMove {
+    from: usize::MAX,
+    to: usize::MAX,
+    promotion_ptype: None,
+};
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
 pub enum PieceType {
@@ -81,6 +87,7 @@ pub struct MovegenFlags {
     pub black_castle_short: bool,
     pub black_castle_long: bool,
     pub en_passant: Option<usize>,
+    pub polyglot_en_passant: Option<usize>,
 }
 
 #[derive(Debug, PartialEq, Clone, Copy)]
@@ -89,6 +96,52 @@ pub struct Move {
     pub from: usize,
     pub to: usize,
     pub move_type: MoveType,
+}
+impl Move {
+    pub fn short_move(&self) -> ShortMove {
+        ShortMove {
+            from: self.from,
+            to: self.to,
+            promotion_ptype: match self.move_type {
+                MoveType::Promotion(ptype, _) => Some(ptype),
+                _ => None,
+            },
+        }
+    }
+}
+
+// struct that stores enough information to identify any full sized move
+#[derive(Debug, PartialEq, Clone, Copy)]
+pub struct ShortMove {
+    pub from: usize,
+    pub to: usize,
+    pub promotion_ptype: Option<PieceType>,
+}
+
+impl PartialEq<ShortMove> for Move {
+    fn eq(&self, other: &ShortMove) -> bool {
+        let result = self.from == other.from && self.to == other.to;
+        // promotion checks
+        if let Some(other_ptype) = other.promotion_ptype {
+            if let MoveType::Promotion(self_ptype, _) = self.move_type {
+                return result && self_ptype == other_ptype;
+            }
+        }
+        result
+    }
+}
+
+impl PartialEq<Move> for ShortMove {
+    fn eq(&self, other: &Move) -> bool {
+        let result = self.from == other.from && self.to == other.to;
+        // promotion checks
+        if let Some(self_ptype) = self.promotion_ptype {
+            if let MoveType::Promotion(other_ptype, _) = other.move_type {
+                return result && self_ptype == other_ptype;
+            }
+        }
+        result
+    }
 }
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
@@ -200,13 +253,14 @@ fn pawn_is_starting_rank(i: usize, piece: &Piece) -> bool {
 
 // generates moves for the piece at index i, only checks legality regarding where pieces could possibly move to
 // doesnt account for discovered king checks after the move
-pub fn movegen(
+pub(crate) fn movegen(
     pos: &position::Pos64,
     movegen_flags: &MovegenFlags,
     piece: &Piece,
     i: usize,
     defending: bool,
     mv_map: &mut dyn MoveMap,
+    polyglot_ep_flag: &mut Option<usize>,
 ) {
     // Move gen for pawns
     if piece.ptype == PieceType::Pawn {
@@ -318,6 +372,7 @@ pub fn movegen(
                                 move_type: MoveType::EnPassant(mv as usize),
                             }),
                         );
+                        *polyglot_ep_flag = Some(mv as usize);
                     }
                 } else {
                     continue;
