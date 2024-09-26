@@ -325,7 +325,7 @@ impl BoardState {
         }
     }
 
-    pub fn lazy_next_state(&self, mv: &Move) -> Result<Self, BoardStateError> {
+    pub fn lazy_next_state(&self, _mv: &Move) -> Result<Self, BoardStateError> {
         todo!()
     }
 
@@ -464,40 +464,40 @@ impl BoardState {
         }
     }
 
-    fn is_in_check(&self) -> bool {
-        self.position.is_in_check()
-    }
+    // fn is_in_check(&self) -> bool {
+    //     self.position.is_in_check()
+    // }
 
-    fn is_checkmate(&self) -> bool {
-        return if self.lazy_legal_moves {
-            self.lazy_is_checkmate()
-        } else {
-            self.legal_moves.is_empty() && self.position.is_in_check()
-        };
-    }
+    // fn is_checkmate(&self) -> bool {
+    //     return if self.lazy_legal_moves {
+    //         self.lazy_is_checkmate()
+    //     } else {
+    //         self.legal_moves.is_empty() && self.position.is_in_check()
+    //     };
+    // }
 
-    fn is_draw(&self) -> bool {
-        return if self.lazy_legal_moves {
-            self.lazy_is_draw()
-        } else {
-            (self.legal_moves.is_empty() && !self.position.is_in_check())
-                || self.halfmove_count >= 100
-                || self.get_occurences_of_current_position() >= 3
-        };
-    }
+    // fn is_draw(&self) -> bool {
+    //     return if self.lazy_legal_moves {
+    //         self.lazy_is_draw()
+    //     } else {
+    //         (self.legal_moves.is_empty() && !self.position.is_in_check())
+    //             || self.halfmove_count >= 100
+    //             || self.get_occurences_of_current_position() >= 3
+    //     };
+    // }
 
-    // is_checkmate only checking if the lazy legal moves iterator returns None on peek
-    fn lazy_is_checkmate(&self) -> bool {
-        self.lazy_get_legal_moves().peekable().peek().is_none() && self.position.is_in_check()
-    }
+    // // is_checkmate only checking if the lazy legal moves iterator returns None on peek
+    // fn lazy_is_checkmate(&self) -> bool {
+    //     self.lazy_get_legal_moves().peekable().peek().is_none() && self.position.is_in_check()
+    // }
 
-    // is draw only checking if the lazy legal moves iterator returns None on peek
-    fn lazy_is_draw(&self) -> bool {
-        self.halfmove_count >= 100
-            || self.get_occurences_of_current_position() >= 3
-            || (self.lazy_get_legal_moves().peekable().peek().is_none()
-                && !self.position.is_in_check())
-    }
+    // // is draw only checking if the lazy legal moves iterator returns None on peek
+    // fn lazy_is_draw(&self) -> bool {
+    //     self.halfmove_count >= 100
+    //         || self.get_occurences_of_current_position() >= 3
+    //         || (self.lazy_get_legal_moves().peekable().peek().is_none()
+    //             && !self.position.is_in_check())
+    // }
 
     pub fn get_pos64(&self) -> &Pos64 {
         &self.position.pos64
