@@ -6,7 +6,7 @@ use std::vec;
 use crate::zobrist::PositionHash;
 use crate::{util, ShortMove, NULL_SHORT_MOVE};
 
-const DEFAULT_TABLE_SIZE_MB: usize = 150; // in MiB
+const DEFAULT_TABLE_SIZE_MB: usize = 200; // in MiB
 const NUM_BUCKETS: usize = 3;
 const UNINIT_ENTRY: TableEntry = TableEntry {
     bound_type: BoundType::Exact,
