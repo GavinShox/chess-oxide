@@ -79,7 +79,7 @@ pub fn choose_move<'a>(
 fn quiescence(
     bs: &BoardState,
     depth: u8,
-    root_depth: i32,
+    ply: i32,
     mut alpha: i32,
     beta: i32,
     maxi_colour: PieceColour,
@@ -93,9 +93,9 @@ fn quiescence(
                 nodes.quiescence_nodes += 1;
             }
             return if bs.side_to_move == maxi_colour {
-                MIN + root_depth
+                MIN + ply
             } else {
-                MAX - root_depth
+                MAX - ply
             };
         }
         // draw states
@@ -126,7 +126,7 @@ fn quiescence(
         let eval = -quiescence(
             &child_bs,
             depth - 1,
-            root_depth + 1,
+            ply + 1,
             -beta,
             -alpha,
             !maxi_colour,
@@ -197,10 +197,10 @@ fn negamax_root<'a>(
         let eval = -negamax(
             &child_bs,
             depth - 1,
+            1,
             -beta,
             -alpha,
             !maxi_colour,
-            1,
             tt,
             nodes,
         );
@@ -228,10 +228,10 @@ fn negamax_root<'a>(
 fn negamax(
     bs: &BoardState,
     depth: u8,
+    ply: i32,
     mut alpha: i32,
     mut beta: i32,
     maxi_colour: PieceColour,
-    root_depth: i32,
     tt: &mut TranspositionTable,
     nodes: &mut Nodes,
 ) -> i32 {
@@ -270,9 +270,9 @@ fn negamax(
                 nodes.negamax_nodes += 1;
             }
             return if bs.side_to_move == maxi_colour {
-                MIN + root_depth
+                MIN + ply
             } else {
-                MAX - root_depth
+                MAX - ply
             };
         }
         // draw states
@@ -292,7 +292,7 @@ fn negamax(
         return quiescence(
             bs,
             QUIECENCE_DEPTH,
-            root_depth + 1,
+            ply + 1,
             alpha,
             beta,
             maxi_colour,
@@ -312,10 +312,10 @@ fn negamax(
         let eval = -negamax(
             &child_bs,
             depth - 1,
+            ply + 1,
             -beta,
             -alpha,
             !maxi_colour,
-            root_depth + 1,
             tt,
             nodes,
         );
