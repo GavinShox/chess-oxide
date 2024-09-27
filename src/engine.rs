@@ -8,9 +8,26 @@ use crate::util;
 // avoid int overflows when operating on these values i.e. negating, +/- checkmate depth etc.
 const MIN: i32 = i32::MIN + 1000;
 const MAX: i32 = i32::MAX - 1000;
-const CHECKMATE_VALUE: i32 = MAX / 2;
+const CHECKMATE_VALUE: i32 = 100_000_000;
+const DRAW_VALUE: i32 = 0;
 // max depth for quiescence search, best case it should be unlimited (only stopping when there are no more captures), but in practice it takes too long
 const QUIECENCE_DEPTH: u8 = 4;
+
+// TODO for tt, to make sure checkmate eval is relative to the ply it was found at, maybe have a checkmate flag in the tt entry or an enum here for evals i dont know
+#[inline(always)]
+pub fn is_eval_checkmate(eval: i32) -> bool {
+    eval.abs() >= CHECKMATE_VALUE
+}
+
+// amount of plys until checkmate
+#[inline(always)]
+pub fn get_checkmate_ply(eval: i32) -> u8 {
+    if eval > 0 {
+        (CHECKMATE_VALUE - eval).abs() as u8
+    } else {
+        (CHECKMATE_VALUE + eval).abs() as u8
+    }
+}
 
 struct Nodes {
     negamax_nodes: u64,
@@ -79,7 +96,7 @@ pub fn choose_move<'a>(
 fn quiescence(
     bs: &BoardState,
     depth: u8,
-    ply: i32,
+    ply: u8,
     mut alpha: i32,
     beta: i32,
     maxi_colour: PieceColour,
@@ -93,9 +110,9 @@ fn quiescence(
                 nodes.quiescence_nodes += 1;
             }
             return if bs.side_to_move == maxi_colour {
-                MIN + ply
+                -CHECKMATE_VALUE + ply as i32
             } else {
-                MAX - ply
+                CHECKMATE_VALUE - ply as i32
             };
         }
         // draw states
@@ -106,7 +123,7 @@ fn quiescence(
             if cfg!(feature = "debug_engine_logging") {
                 nodes.quiescence_nodes += 1;
             }
-            return 0; // stalemate
+            return DRAW_VALUE;
         }
         _ => {}
     }
@@ -165,9 +182,9 @@ fn negamax_root<'a>(
             }
             return (
                 if bs.side_to_move == maxi_colour {
-                    MIN
+                    -CHECKMATE_VALUE
                 } else {
-                    MAX
+                    CHECKMATE_VALUE
                 },
                 &NULL_MOVE,
             );
@@ -180,7 +197,7 @@ fn negamax_root<'a>(
             if cfg!(feature = "debug_engine_logging") {
                 nodes.negamax_nodes += 1;
             }
-            return (0, &NULL_MOVE); // stalemate
+            return (DRAW_VALUE, &NULL_MOVE); // stalemate
         }
         _ => {}
     }
@@ -228,7 +245,7 @@ fn negamax_root<'a>(
 fn negamax(
     bs: &BoardState,
     depth: u8,
-    ply: i32,
+    ply: u8,
     mut alpha: i32,
     mut beta: i32,
     maxi_colour: PieceColour,
@@ -270,9 +287,9 @@ fn negamax(
                 nodes.negamax_nodes += 1;
             }
             return if bs.side_to_move == maxi_colour {
-                MIN + ply
+                -CHECKMATE_VALUE + ply as i32
             } else {
-                MAX - ply
+                CHECKMATE_VALUE - ply as i32
             };
         }
         // draw states
@@ -283,7 +300,7 @@ fn negamax(
             if cfg!(feature = "debug_engine_logging") {
                 nodes.negamax_nodes += 1;
             }
-            return 0; // stalemate
+            return DRAW_VALUE; // stalemate
         }
         _ => {}
     }
