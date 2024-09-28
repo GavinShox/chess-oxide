@@ -38,8 +38,8 @@ pub const NULL_MOVE: Move = Move {
 };
 // from and to are out of bounds
 pub const NULL_SHORT_MOVE: ShortMove = ShortMove {
-    from: usize::MAX,
-    to: usize::MAX,
+    from: u8::MAX,
+    to: u8::MAX,
     promotion_ptype: None,
 };
 
@@ -100,8 +100,8 @@ pub struct Move {
 impl Move {
     pub fn short_move(&self) -> ShortMove {
         ShortMove {
-            from: self.from,
-            to: self.to,
+            from: self.from as u8,
+            to: self.to as u8,
             promotion_ptype: match self.move_type {
                 MoveType::Promotion(ptype, _) => Some(ptype),
                 _ => None,
@@ -113,14 +113,14 @@ impl Move {
 // struct that stores enough information to identify any full sized move
 #[derive(Debug, PartialEq, Clone, Copy)]
 pub struct ShortMove {
-    pub from: usize,
-    pub to: usize,
+    pub from: u8,
+    pub to: u8,
     pub promotion_ptype: Option<PieceType>,
 }
 
 impl PartialEq<ShortMove> for Move {
     fn eq(&self, other: &ShortMove) -> bool {
-        let result = self.from == other.from && self.to == other.to;
+        let result = self.from == other.from as usize && self.to == other.to as usize;
         // promotion checks
         if let Some(other_ptype) = other.promotion_ptype {
             if let MoveType::Promotion(self_ptype, _) = self.move_type {
@@ -133,7 +133,7 @@ impl PartialEq<ShortMove> for Move {
 
 impl PartialEq<Move> for ShortMove {
     fn eq(&self, other: &Move) -> bool {
-        let result = self.from == other.from && self.to == other.to;
+        let result = self.from as usize == other.from && self.to as usize == other.to;
         // promotion checks
         if let Some(self_ptype) = self.promotion_ptype {
             if let MoveType::Promotion(other_ptype, _) = other.move_type {
