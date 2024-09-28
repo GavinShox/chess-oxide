@@ -256,7 +256,7 @@ impl Position {
             test_pos.pos64[ep_capture] = Square::Empty;
         }
 
-        test_pos.pos64[mv.to] = self.pos64[mv.from];
+        test_pos.pos64[mv.to] = test_pos.pos64[mv.from];
         test_pos.pos64[mv.from] = Square::Empty;
 
         !movegen_in_check(&test_pos.pos64, test_pos.get_king_idx())
