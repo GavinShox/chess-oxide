@@ -492,7 +492,7 @@ pub(crate) fn movegen(
     }
 }
 
-pub fn movegen_in_check(pos: &position::Pos64, king_idx: usize) -> bool {
+pub(crate) fn movegen_in_check(pos: &position::Pos64, king_idx: usize) -> bool {
     let king_colour = if let Square::Piece(p) = pos[king_idx] {
         p.pcolour
     } else {
