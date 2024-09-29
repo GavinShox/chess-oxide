@@ -280,7 +280,7 @@ impl BoardState {
             self.position_hash,
             mv,
         );
-        log::trace!("New hash generated: {}", position_hash);
+        log::trace!("New position hash generated: {:016x}", position_hash);
         let side_to_move = position.side;
         let last_move = *mv;
         // deref all legal moves
@@ -308,7 +308,7 @@ impl BoardState {
 
         let board_hash = zobrist::board_state_hash(position_hash, *po, halfmove_count);
         //let board_hash = position_hash ^ (*po as u64) ^ (halfmove_count as u64);
-        log::trace!("Board hash: {}", board_hash);
+        log::trace!("Board hash: {:016x}", board_hash);
 
         log::trace!("New BoardState created from move: {:?}", mv);
         Self {
@@ -366,7 +366,7 @@ impl BoardState {
             self.position_hash,
             mv,
         );
-        log::trace!("New hash generated: {}", position_hash);
+        log::trace!("New position hash generated: {:016x}", position_hash);
         let side_to_move = position.side;
         let last_move = *mv;
         // deref all legal moves
@@ -395,7 +395,7 @@ impl BoardState {
 
         let board_hash = zobrist::board_state_hash(position_hash, *po, halfmove_count);
         //let board_hash = position_hash ^ (*po as u64) ^ (halfmove_count as u64);
-        log::trace!("Board hash: {}", board_hash);
+        log::trace!("Board hash: {:016x}", board_hash);
 
         log::trace!("New BoardState created from move: {:?}", mv);
         Ok(Self {
