@@ -260,7 +260,6 @@ pub(crate) fn movegen(
     i: usize,
     defending: bool,
     mv_map: &mut dyn MoveMap,
-    polyglot_ep_flag: &mut Option<usize>,
 ) {
     // Move gen for pawns
     if piece.ptype == PieceType::Pawn {
@@ -372,7 +371,6 @@ pub(crate) fn movegen(
                                 move_type: MoveType::EnPassant(mv as usize),
                             }),
                         );
-                        *polyglot_ep_flag = Some(mv as usize);
                     }
                 } else {
                     continue;

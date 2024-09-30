@@ -1,4 +1,5 @@
 use crate::errors::FenParseError;
+use crate::mailbox;
 use crate::movegen::*;
 use crate::util;
 use crate::zobrist;
@@ -304,26 +305,48 @@ impl Position {
         legal_moves
     }
 
+    // is an enemy either side of square at index i, used for setting polyglot en passant flag
+    #[inline(always)]
+    fn polyglot_is_pawn_beside(&self, i: usize) -> bool {
+        let piece = Piece {
+            pcolour: !self.side,
+            ptype: PieceType::Pawn,
+        };
+        let left = mailbox::next_mailbox_number(i, -1);
+        // valid mailbox index
+        if left >= 0 {
+            if let Square::Piece(p) = &self.pos64[left as usize] {
+                if p == &piece {
+                    return true;
+                }
+            }
+        }
+        let right = mailbox::next_mailbox_number(i, 1);
+        // valid mailbox index
+        if right >= 0 {
+            if let Square::Piece(p) = &self.pos64[right as usize] {
+                if p == &piece {
+                    return true;
+                }
+            }
+        }
+        false
+    }
+
     // sets enpassant movegen flag to Some(idx of pawn that can be captured), if the move is a double pawn push
     #[inline(always)]
     fn set_en_passant_flag(&mut self, mv: &Move) {
         if mv.move_type == MoveType::DoublePawnPush {
+            // if the pawn is beside an enemy pawn, set the polyglot en passant flag
+            if self.polyglot_is_pawn_beside(mv.to) {
+                self.movegen_flags.polyglot_en_passant = Some(mv.to);
+            } else {
+                self.movegen_flags.polyglot_en_passant = None;
+            }
             self.movegen_flags.en_passant = Some(mv.to);
         } else {
             self.movegen_flags.en_passant = None;
         }
-        // for mv in &self.attack_map.0 {
-        //     if let MoveType::EnPassant(ep) = mv.move_type {
-        //         self.movegen_flags.polyglot_en_passant = Some(ep);
-        //         return;
-        //     }
-        // }
-        // self.movegen_flags.polyglot_en_passant = None;
-    }
-
-    #[inline(always)]
-    fn set_polyglot_ep(&mut self, ep: Option<usize>) {
-        self.movegen_flags.polyglot_en_passant = ep;
     }
 
     #[inline(always)]
@@ -377,7 +400,6 @@ impl Position {
         let pos64 = &self.pos64;
         let movegen_flags = &self.movegen_flags;
         let side = self.side;
-        let mut polyglot_ep: Option<usize> = None;
         for (i, s) in pos64.iter().enumerate() {
             if let Square::Piece(p) = s {
                 let is_defending = p.pcolour != side;
@@ -386,28 +408,9 @@ impl Position {
                 } else {
                     &mut self.attack_map
                 };
-                movegen(
-                    pos64,
-                    movegen_flags,
-                    p,
-                    i,
-                    is_defending,
-                    map,
-                    &mut polyglot_ep,
-                );
+                movegen(pos64, movegen_flags, p, i, is_defending, map);
             }
         }
-        self.set_polyglot_ep(polyglot_ep); // TODO refactor this so it makes sense. shouldnt really be set in gen_maps as its kind of hidden?
-
-        // TODO this is very confusing, as defend map has to be updated before we can check legal moves, so outside this function it looks like circular logic
-        // defend map has to be updated before we can check legal moves, but it is directly updsted above
-        // prune illegal moves
-        // let mut legal_indexes = vec![false; self.attack_map.0.len()];
-        // for (i, mv) in self.attack_map.0.iter().enumerate() {
-        //     legal_indexes[i] = self.is_move_legal(mv);
-        // }
-        // let mut keep = legal_indexes.iter(); // iter stored here so .next() properly increments below
-        // self.attack_map.0.retain(|_| *keep.next().unwrap());
     }
 
     // partial implementation of the FEN format, last 2 fields are not used here
