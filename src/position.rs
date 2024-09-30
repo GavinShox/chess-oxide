@@ -305,11 +305,11 @@ impl Position {
         legal_moves
     }
 
-    // is an enemy either side of square at index i, used for setting polyglot en passant flag
+    // is a pawn of colour 'pawn_colour' is either side of square at index i, used for setting polyglot en passant flag
     #[inline(always)]
-    fn polyglot_is_pawn_beside(&self, i: usize) -> bool {
+    fn polyglot_is_pawn_beside(&self, i: usize, pawn_colour: PieceColour) -> bool {
         let piece = Piece {
-            pcolour: !self.side,
+            pcolour: pawn_colour,
             ptype: PieceType::Pawn,
         };
         let left = mailbox::next_mailbox_number(i, -1);
@@ -338,7 +338,7 @@ impl Position {
     fn set_en_passant_flag(&mut self, mv: &Move) {
         if mv.move_type == MoveType::DoublePawnPush {
             // if the pawn is beside an enemy pawn, set the polyglot en passant flag
-            if self.polyglot_is_pawn_beside(mv.to) {
+            if self.polyglot_is_pawn_beside(mv.to, !self.side) {
                 self.movegen_flags.polyglot_en_passant = Some(mv.to);
             } else {
                 self.movegen_flags.polyglot_en_passant = None;
@@ -535,7 +535,7 @@ impl Position {
         }
 
         // initialise movegen flags for the next two FEN fields
-        let mut movegen_flags = MovegenFlags {
+        let movegen_flags = MovegenFlags {
             white_castle_short: false,
             white_castle_long: false,
             black_castle_short: false,
@@ -544,20 +544,31 @@ impl Position {
             polyglot_en_passant: None,
         };
 
+        // initialise the new Position struct
+        let mut new = Self {
+            pos64: pos,
+            side,
+            movegen_flags,
+            defend_map: DefendMap::new(),
+            attack_map: AttackMap::new(),
+            wking_idx: 0, // value set in below for loop
+            bking_idx: 0, // value set in below for loop
+        };
+
         // third field of FEN defines castling flags
         for c in fen_vec[2].chars() {
             match c {
                 'q' => {
-                    movegen_flags.black_castle_long = true;
+                    new.movegen_flags.black_castle_long = true;
                 }
                 'Q' => {
-                    movegen_flags.white_castle_long = true;
+                    new.movegen_flags.white_castle_long = true;
                 }
                 'k' => {
-                    movegen_flags.black_castle_short = true;
+                    new.movegen_flags.black_castle_short = true;
                 }
                 'K' => {
-                    movegen_flags.white_castle_short = true;
+                    new.movegen_flags.white_castle_short = true;
                 }
                 '-' => {}
                 other => {
@@ -587,21 +598,14 @@ impl Position {
             } else {
                 ep_mv_idx - ABOVE_BELOW
             };
-            movegen_flags.en_passant = Some(ep_flag);
+            new.movegen_flags.en_passant = Some(ep_flag);
+
+            // set polyglot en passant flag if the ep_flag is beside a pawn of side to move colour
+            if new.polyglot_is_pawn_beside(ep_flag, new.side) {
+                new.movegen_flags.polyglot_en_passant = Some(ep_flag);
+            }
         }
 
-        // Last two fields not used here, as they are out of scope of this struct.
-        // Function is extended in BoardState struct
-
-        let mut new = Self {
-            pos64: pos,
-            side,
-            movegen_flags,
-            defend_map: DefendMap::new(),
-            attack_map: AttackMap::new(),
-            wking_idx: 0, // value set in below for loop
-            bking_idx: 0, // value set in below for loop
-        };
         for (i, s) in new.pos64.iter().enumerate() {
             match s {
                 Square::Piece(p) => {
