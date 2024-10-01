@@ -65,6 +65,12 @@ pub struct BoardState {
     lazy_legal_moves: bool,
 }
 
+impl PartialEq for BoardState {
+    fn eq(&self, other: &Self) -> bool {
+        self.board_hash == other.board_hash && self.position_hash == other.position_hash
+    }
+}
+
 impl BoardState {
     pub fn new_starting() -> Self {
         let position = Position::new_starting();
