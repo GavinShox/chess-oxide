@@ -118,16 +118,12 @@ impl BoardState {
                 }
             }
             if wking_num > 1 || bking_num > 1 {
-                log::error!(
-                    "Multiple kings (white: {}, black: {}) in FEN: {}",
-                    wking_num,
-                    bking_num,
-                    fen
-                );
-                return Err(FenParseError(format!(
+                let err_msg = format!(
                     "Multiple kings (white: {}, black: {}) in FEN: {}",
                     wking_num, bking_num, fen
-                )));
+                );
+                log::error!("{}", err_msg);
+                return Err(FenParseError(err_msg));
             }
         }
 
@@ -148,11 +144,9 @@ impl BoardState {
             halfmove_count = match fen_vec[4].parse::<u32>() {
                 Ok(halfmove_count) => halfmove_count,
                 Err(_) => {
-                    log::error!("Error parsing halfmove count: {}", fen_vec[4]);
-                    return Err(FenParseError(format!(
-                        "Error parsing halfmove count: {}",
-                        fen_vec[4]
-                    )));
+                    let err_msg = format!("Error parsing halfmove count: {}", fen_vec[4]);
+                    log::error!("{}", err_msg);
+                    return Err(FenParseError(err_msg));
                 }
             };
 
@@ -160,11 +154,9 @@ impl BoardState {
                 move_count = match fen_vec[5].parse::<u32>() {
                     Ok(move_count) => move_count,
                     Err(_) => {
-                        log::error!("Error parsing move count: {}", fen_vec[5]);
-                        return Err(FenParseError(format!(
-                            "Error parsing move count: {}",
-                            fen_vec[5]
-                        )));
+                        let err_msg = format!("Error parsing move count: {}", fen_vec[5]);
+                        log::error!("{}", err_msg);
+                        return Err(FenParseError(err_msg));
                     }
                 };
             }
@@ -331,17 +323,15 @@ impl BoardState {
 
     pub fn next_state(&self, mv: &Move) -> Result<Self, BoardStateError> {
         if mv == &NULL_MOVE {
-            log::error!("&NULL_MOVE was passed as an argument to BoardState::next_state()");
-            return Err(BoardStateError::NullMove(
-                "&NULL_MOVE was passed as an argument to BoardState::next_state()".to_string(),
-            ));
+            let err_msg =
+                "&NULL_MOVE was passed as an argument to BoardState::next_state()".to_string();
+            log::error!("{}", err_msg);
+            return Err(BoardStateError::NullMove(err_msg));
         }
         if !self.legal_moves.contains(mv) {
-            log::error!("{:?} is not a legal move", mv);
-            return Err(BoardStateError::IllegalMove(format!(
-                "{:?} is not a legal move",
-                mv
-            )));
+            let err_msg = format!("{:?} is not a legal move", mv);
+            log::error!("{}", err_msg);
+            return Err(BoardStateError::IllegalMove(err_msg));
         }
 
         let current_game_state = self.get_gamestate();
@@ -351,11 +341,9 @@ impl BoardState {
             || current_game_state == GameState::FiftyMove
             || current_game_state == GameState::Repetition
         {
-            log::error!(
-                "No legal moves in current game state: {:?}",
-                current_game_state
-            );
-            return Err(BoardStateError::NoLegalMoves(current_game_state));
+            let err = BoardStateError::NoLegalMoves(current_game_state);
+            log::error!("{}", err.to_string());
+            return Err(err);
         }
 
         let position = self.position.new_position(mv);

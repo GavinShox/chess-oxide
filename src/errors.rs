@@ -15,7 +15,7 @@ impl fmt::Display for BoardStateError {
         match self {
             BoardStateError::IllegalMove(s) => write!(f, "Illegal move: {}", s),
             BoardStateError::NullMove(s) => write!(f, "Null move: {}", s),
-            BoardStateError::NoLegalMoves(gs) => write!(f, "No legal moves: GameState -> {}", gs),
+            BoardStateError::NoLegalMoves(gs) => write!(f, "No legal moves in GameState: {}", gs),
         }
     }
 }
