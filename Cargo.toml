@@ -43,7 +43,7 @@ opt-level = 3
 panic = "abort"
 
 [profile.test]
-opt-level = 3 # optimise for performance heavy perft tests
+opt-level = 0 # optimise for performance heavy perft tests
 
 # [profile.dev]
 # opt-level = 1
