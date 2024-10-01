@@ -5,6 +5,7 @@ pub mod magic;
 mod mailbox;
 mod movegen;
 mod perft;
+mod pgn;
 mod position;
 mod transposition;
 mod util;

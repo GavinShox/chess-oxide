@@ -32,3 +32,18 @@ impl fmt::Display for FenParseError {
 }
 
 impl error::Error for FenParseError {}
+
+#[derive(Debug)]
+pub enum PGNParseError {
+    InvalidTag(String),
+}
+
+impl fmt::Display for PGNParseError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            PGNParseError::InvalidTag(s) => write!(f, "Invalid tag: {}", s),
+        }
+    }
+}
+
+impl error::Error for PGNParseError {}
