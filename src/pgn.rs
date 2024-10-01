@@ -68,8 +68,8 @@ fn tokenize(pgn: &str) -> Vec<&str> {
 fn parse_tag(tag: &str) -> Result<Tag, PGNParseError> {
     let tag_str = tag.trim_matches(&['[', ']']).trim();
     let parts = tag_str.split_once(' ').unwrap(); // TODO handle error, dont just unwrap
-    let name = parts.0;
-    let value = parts.1.trim_matches('"');
+    let name = parts.0.trim();
+    let value = parts.1.trim().trim_matches('"');
     match name {
         "Event" => Ok(Tag::Event(value.to_string())),
         "Site" => Ok(Tag::Site(value.to_string())),
