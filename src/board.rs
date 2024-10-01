@@ -225,8 +225,7 @@ impl BoardState {
             MoveType::EnPassant(ep) => format!("{}x{}", piece_str, util::index_to_notation(ep)),
             MoveType::Promotion(promotion_type, capture) => match capture {
                 Some(_) => {
-                    format!("{}={}", notation_to, get_piece_str(promotion_type))
-                    //TODO add capture promotion notation
+                    format!("{}x{}={}", piece_str, notation_to, get_piece_str(promotion_type))
                 }
                 None => {
                     format!("{}={}", notation_to, get_piece_str(promotion_type))
