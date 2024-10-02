@@ -1,5 +1,6 @@
 use core::fmt;
 use std::rc::Rc;
+use std::str::FromStr;
 
 use ahash;
 use log;
@@ -50,17 +51,6 @@ impl fmt::Display for GameState {
         };
         write!(f, "{}", state_str)
     }
-}
-
-struct Notation<'a> {
-    mv: Move,
-    bs: &'a BoardState,
-    file: char,
-    rank: char,
-    capture_file: Option<char>,
-    capture_rank: Option<char>,
-    promotion: Option<PieceType>,
-    check: Option<char>
 }
 
 #[derive(Debug, Clone)]
@@ -210,8 +200,16 @@ impl BoardState {
         self.position.get_pseudo_legal_moves()
     }
 
-    pub fn find_move_from_notation(&self, notation: &str) -> Option<&Move> {
-        todo!()
+    pub fn find_move_from_notation(&self, notation: &str) -> Result<&Move, BoardStateError> {
+        if self.lazy_legal_moves {
+            let err_msg = "find_move_from_notation called on BoardState with lazy_legal_moves flag set, cannot find move without all legal moves generated.".to_string();
+            log::error!("{}", err_msg);
+            return Err(BoardStateError::MoveNotFound(err_msg));
+        }
+        let mut chars = notation.chars();
+        let piece = chars.next();
+
+        Ok(&NULL_MOVE)
     }
 
     pub fn last_move_as_notation(&self) -> Result<String, BoardStateError> {
@@ -241,7 +239,12 @@ impl BoardState {
             MoveType::EnPassant(ep) => format!("{}x{}", piece_str, util::index_to_notation(ep)),
             MoveType::Promotion(promotion_type, capture) => match capture {
                 Some(_) => {
-                    format!("{}x{}={}", piece_str, notation_to, get_piece_str(promotion_type))
+                    format!(
+                        "{}x{}={}",
+                        piece_str,
+                        notation_to,
+                        get_piece_str(promotion_type)
+                    )
                 }
                 None => {
                     format!("{}={}", notation_to, get_piece_str(promotion_type))
@@ -339,6 +342,11 @@ impl BoardState {
     }
 
     pub fn lazy_next_state(&self, _mv: &Move) -> Result<Self, BoardStateError> {
+        // TODO maybe just gen_legal_moves and call next_state?
+        todo!()
+    }
+
+    pub fn next_state_unchecked(&self, _mv: &Move) -> Self {
         todo!()
     }
 
@@ -348,6 +356,11 @@ impl BoardState {
                 "&NULL_MOVE was passed as an argument to BoardState::next_state()".to_string();
             log::error!("{}", err_msg);
             return Err(BoardStateError::NullMove(err_msg));
+        }
+        if self.lazy_legal_moves {
+            let err_msg = "next_state called on BoardState with lazy_legal_moves flag set, cannot generate next state without all legal moves being generated.".to_string();
+            log::error!("{}", err_msg);
+            return Err(BoardStateError::LazyIncompatiblity(err_msg));
         }
         if !self.legal_moves.contains(mv) {
             let err_msg = format!("{:?} is not a legal move", mv);
@@ -430,13 +443,13 @@ impl BoardState {
             .collect();
     }
 
-    pub fn get_legal_moves(&mut self) -> &[Move] {
+    pub fn get_legal_moves(&self) -> Result<&[Move], BoardStateError> {
         if self.lazy_legal_moves {
-            log::warn!("get_legal_moves called on BoardState with lazy_legal_moves flag set, generating and saving vec with all legal moves, and unsetting flag");
-            self.gen_legal_moves();
-            self.lazy_legal_moves = false;
+            let err = BoardStateError::LazyIncompatiblity("get_legal_moves called on BoardState with lazy_legal_moves flag set, legal_moves vec is empty".to_string());
+            log::error!("{}", err.to_string());
+            return Err(err);
         }
-        &self.legal_moves
+        Ok(&self.legal_moves)
     }
 
     pub fn get_occurences_of_current_position(&self) -> u8 {

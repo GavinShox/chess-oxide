@@ -252,6 +252,8 @@ fn main() -> Result<(), slint::PlatformError> {
             .unwrap()
             .current_state
             .get_legal_moves()
+            .unwrap()
+        // unwrap is safe as we are not using lazy legal move generation
         {
             // ui indexes are reversed if player is black
             if ui.get_player_colour() == PieceColour_UI::Black {

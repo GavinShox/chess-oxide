@@ -8,6 +8,8 @@ pub enum BoardStateError {
     IllegalMove(String),
     NullMove(String),
     NoLegalMoves(GameState),
+    MoveNotFound(String),
+    LazyIncompatiblity(String),
 }
 
 impl fmt::Display for BoardStateError {
@@ -16,6 +18,10 @@ impl fmt::Display for BoardStateError {
             BoardStateError::IllegalMove(s) => write!(f, "Illegal move: {}", s),
             BoardStateError::NullMove(s) => write!(f, "Null move: {}", s),
             BoardStateError::NoLegalMoves(gs) => write!(f, "No legal moves in GameState: {}", gs),
+            BoardStateError::MoveNotFound(s) => write!(f, "Move not found: {}", s),
+            BoardStateError::LazyIncompatiblity(s) => {
+                write!(f, "Lazy legal move generation incompatibility: {}", s)
+            }
         }
     }
 }
@@ -36,12 +42,14 @@ impl error::Error for FenParseError {}
 #[derive(Debug)]
 pub enum PGNParseError {
     InvalidTag(String),
+    NotationParseError(String),
 }
 
 impl fmt::Display for PGNParseError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
             PGNParseError::InvalidTag(s) => write!(f, "Invalid tag: {}", s),
+            PGNParseError::NotationParseError(s) => write!(f, "Error parsing notation: {}", s),
         }
     }
 }
