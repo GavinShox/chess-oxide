@@ -460,6 +460,8 @@ impl PGN {
 
 #[cfg(test)]
 mod tests {
+    use core::panic;
+
     use super::*;
 
     #[test]
@@ -622,21 +624,26 @@ mod tests {
     // }
 
     #[test]
-    fn test_notation_from_str() {
+    fn test_notation_from_str() -> Result<(), PGNParseError> {
         let bs = board::BoardState::new_starting();
         let notation_str = "Qf3xf5+";
         let notation = Notation::from_str(&bs, notation_str);
-
-        assert!(notation.is_ok());
-        let notation = notation.unwrap();
-        assert_eq!(notation.piece, Some('Q'));
-        assert_eq!(notation.to_file, 'f');
-        assert_eq!(notation.to_rank, '5');
-        assert_eq!(notation.capture, true);
-        assert_eq!(notation.check, true);
-        assert_eq!(notation.dis_file.is_some(), true);
-        assert_eq!(notation.dis_rank.is_some(), true);
-        assert_eq!(notation.dis_file.unwrap(), 'f');
-        assert_eq!(notation.dis_rank.unwrap(), '3');
+        match notation {
+            Ok(notation) => {
+                assert_eq!(notation.piece, Some('Q'));
+                assert_eq!(notation.to_file, 'f');
+                assert_eq!(notation.to_rank, '5');
+                assert_eq!(notation.capture, true);
+                assert_eq!(notation.check, true);
+                assert_eq!(notation.dis_file.is_some(), true);
+                assert_eq!(notation.dis_rank.is_some(), true);
+                assert_eq!(notation.dis_file.unwrap(), 'f');
+                assert_eq!(notation.dis_rank.unwrap(), '3');
+                return Ok(());
+            }
+            Err(e) => {
+                return Err(e);
+            }
+        }
     }
 }
