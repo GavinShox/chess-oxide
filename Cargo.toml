@@ -33,7 +33,7 @@ slint = "1.7.2"
 ahash = "0.8.11"
 
 [build-dependencies]
-slint-build = "1.7.2"
+slint-build = "1.8.0"
 
 [profile.release]
 debug = false
