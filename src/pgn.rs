@@ -12,7 +12,7 @@ enum Tag {
     White(String),
     Black(String),
     Result(String),
-    CustomTag{name: String, value: String},
+    CustomTag { name: String, value: String },
 }
 
 struct CustomTag {
@@ -114,14 +114,15 @@ struct PGN {
     pgn_string: String,
     tokens: Vec<String>,
     tags: Vec<Tag>,
-    moves: Vec<String>
+    moves: Vec<String>,
 }
 impl PGN {
-    fn new(pgn: &str, board: &board) -> Self {
+    fn new(pgn: &str) -> Self {
         let mut new = Self {
             pgn_string: pgn.to_string(),
             tokens: Vec::new(),
             tags: Vec::new(),
+            moves: Vec::new(),
         };
 
         new
@@ -132,6 +133,7 @@ impl PGN {
             pgn_string: String::new(),
             tokens: Vec::new(),
             tags: Vec::new(),
+            moves: Vec::new(),
         };
 
         new
