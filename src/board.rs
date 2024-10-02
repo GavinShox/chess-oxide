@@ -51,6 +51,18 @@ impl fmt::Display for GameState {
         write!(f, "{}", state_str)
     }
 }
+
+struct Notation<'a> {
+    mv: Move,
+    bs: &'a BoardState,
+    file: char,
+    rank: char,
+    capture_file: Option<char>,
+    capture_rank: Option<char>,
+    promotion: Option<PieceType>,
+    check: Option<char>
+}
+
 #[derive(Debug, Clone)]
 pub struct BoardState {
     pub side_to_move: PieceColour,
@@ -196,6 +208,10 @@ impl BoardState {
 
     pub fn get_pseudo_legal_moves(&self) -> &Vec<Move> {
         self.position.get_pseudo_legal_moves()
+    }
+
+    pub fn find_move_from_notation(&self, notation: &str) -> Option<&Move> {
+        todo!()
     }
 
     pub fn last_move_as_notation(&self) -> Result<String, BoardStateError> {

@@ -12,7 +12,14 @@ enum Tag {
     White(String),
     Black(String),
     Result(String),
+    CustomTag{name: String, value: String},
 }
+
+struct CustomTag {
+    name: String,
+    value: String,
+}
+
 impl fmt::Display for Tag {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         match self {
@@ -23,6 +30,7 @@ impl fmt::Display for Tag {
             Tag::White(value) => write!(f, "[White \"{}\"]", value),
             Tag::Black(value) => write!(f, "[Black \"{}\"]", value),
             Tag::Result(value) => write!(f, "[Result \"{}\"]", value),
+            Tag::CustomTag { name, value } => write!(f, "[{} \"{}\"]", name, value),
         }
     }
 }
@@ -78,7 +86,7 @@ fn parse_tag(tag: &str) -> Result<Tag, PGNParseError> {
         "White" => Ok(Tag::White(value.to_string())),
         "Black" => Ok(Tag::Black(value.to_string())),
         "Result" => Ok(Tag::Result(value.to_string())),
-        _ => panic!("Unknown tag: {}", name),
+        _ => todo!("Handle custom tags"),
     }
 }
 
@@ -102,15 +110,14 @@ fn tokens_read_tags(tokens: &Vec<&str>) -> Result<Vec<Tag>, PGNParseError> {
     Ok(tags)
 }
 
-struct Token {}
-
 struct PGN {
     pgn_string: String,
     tokens: Vec<String>,
     tags: Vec<Tag>,
+    moves: Vec<String>
 }
 impl PGN {
-    fn new(pgn: &str) -> Self {
+    fn new(pgn: &str, board: &board) -> Self {
         let mut new = Self {
             pgn_string: pgn.to_string(),
             tokens: Vec::new(),
@@ -166,7 +173,7 @@ mod tests {
 
     #[test]
     fn test_tokenize_with_comments() {
-        let pgn_string = "[Event \"Game\"] {This is a comment} 1. e4 e5";
+        let pgn_string = "[Event \"Game\"] {This is a comment} 1.e4 e5";
         let tokens = tokenize(pgn_string);
 
         let expected_tokens = vec![
@@ -190,7 +197,6 @@ mod tests {
             " ".to_string(),
             "1".to_string(),
             ".".to_string(),
-            " ".to_string(),
             "e4".to_string(),
             " ".to_string(),
             "e5".to_string(),
@@ -201,7 +207,7 @@ mod tests {
 
     #[test]
     fn test_tokenize_with_variations() {
-        let pgn_string = "[Event \"Game\"] 1. e4 (1. d4 d5) e5";
+        let pgn_string = "[Event \"Game\"] 1.e4 (1. d4 d5) e5";
         let tokens = tokenize(pgn_string);
 
         let expected_tokens = vec![
@@ -215,7 +221,6 @@ mod tests {
             " ".to_string(),
             "1".to_string(),
             ".".to_string(),
-            " ".to_string(),
             "e4".to_string(),
             " ".to_string(),
             "(".to_string(),
