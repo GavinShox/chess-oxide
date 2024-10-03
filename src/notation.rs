@@ -1,6 +1,6 @@
-use crate::board;
 use crate::errors::PGNParseError;
 use crate::movegen::*;
+use crate::{board, util};
 
 pub struct Notation {
     piece: Option<char>,
@@ -35,11 +35,12 @@ impl Notation {
     }
 
     // from move with boardstate context, disambiguaating notation will only be used if required
+    // TODO using next_state is slow, but will this ever be used in a performance critical area? Look into it
     pub fn from_mv_with_context(
-        bs: &board::BoardState,
+        bs_context: &board::BoardState,
         mv: &Move,
     ) -> Result<Notation, PGNParseError> {
-        let legal_moves = match bs.get_legal_moves() {
+        let legal_moves = match bs_context.get_legal_moves() {
             Ok(moves) => moves,
             Err(e) => {
                 let err = PGNParseError::NotationParseError(format!(
@@ -50,16 +51,18 @@ impl Notation {
                 return Err(err);
             }
         };
+
+        // create new uninitialised Notation struct
+        let mut notation = Self::new();
+
+        // check if move is legal and if it results in check or checkmate by generating a new boardstate
+        // set check and checkmate flags based off the new boardstate's gamestate
         if legal_moves.contains(mv) {
-            let test_bs = bs.next_state(mv).unwrap(); // unwrap is safe as move is legal
+            let test_bs = bs_context.next_state(mv).unwrap(); // unwrap is safe as move is legal
             match test_bs.get_gamestate() {
-                crate::GameState::Check => todo!(),
-                crate::GameState::Checkmate => todo!(),
-                crate::GameState::Stalemate => todo!(),
-                crate::GameState::Repetition => todo!(),
-                crate::GameState::FiftyMove => todo!(),
-                crate::GameState::InsufficientMaterial => todo!(),
-                crate::GameState::Active => todo!(),
+                board::GameState::Check => notation.check = true, // SET CHECK FLAG
+                board::GameState::Checkmate => notation.checkmate = true, // SET CHECKMATE FLAG
+                _ => {}
             }
         } else {
             let err = PGNParseError::NotationParseError(format!("Move not legal: {:?}", mv));
@@ -67,13 +70,17 @@ impl Notation {
             return Err(err);
         }
 
-        // create new uninitialised Notation struct
-        let mut notation = Self::new();
-
-        // set required fields
         // set castling string if it is a castling move and return
+        if let MoveType::Castle(cm) = mv.move_type {
+            notation.castle_str = Some(match cm.get_castle_side() {
+                // SET CASTLE STRING
+                CastleSide::Short => "O-O".to_string(),
+                CastleSide::Long => "O-O-O".to_string(),
+            });
+            return Ok(notation); // RETURN ON CASTLE MOVE
+        }
 
-        // set piece char
+        // SET PIECE CHAR
         notation.piece = match mv.piece.ptype {
             PieceType::Pawn => None,
             PieceType::Knight => Some('N'),
@@ -82,6 +89,37 @@ impl Notation {
             PieceType::Queen => Some('Q'),
             PieceType::King => Some('K'),
         };
+
+        // SET TO FILE AND TO RANK
+        notation.to_file = util::index_to_file_notation(mv.to);
+        notation.to_rank = util::index_to_rank_notation(mv.to);
+
+        // SET CAPTURE FLAG (Normal capture, en passant capture, or promotion capture)
+        notation.capture = match mv.move_type {
+            MoveType::Capture(_) | MoveType::EnPassant(_) => true,
+            MoveType::Promotion(_, cap) => cap.is_some(),
+            _ => false,
+        };
+
+        // SET PROMOTION CHAR
+        if let MoveType::Promotion(prom, _) = mv.move_type {
+            notation.promotion = Some(match prom {
+                PieceType::Queen => 'Q',
+                PieceType::Rook => 'R',
+                PieceType::Bishop => 'B',
+                PieceType::Knight => 'N',
+                _ => {
+                    // unreachable as move has been legality checked at top of function
+                    unreachable!();
+                }
+            });
+        }
+
+        // DISAMBIGUATING MOVES
+        if let PieceType::Pawn = mv.piece.ptype {
+            // pawn moves that are captures or en passants only need dis_file, otherwise only to_file and to_rank are needed
+            notation.dis_file = Some(util::index_to_file_notation(mv.from));
+        }
 
         Ok(notation)
     }
@@ -335,11 +373,11 @@ impl Notation {
         if let Some(piece) = self.piece {
             notation.push(piece);
         }
-        if let Some(dis_rank) = self.dis_rank {
-            notation.push(dis_rank);
-        }
         if let Some(dis_file) = self.dis_file {
             notation.push(dis_file);
+        }
+        if let Some(dis_rank) = self.dis_rank {
+            notation.push(dis_rank);
         }
         if self.capture {
             notation.push('x');

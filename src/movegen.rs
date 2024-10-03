@@ -145,10 +145,26 @@ impl PartialEq<Move> for ShortMove {
 }
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
+pub enum CastleSide {
+    Short,
+    Long,
+}
+
+#[derive(Debug, PartialEq, Eq, Clone, Copy)]
 pub struct CastleMove {
     pub rook_from: usize,
     pub rook_to: usize,
     pub king_squares: (usize, usize, usize),
+}
+impl CastleMove {
+    pub fn get_castle_side(&self) -> CastleSide {
+        // simple test to differentiate between long and short castles by looking at the idx of the rook_from square
+        if self.rook_from == LONG_BLACK_ROOK_START || self.rook_from == LONG_WHITE_ROOK_START {
+            CastleSide::Long
+        } else {
+            CastleSide::Short
+        }
+    }
 }
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
