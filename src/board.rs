@@ -27,9 +27,9 @@ pub enum GameState {
 }
 impl GameState {
     // gamestates that are draws
-    pub fn is_draw(&self, gamestate: GameState) -> bool {
+    pub fn is_draw(&self) -> bool {
         matches!(
-            gamestate,
+            self,
             GameState::Stalemate
                 | GameState::FiftyMove
                 | GameState::Repetition
