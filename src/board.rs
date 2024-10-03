@@ -27,6 +27,7 @@ pub enum GameState {
 }
 impl GameState {
     // gamestates that are draws
+    #[inline]
     pub fn is_draw(&self) -> bool {
         matches!(
             self,
@@ -35,6 +36,11 @@ impl GameState {
                 | GameState::Repetition
                 | GameState::InsufficientMaterial
         )
+    }
+    // gamestates that end game
+    #[inline]
+    pub fn is_game_over(&self) -> bool {
+        matches!(self, GameState::Checkmate | GameState::Stalemate) || self.is_draw()
     }
 }
 // String representation of GameState
