@@ -1,9 +1,8 @@
 use crate::board;
 use crate::errors::PGNParseError;
-use crate::movegen::Move;
+use crate::movegen::*;
 
-pub struct Notation<'a> {
-    bs: &'a board::BoardState,
+pub struct Notation {
     piece: Option<char>,
     dis_file: Option<char>, // for disambiguating moves if required
     dis_rank: Option<char>, // for disambiguating moves if required
@@ -13,13 +12,15 @@ pub struct Notation<'a> {
     promotion: Option<char>,
     check: bool,
     checkmate: bool,
+    castle_str: Option<String>,
 }
 
-impl Notation<'_> {
+// TODO add end of game notation (1-0, 0-1, 1/2-1/2) draws dont use # only the score
+// CONSTRUCTORS
+impl Notation {
     // (private) new uninitialised Notation struct
-    fn new<'a>(bs: &'a board::BoardState) -> Notation<'a> {
+    fn new() -> Notation {
         Notation {
-            bs,
             piece: None,
             dis_file: None,
             dis_rank: None,
@@ -29,45 +30,15 @@ impl Notation<'_> {
             promotion: None,
             check: false,
             checkmate: false,
+            castle_str: None,
         }
     }
 
-    pub fn to_string(&self) -> String {
-        let mut notation = String::new();
-        if let Some(piece) = self.piece {
-            notation.push(piece);
-        }
-        if let Some(dis_rank) = self.dis_rank {
-            notation.push(dis_rank);
-        }
-        if let Some(dis_file) = self.dis_file {
-            notation.push(dis_file);
-        }
-        if self.capture {
-            notation.push('x');
-        }
-        notation.push(self.to_file);
-        notation.push(self.to_rank);
-        if let Some(promotion) = self.promotion {
-            notation.push('=');
-            notation.push(promotion);
-        }
-        if self.checkmate {
-            notation.push('#');
-        } else if self.check {
-            notation.push('+');
-        }
-        notation
-    }
-
-    pub fn to_move(&self) -> Result<&Move, PGNParseError> {
-        todo!()
-    }
-
-    pub fn from_mv<'a>(
-        bs: &'a board::BoardState,
-        mv: &'a Move,
-    ) -> Result<Notation<'a>, PGNParseError> {
+    // from move with boardstate context, disambiguaating notation will only be used if required
+    pub fn from_mv_with_context(
+        bs: &board::BoardState,
+        mv: &Move,
+    ) -> Result<Notation, PGNParseError> {
         let legal_moves = match bs.get_legal_moves() {
             Ok(moves) => moves,
             Err(e) => {
@@ -79,26 +50,61 @@ impl Notation<'_> {
                 return Err(err);
             }
         };
-        if !legal_moves.contains(mv) {
+        if legal_moves.contains(mv) {
+            let test_bs = bs.next_state(mv).unwrap(); // unwrap is safe as move is legal
+            match test_bs.get_gamestate() {
+                crate::GameState::Check => todo!(),
+                crate::GameState::Checkmate => todo!(),
+                crate::GameState::Stalemate => todo!(),
+                crate::GameState::Repetition => todo!(),
+                crate::GameState::FiftyMove => todo!(),
+                crate::GameState::InsufficientMaterial => todo!(),
+                crate::GameState::Active => todo!(),
+            }
+        } else {
             let err = PGNParseError::NotationParseError(format!("Move not legal: {:?}", mv));
             log::error!("{}", err.to_string());
             return Err(err);
         }
-        // TODO rest
-        Ok(Notation::new(bs))
+
+        // create new uninitialised Notation struct
+        let mut notation = Self::new();
+
+        // set required fields
+        // set castling string if it is a castling move and return
+
+        // set piece char
+        notation.piece = match mv.piece.ptype {
+            PieceType::Pawn => None,
+            PieceType::Knight => Some('N'),
+            PieceType::Bishop => Some('B'),
+            PieceType::Rook => Some('R'),
+            PieceType::Queen => Some('Q'),
+            PieceType::King => Some('K'),
+        };
+
+        Ok(notation)
     }
 
-    // from move but doesnt need boardstate so it will always use all disambiguation
-    pub fn from_mv_full_disambiguation(
+    // from move but doesnt need boardstate so it will always use all disambiguation and uses gamestate to determing check/checkmate/end of game
+    pub fn from_mv_no_context(
         mv: &Move,
+        gamestate: board::GameState,
     ) -> Result<Notation, PGNParseError> {
         todo!()
     }
 
-    pub fn from_str<'a>(
-        bs: &'a board::BoardState,
-        notation_str: &str,
-    ) -> Result<Notation<'a>, PGNParseError> {
+    pub fn from_str<'a>(notation_str: &str) -> Result<Notation, PGNParseError> {
+        // check that str is valid ascii
+        if !notation_str.is_ascii() {
+            let err = PGNParseError::NotationParseError(format!(
+                "Invalid notation string: ({}) is not valid ascii",
+                notation_str
+            ));
+            log::error!("{}", err.to_string());
+            return Err(err);
+        }
+
         // min length is 2 (e.g. 'e4'), max length is 8 if all disambiguating notation is used and position is a check (e.g. 'Qd5xRd1+')
         let str_len = notation_str.len();
         if str_len < 2 || str_len > 8 {
@@ -106,6 +112,19 @@ impl Notation<'_> {
                 PGNParseError::NotationParseError(format!("Invalid notation length ({})", str_len));
             log::error!("{}", err.to_string());
             return Err(err);
+        }
+
+        // create new uninitialised Notation struct
+        let mut notation = Self::new();
+
+        // Handle castling strings
+        // trim check and checkmate chars so that the castle string can be checked in one if statement instead of 3 for each variant
+        let possible_castle_str = notation_str.trim_end_matches(&['+', '#']);
+        if possible_castle_str == "O-O" || possible_castle_str == "O-O" {
+            notation.castle_str = Some(possible_castle_str.to_string());
+            notation.check = notation_str.ends_with('+');
+            notation.checkmate = notation_str.ends_with('#');
+            return Ok(notation);
         }
 
         let mut chars = notation_str.chars();
@@ -215,9 +234,6 @@ impl Notation<'_> {
             }
         }
 
-        // create new uninitialised Notation struct
-        let mut notation = Self::new(bs);
-
         // set piece char if it is valid
         if let Some(piece) = piece_char {
             if notation.is_valid_piece(piece) {
@@ -299,6 +315,52 @@ impl Notation<'_> {
 
         Ok(notation)
     }
+}
+
+impl Notation {
+    pub fn to_string(&self) -> String {
+        let mut notation = String::new();
+
+        // return castling string if it exists
+        if let Some(cs) = &self.castle_str {
+            let mut castle_str = cs.clone();
+            if self.checkmate {
+                castle_str.push('#');
+            } else if self.check {
+                castle_str.push('+');
+            }
+            return castle_str;
+        }
+
+        if let Some(piece) = self.piece {
+            notation.push(piece);
+        }
+        if let Some(dis_rank) = self.dis_rank {
+            notation.push(dis_rank);
+        }
+        if let Some(dis_file) = self.dis_file {
+            notation.push(dis_file);
+        }
+        if self.capture {
+            notation.push('x');
+        }
+        notation.push(self.to_file);
+        notation.push(self.to_rank);
+        if let Some(promotion) = self.promotion {
+            notation.push('=');
+            notation.push(promotion);
+        }
+        if self.checkmate {
+            notation.push('#');
+        } else if self.check {
+            notation.push('+');
+        }
+        notation
+    }
+
+    pub fn to_move(&self) -> Result<&Move, PGNParseError> {
+        todo!()
+    }
 
     #[inline]
     fn is_valid_file(&self, file: char) -> bool {
@@ -328,8 +390,7 @@ mod test {
 
     #[test]
     fn test_notation_new() {
-        let bs = board::BoardState::new_starting();
-        let notation = Notation::new(&bs);
+        let notation = Notation::new();
 
         assert!(notation.piece.is_none());
         assert!(notation.dis_file.is_none());
@@ -345,7 +406,7 @@ mod test {
     #[test]
     fn test_notation_to_string() {
         let bs = board::BoardState::new_starting();
-        let mut notation = Notation::new(&bs);
+        let mut notation = Notation::new();
         notation.piece = Some('N');
         notation.to_file = 'f';
         notation.to_rank = '3';
@@ -366,9 +427,8 @@ mod test {
 
     #[test]
     fn test_notation_from_str() -> Result<(), PGNParseError> {
-        let bs = board::BoardState::new_starting();
         let notation_str = "Qf3xf5+";
-        let notation = Notation::from_str(&bs, notation_str);
+        let notation = Notation::from_str(notation_str);
         match notation {
             Ok(notation) => {
                 assert_eq!(notation.piece, Some('Q'));
