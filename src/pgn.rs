@@ -4,6 +4,7 @@ use std::fmt;
 use crate::board;
 use crate::errors::PGNParseError;
 
+#[derive(Debug)]
 enum Tag {
     Event(String),
     Site(String),
@@ -86,7 +87,12 @@ fn parse_tag(tag: &str) -> Result<Tag, PGNParseError> {
         "White" => Ok(Tag::White(value.to_string())),
         "Black" => Ok(Tag::Black(value.to_string())),
         "Result" => Ok(Tag::Result(value.to_string())),
-        _ => todo!("Handle custom tags"),
+        c => {
+            Ok(Tag::CustomTag {
+                name: c.to_string(),
+                value: value.to_string(),
+            })
+        },
     }
 }
 
