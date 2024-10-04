@@ -1,6 +1,6 @@
 use crate::errors::PGNParseError;
-use crate::movegen::*;
 use crate::{board, util};
+use crate::{movegen::*, BoardState};
 
 pub struct Notation {
     piece: Option<char>,
@@ -15,7 +15,7 @@ pub struct Notation {
     castle_str: Option<String>,
 }
 
-// TODO add end of game notation (1-0, 0-1, 1/2-1/2) draws dont use # only the score
+// TODO end of game notation shouldnt be handled here I think? WIP
 // CONSTRUCTORS
 impl Notation {
     // (private) new uninitialised Notation struct
@@ -116,20 +116,48 @@ impl Notation {
         }
 
         // DISAMBIGUATING MOVES
-        if let PieceType::Pawn = mv.piece.ptype {
-            // pawn moves that are captures or en passants only need dis_file, otherwise only to_file and to_rank are needed
+        // pawn moves that are captures or en passants only need dis_file, otherwise only to_file and to_rank are needed
+        if matches!(mv.piece.ptype, PieceType::Pawn) && notation.capture {
+            // notation.capture is set above in function
             notation.dis_file = Some(util::index_to_file_notation(mv.from));
+        } else {
+            // check if there are any other pieces besides pawns that can move to the same square as the mv.piece
+            let same_piece_moves: Vec<&Move> = legal_moves
+                .iter()
+                .filter(|m| m.piece == mv.piece && m.to == mv.to && m.from != mv.from)
+                .collect();
+            // if there are other pieces that can move to same square
+            if !same_piece_moves.is_empty() {
+                // store the current mv.from square file and rank
+                let mv_from_file = util::index_to_file_notation(mv.from);
+                let mv_from_rank = util::index_to_rank_notation(mv.from);
+                // keep track of whether any of the other moves have the same file or rank as the current mv.from square
+                let mut same_file = false;
+                let mut same_rank = false;
+                // check if any of the other moves have the same file or rank as the current mv.from square
+                for other_mv in same_piece_moves {
+                    let other_mv_from_file = util::index_to_file_notation(other_mv.from);
+                    let other_mv_from_rank = util::index_to_rank_notation(other_mv.from);
+                    if other_mv_from_file == mv_from_file {
+                        same_file = true;
+                    }
+                    if other_mv_from_rank == mv_from_rank {
+                        same_rank = true;
+                    }
+                }
+                // disambiguate the move by setting the file, or setting the rank, or setting both if needed in that order
+                if !same_file && same_rank {
+                    notation.dis_file = Some(mv_from_file);
+                } else if !same_rank && same_file {
+                    notation.dis_rank = Some(mv_from_rank);
+                } else {
+                    notation.dis_file = Some(mv_from_file);
+                    notation.dis_rank = Some(mv_from_rank);
+                }
+            }
         }
 
         Ok(notation)
-    }
-
-    // from move but doesnt need boardstate so it will always use all disambiguation and uses gamestate to determing check/checkmate/end of game
-    pub fn from_mv_no_context(
-        mv: &Move,
-        gamestate: board::GameState,
-    ) -> Result<Notation, PGNParseError> {
-        todo!()
     }
 
     pub fn from_str<'a>(notation_str: &str) -> Result<Notation, PGNParseError> {
@@ -396,7 +424,7 @@ impl Notation {
         notation
     }
 
-    pub fn to_move(&self) -> Result<&Move, PGNParseError> {
+    pub fn to_move(&self, bs: &BoardState) -> Result<&Move, PGNParseError> {
         todo!()
     }
 
