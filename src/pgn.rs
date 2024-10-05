@@ -4,6 +4,7 @@ mod tag;
 mod token;
 
 use std::fmt;
+use std::fs;
 
 use crate::board;
 use crate::errors::PGNParseError;
@@ -12,42 +13,36 @@ use tag::*;
 use token::*;
 
 struct PGN {
-    pgn_string: String,
-    tokens: Tokens,
     tags: Vec<Tag>,
     moves: Vec<Notation>,
     termination_marker: TerminationMarker,
 }
 impl PGN {
-    fn new(pgn: &str) -> Result<Self, PGNParseError> {
+    fn from_str(pgn: &str) -> Result<Self, PGNParseError> {
         let mut new = Self {
-            pgn_string: pgn.to_string(),
-            tokens: Tokens::new(),
             tags: Vec::new(),
             moves: Vec::new(),
             termination_marker: TerminationMarker::InProgress,
         };
-        new.parse()?;
+        let tokens = Tokens::from_pgn_str(pgn);
+        new.tags = tokens.get_tags()?;
+        // new.moves = tokens.get_moves()?;
+        // new.termination_marker = tokens.get_termination_marker()?;
         Ok(new)
-    }
-
-    fn parse(&mut self) -> Result<(), PGNParseError> {
-        self.tags = self.tokens.get_tags()?;
-        //self.moves = self.tokens.get_moves()?;
-        //self.termination_marker = self.tokens.get_termination_marker()?;
-        Ok(())
     }
 
     fn from_board(board: &board::Board) -> Self {
         let mut new = Self {
-            pgn_string: String::new(),
-            tokens: Tokens::new(),
             tags: Vec::new(),
             moves: Vec::new(),
             termination_marker: TerminationMarker::InProgress,
         };
 
         new
+    }
+
+    fn to_string(&self) -> String {
+        todo!()
     }
 
     fn to_board(&self) -> board::Board {
@@ -57,7 +52,9 @@ impl PGN {
 
 #[cfg(test)]
 mod tests {
+    use core::panic;
     use std::fs;
 
     use super::*;
+
 }

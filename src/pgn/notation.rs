@@ -44,7 +44,7 @@ impl Notation {
             Ok(moves) => moves,
             Err(e) => {
                 let err = PGNParseError::NotationParseError(format!(
-                    "Error getting legal moves BoardState->: {}",
+                    "Error getting legal moves in BoardState: {}",
                     e
                 ));
                 log::error!("{}", err.to_string());
@@ -193,7 +193,7 @@ impl Notation {
             return Ok(notation);
         }
 
-        let mut chars = notation_str.chars();
+        let mut chars = notation_str.char_indices();
         let mut rank_file_chars: Vec<char> = Vec::new();
         let mut piece_char: Option<char> = None;
         let mut capture = false;
@@ -201,15 +201,15 @@ impl Notation {
         let mut check = false;
         let mut checkmate = false;
 
-        while let Some(c) = chars.next() {
+        while let Some((i, c)) = chars.next() {
             if c.is_ascii_uppercase() {
                 // handle piece char
                 if piece_char.is_none() {
                     piece_char = Some(c);
                 } else {
                     let err = PGNParseError::NotationParseError(format!(
-                        "Invalid notation, multiple uppercase piece chars ({})",
-                        notation_str
+                        "Invalid notation, multiple uppercase piece chars (char: '{}' at index: {})",
+                        notation_str, i
                     ));
                     log::error!("{}", err.to_string());
                     return Err(err);
@@ -221,8 +221,8 @@ impl Notation {
                     capture = true;
                 } else {
                     let err = PGNParseError::NotationParseError(format!(
-                        "Invalid notation, multiple capture chars ({})",
-                        notation_str
+                        "Invalid notation, multiple capture chars (char: '{}' at index: {})",
+                        notation_str, i
                     ));
                     log::error!("{}", err.to_string());
                     return Err(err);
@@ -236,14 +236,14 @@ impl Notation {
                     // make sure there is a next char when reading promotion piece and unwrapping, if not, return error
                     let n = chars.next();
                     match n {
-                        Some(c) => match c {
+                        Some((_, c)) => match c {
                             'Q' | 'R' | 'B' | 'N' => {
                                 promotion = Some(c);
                             }
                             _ => {
                                 let err = PGNParseError::NotationParseError(format!(
-                                    "Invalid promotion piece ({})",
-                                    c
+                                    "Invalid promotion piece (char: '{}' at index: {})",
+                                    c, i
                                 ));
                                 log::error!("{}", err.to_string());
                                 return Err(err);
@@ -251,8 +251,8 @@ impl Notation {
                         },
                         None => {
                             let err = PGNParseError::NotationParseError(format!(
-                                "Invalid notation, no promotion piece after '=' ({})",
-                                notation_str
+                                "Invalid notation, no promotion piece after '=' (char: '{}' at index: {})",
+                                notation_str, i
                             ));
                             log::error!("{}", err.to_string());
                             return Err(err);
@@ -260,8 +260,8 @@ impl Notation {
                     }
                 } else {
                     let err = PGNParseError::NotationParseError(format!(
-                        "Invalid notation, multiple promotion chars ({})",
-                        notation_str
+                        "Invalid notation, multiple promotion chars (char: '{}' at index: {})",
+                        notation_str, i
                     ));
                     log::error!("{}", err.to_string());
                     return Err(err);
@@ -271,8 +271,8 @@ impl Notation {
                     check = true;
                 } else {
                     let err = PGNParseError::NotationParseError(format!(
-                        "Invalid notation, multiple check chars ({})",
-                        notation_str
+                        "Invalid notation, multiple check chars (char: '{}' at index: {})",
+                        notation_str, i
                     ));
                     log::error!("{}", err.to_string());
                     return Err(err);
@@ -283,8 +283,8 @@ impl Notation {
                     checkmate = true;
                 } else {
                     let err = PGNParseError::NotationParseError(format!(
-                        "Invalid notation, multiple checkmate chars ({})",
-                        notation_str
+                        "Invalid notation, multiple checkmate chars (char: '{}' at index: {})",
+                        notation_str, i
                     ));
                     log::error!("{}", err.to_string());
                     return Err(err);
@@ -292,8 +292,8 @@ impl Notation {
                 break;
             } else {
                 let err = PGNParseError::NotationParseError(format!(
-                    "Invalid character in notation ({})",
-                    c
+                    "Invalid character in notation (char: '{}' at index: {})",
+                    c, i
                 ));
                 log::error!("{}", err.to_string());
                 return Err(err);
@@ -335,8 +335,8 @@ impl Notation {
             to_rank = rank_file_chars[3];
         } else {
             let err = PGNParseError::NotationParseError(format!(
-                "Invalid move notation ({})",
-                notation_str
+                "Invalid move notation char(s) ({:?})",
+                rank_file_chars
             ));
             log::error!("{}", err.to_string());
             return Err(err);
@@ -424,8 +424,20 @@ impl Notation {
         notation
     }
 
+    // tries to find a move, and disambiguates as best as possible, for use in PGN import format so if it is missing some disambiguating information but the move can still be identified, it is fine
     pub fn to_move(&self, bs: &BoardState) -> Result<&Move, PGNParseError> {
-        todo!()
+        let legal_moves = match bs.get_legal_moves() {
+            Ok(moves) => moves,
+            Err(e) => {
+                let err = PGNParseError::NotationParseError(format!(
+                    "Error getting legal moves in BoardState: {}",
+                    e
+                ));
+                log::error!("{}", err.to_string());
+                return Err(err);
+            }
+        };
+        Ok(&NULL_MOVE)
     }
 
     #[inline]

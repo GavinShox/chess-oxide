@@ -1,5 +1,6 @@
 use std::{fmt, ops::Deref};
 
+use super::notation::*;
 use super::tag::*;
 use crate::errors::PGNParseError;
 
@@ -52,6 +53,11 @@ impl Tokens {
             }
         }
         Ok(tags)
+    }
+
+    pub fn get_moves(&self) -> Result<Vec<Notation>, PGNParseError> {
+        // for now trim comments and variations from the movetext, and simply trim the move numbers
+        todo!()
     }
 }
 impl Deref for Tokens {
