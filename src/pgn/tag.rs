@@ -36,9 +36,9 @@ impl fmt::Display for Tag {
 
 pub fn parse_tag(tag: &str) -> Result<Tag, PGNParseError> {
     let tag_str = tag.trim_matches(&['[', ']']).trim();
-    let parts = tag_str.split_once(' ').unwrap(); // TODO handle error, dont just unwrap
-    let name = parts.0.trim();
-    let value = parts.1.trim().trim_matches('"');
+    let mut parts = tag_str.splitn(2, ' ').map(str::trim);
+    let name = parts.next().unwrap();
+    let value = parts.next().unwrap().trim_matches('"');
     match name {
         "Event" => Ok(Tag::Event(value.to_string())),
         "Site" => Ok(Tag::Site(value.to_string())),
@@ -60,7 +60,7 @@ mod test {
 
     #[test]
     fn test_parse_tag() {
-        let tag_str = "[Event \"Test Game\"]";
+        let tag_str = "[Event    \"Test Game\"]"; // multiple spaces between tag and value should be parsed correctly
         let tag = parse_tag(tag_str).unwrap();
 
         match tag {
