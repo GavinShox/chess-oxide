@@ -1,0 +1,71 @@
+use std::fmt;
+
+use crate::errors::PGNParseError;
+
+#[derive(Debug)]
+pub struct CustomTag {
+    name: String,
+    value: String,
+}
+
+#[derive(Debug)]
+pub enum Tag {
+    Event(String),
+    Site(String),
+    Date(String),
+    Round(String),
+    White(String),
+    Black(String),
+    Result(String),
+    CustomTag { name: String, value: String },
+}
+impl fmt::Display for Tag {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        match self {
+            Tag::Event(value) => write!(f, "[Event \"{}\"]", value),
+            Tag::Site(value) => write!(f, "[Site \"{}\"]", value),
+            Tag::Date(value) => write!(f, "[Date \"{}\"]", value),
+            Tag::Round(value) => write!(f, "[Round \"{}\"]", value),
+            Tag::White(value) => write!(f, "[White \"{}\"]", value),
+            Tag::Black(value) => write!(f, "[Black \"{}\"]", value),
+            Tag::Result(value) => write!(f, "[Result \"{}\"]", value),
+            Tag::CustomTag { name, value } => write!(f, "[{} \"{}\"]", name, value),
+        }
+    }
+}
+
+pub fn parse_tag(tag: &str) -> Result<Tag, PGNParseError> {
+    let tag_str = tag.trim_matches(&['[', ']']).trim();
+    let parts = tag_str.split_once(' ').unwrap(); // TODO handle error, dont just unwrap
+    let name = parts.0.trim();
+    let value = parts.1.trim().trim_matches('"');
+    match name {
+        "Event" => Ok(Tag::Event(value.to_string())),
+        "Site" => Ok(Tag::Site(value.to_string())),
+        "Date" => Ok(Tag::Date(value.to_string())),
+        "Round" => Ok(Tag::Round(value.to_string())),
+        "White" => Ok(Tag::White(value.to_string())),
+        "Black" => Ok(Tag::Black(value.to_string())),
+        "Result" => Ok(Tag::Result(value.to_string())),
+        c => Ok(Tag::CustomTag {
+            name: c.to_string(),
+            value: value.to_string(),
+        }),
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    #[test]
+    fn test_parse_tag() {
+        let tag_str = "[Event \"Test Game\"]";
+        let tag = parse_tag(tag_str).unwrap();
+
+        match tag {
+            Tag::Event(value) => assert_eq!(value, "Test Game"),
+            _ => panic!("Parsed tag is not an Event"),
+        }
+    }
+}
