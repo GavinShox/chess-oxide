@@ -37,8 +37,15 @@ impl fmt::Display for Tag {
 pub fn parse_tag(tag: &str) -> Result<Tag, PGNParseError> {
     let tag_str = tag.trim_matches(&['[', ']']).trim();
     let mut parts = tag_str.splitn(2, ' ').map(str::trim);
-    let name = parts.next().unwrap();
-    let value = parts.next().unwrap().trim_matches('"');
+
+    let name = match parts.next() {
+        Some(name) => name,
+        None => return Err(PGNParseError::InvalidTag(tag.to_string())),
+    };
+    let value = match parts.next() {
+        Some(value) => value.trim_matches('"'),
+        None => return Err(PGNParseError::InvalidTag(tag.to_string())),
+    };
     match name {
         "Event" => Ok(Tag::Event(value.to_string())),
         "Site" => Ok(Tag::Site(value.to_string())),
