@@ -184,7 +184,7 @@ impl Notation {
         // Handle castling strings
         // trim check and checkmate chars so that the castle string can be checked in one if statement instead of 3 for each variant
         let possible_castle_str = notation_str.trim_end_matches(&['+', '#']);
-        if possible_castle_str == "O-O" || possible_castle_str == "O-O" {
+        if possible_castle_str == "O-O" || possible_castle_str == "O-O-O" {
             notation.castle_str = Some(possible_castle_str.to_string());
             notation.check = notation_str.ends_with('+');
             notation.checkmate = notation_str.ends_with('#');
