@@ -56,5 +56,4 @@ mod tests {
     use std::fs;
 
     use super::*;
-
 }

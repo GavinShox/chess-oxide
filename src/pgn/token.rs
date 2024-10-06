@@ -1,3 +1,4 @@
+use std::vec;
 use std::{fmt, ops::Deref};
 
 use super::notation::*;
@@ -14,6 +15,12 @@ impl Token {
             value: value.to_string(),
         }
     }
+    fn is_game_termination_marker(&self) -> bool {
+        self.value == TerminationMarker::WhiteWins.to_string()
+            || self.value == TerminationMarker::BlackWins.to_string()
+            || self.value == TerminationMarker::Draw.to_string()
+            || self.value == TerminationMarker::InProgress.to_string()
+    }
 }
 
 #[derive(Debug)]
@@ -21,10 +28,6 @@ pub struct Tokens {
     tokens: Vec<Token>,
 }
 impl Tokens {
-    pub fn new() -> Self {
-        Self { tokens: Vec::new() }
-    }
-
     pub fn from_vec(tokens: Vec<Token>) -> Self {
         Self { tokens }
     }
@@ -55,11 +58,41 @@ impl Tokens {
         Ok(tags)
     }
 
-    pub fn get_moves(&self) -> Result<Vec<Notation>, PGNParseError> {
-        // for now trim comments and variations from the movetext, and simply trim the move numbers
-        todo!()
+    pub fn get_move_notations(&self) -> Result<Vec<Notation>, PGNParseError> {
+        // for now trim comments, variations and move numbers from the movetext as we won't use them for now
+        let mut move_tokens = self.tokens.clone();
+        let delimiters = vec![("(", ")"), ("{", "}"), ("[", "]"), ("<", ">")];
+        for delimiter in delimiters {
+            let mut new_tokens = Vec::new();
+            let mut in_delimiter = false;
+            for token in move_tokens {
+                if token.value == delimiter.0 {
+                    in_delimiter = true;
+                } else if token.value == delimiter.1 {
+                    in_delimiter = false;
+                } else if !in_delimiter {
+                    new_tokens.push(token.clone());
+                }
+            }
+            move_tokens = new_tokens;
+        }
+        // remove all single character tokens that are left
+        move_tokens.retain(|token| token.value.len() > 1);
+        // remove move numbers
+        move_tokens.retain(|token| !token.value.chars().all(|c| c.is_ascii_digit()));
+        // remove game termination marker
+        move_tokens.retain(|token| !token.is_game_termination_marker());
+
+        let mut notations = Vec::new();
+        for token in move_tokens {
+            let notation = Notation::from_str(&token.value)?;
+            notations.push(notation);
+        }
+
+        Ok(notations)
     }
 }
+
 impl Deref for Tokens {
     type Target = Vec<Token>;
 
@@ -255,5 +288,28 @@ mod test {
             Tag::Event(value) => assert_eq!(value, "Token Test Game"),
             _ => panic!("Parsed tag is not an Event"),
         }
+    }
+
+    #[test]
+    fn test_tokens_get_move_notations() {
+        let tokens_vec = vec![
+            Token::new("1"),
+            Token::new("."),
+            Token::new(" "),
+            Token::new("e4"),
+            Token::new(" "),
+            Token::new("e5"),
+            Token::new(" "),
+            Token::new("Q1d7+"),
+            Token::new("1-0"),
+        ];
+        let tokens = Tokens::from_vec(tokens_vec);
+        let notations = tokens.get_move_notations().unwrap();
+
+        assert_eq!(notations.len(), 3);
+        assert_eq!(notations[0], Notation::from_str("e4").unwrap());
+        assert_eq!(notations[1], Notation::from_str("e5").unwrap());
+        assert_eq!(notations[2], Notation::from_str("Q1d7+").unwrap());
+        println!("{:?}", notations[2]);
     }
 }

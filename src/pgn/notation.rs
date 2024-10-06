@@ -2,6 +2,7 @@ use crate::errors::PGNParseError;
 use crate::{board, util};
 use crate::{movegen::*, BoardState};
 
+#[derive(Debug, PartialEq, Eq, Clone)]
 pub struct Notation {
     piece: Option<char>,
     dis_file: Option<char>, // for disambiguating moves if required
@@ -483,7 +484,6 @@ mod test {
 
     #[test]
     fn test_notation_to_string() {
-        let bs = board::BoardState::new_starting();
         let mut notation = Notation::new();
         notation.piece = Some('N');
         notation.to_file = 'f';
