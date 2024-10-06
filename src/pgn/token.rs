@@ -16,10 +16,7 @@ impl Token {
         }
     }
     fn is_game_termination_marker(&self) -> bool {
-        self.value == TerminationMarker::WhiteWins.to_string()
-            || self.value == TerminationMarker::BlackWins.to_string()
-            || self.value == TerminationMarker::Draw.to_string()
-            || self.value == TerminationMarker::InProgress.to_string()
+        self.value == "1-0" || self.value == "0-1" || self.value == "1/2-1/2" || self.value == "*"
     }
 }
 
@@ -101,23 +98,6 @@ impl Deref for Tokens {
     }
 }
 
-pub enum TerminationMarker {
-    WhiteWins,
-    BlackWins,
-    Draw,
-    InProgress,
-}
-impl fmt::Display for TerminationMarker {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        match self {
-            TerminationMarker::WhiteWins => write!(f, "1-0"),
-            TerminationMarker::BlackWins => write!(f, "0-1"),
-            TerminationMarker::Draw => write!(f, "1/2-1/2"),
-            TerminationMarker::InProgress => write!(f, "*"),
-        }
-    }
-}
-
 fn tokenize(pgn: &str) -> Vec<Token> {
     if !pgn.is_ascii() {
         panic!("PGN must be ASCII");
@@ -140,7 +120,6 @@ fn tokenize(pgn: &str) -> Vec<Token> {
 }
 
 fn is_pgn_delimiter(prev_char: char, c: char) -> bool {
-    assert!(c.is_ascii());
     c.is_ascii_whitespace()
         || c == '.'
         || c == ')'

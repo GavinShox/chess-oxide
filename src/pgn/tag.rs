@@ -1,6 +1,6 @@
 use std::fmt;
 
-use crate::errors::PGNParseError;
+use crate::{errors::PGNParseError, log_and_return_error};
 
 #[derive(Debug)]
 pub struct CustomTag {
@@ -40,11 +40,17 @@ pub fn parse_tag(tag: &str) -> Result<Tag, PGNParseError> {
 
     let name = match parts.next() {
         Some(name) => name,
-        None => return Err(PGNParseError::InvalidTag(tag.to_string())),
+        None => {
+            let err = PGNParseError::InvalidTag(format!("Tag {} has invalid name", tag));
+            log_and_return_error!(err)
+        }
     };
     let value = match parts.next() {
         Some(value) => value.trim_matches('"'),
-        None => return Err(PGNParseError::InvalidTag(tag.to_string())),
+        None => {
+            let err = PGNParseError::InvalidTag(format!("Tag {} has invalid value", tag));
+            log_and_return_error!(err)
+        }
     };
     match name {
         "Event" => Ok(Tag::Event(value.to_string())),

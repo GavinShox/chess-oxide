@@ -1,6 +1,7 @@
 pub mod board;
 mod engine;
 mod errors;
+mod macros;
 mod magic;
 mod mailbox;
 mod movegen;

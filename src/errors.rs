@@ -43,6 +43,7 @@ impl error::Error for FenParseError {}
 pub enum PGNParseError {
     InvalidTag(String),
     NotationParseError(String),
+    FileError(String),
 }
 
 impl fmt::Display for PGNParseError {
@@ -50,6 +51,7 @@ impl fmt::Display for PGNParseError {
         match self {
             PGNParseError::InvalidTag(s) => write!(f, "Invalid tag: {}", s),
             PGNParseError::NotationParseError(s) => write!(f, "Error parsing notation: {}", s),
+            PGNParseError::FileError(s) => write!(f, "Error reading file: {}", s),
         }
     }
 }

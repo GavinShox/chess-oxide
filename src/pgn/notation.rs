@@ -1,4 +1,5 @@
 use crate::errors::PGNParseError;
+use crate::log_and_return_error;
 use crate::{board, util};
 use crate::{movegen::*, BoardState};
 
@@ -48,8 +49,7 @@ impl Notation {
                     "Error getting legal moves in BoardState: {}",
                     e
                 ));
-                log::error!("{}", err.to_string());
-                return Err(err);
+                log_and_return_error!(err)
             }
         };
 
@@ -67,8 +67,7 @@ impl Notation {
             }
         } else {
             let err = PGNParseError::NotationParseError(format!("Move not legal: {:?}", mv));
-            log::error!("{}", err.to_string());
-            return Err(err);
+            log_and_return_error!(err);
         }
 
         // set castling string if it is a castling move and return
@@ -168,8 +167,7 @@ impl Notation {
                 "Invalid notation string: ({}) is not valid ascii",
                 notation_str
             ));
-            log::error!("{}", err.to_string());
-            return Err(err);
+            log_and_return_error!(err)
         }
 
         // min length is 2 (e.g. 'e4'), max length is 8 if all disambiguating notation is used and position is a check (e.g. 'Qd5xRd1+')
@@ -177,8 +175,7 @@ impl Notation {
         if str_len < 2 || str_len > 8 {
             let err =
                 PGNParseError::NotationParseError(format!("Invalid notation length ({})", str_len));
-            log::error!("{}", err.to_string());
-            return Err(err);
+            log_and_return_error!(err)
         }
 
         // create new uninitialised Notation struct
@@ -212,8 +209,7 @@ impl Notation {
                         "Invalid notation, multiple uppercase piece chars (char: '{}' at index: {})",
                         notation_str, i
                     ));
-                    log::error!("{}", err.to_string());
-                    return Err(err);
+                    log_and_return_error!(err)
                 }
             } else if c == 'x' {
                 // handle captures
@@ -225,8 +221,7 @@ impl Notation {
                         "Invalid notation, multiple capture chars (char: '{}' at index: {})",
                         notation_str, i
                     ));
-                    log::error!("{}", err.to_string());
-                    return Err(err);
+                    log_and_return_error!(err)
                 }
             } else if c.is_ascii_lowercase() || c.is_ascii_digit() {
                 // handle rank and file chars
@@ -246,8 +241,7 @@ impl Notation {
                                     "Invalid promotion piece (char: '{}' at index: {})",
                                     c, i
                                 ));
-                                log::error!("{}", err.to_string());
-                                return Err(err);
+                                log_and_return_error!(err)
                             }
                         },
                         None => {
@@ -255,8 +249,7 @@ impl Notation {
                                 "Invalid notation, no promotion piece after '=' (char: '{}' at index: {})",
                                 notation_str, i
                             ));
-                            log::error!("{}", err.to_string());
-                            return Err(err);
+                            log_and_return_error!(err)
                         }
                     }
                 } else {
@@ -264,8 +257,7 @@ impl Notation {
                         "Invalid notation, multiple promotion chars (char: '{}' at index: {})",
                         notation_str, i
                     ));
-                    log::error!("{}", err.to_string());
-                    return Err(err);
+                    log_and_return_error!(err)
                 }
             } else if c == '+' {
                 if !check {
@@ -275,8 +267,7 @@ impl Notation {
                         "Invalid notation, multiple check chars (char: '{}' at index: {})",
                         notation_str, i
                     ));
-                    log::error!("{}", err.to_string());
-                    return Err(err);
+                    log_and_return_error!(err)
                 }
                 break;
             } else if c == '#' {
@@ -287,8 +278,7 @@ impl Notation {
                         "Invalid notation, multiple checkmate chars (char: '{}' at index: {})",
                         notation_str, i
                     ));
-                    log::error!("{}", err.to_string());
-                    return Err(err);
+                    log_and_return_error!(err)
                 }
                 break;
             } else {
@@ -296,8 +286,7 @@ impl Notation {
                     "Invalid character in notation (char: '{}' at index: {})",
                     c, i
                 ));
-                log::error!("{}", err.to_string());
-                return Err(err);
+                log_and_return_error!(err)
             }
         }
 
@@ -308,8 +297,7 @@ impl Notation {
             } else {
                 let err =
                     PGNParseError::NotationParseError(format!("Invalid piece char ({})", piece));
-                log::error!("{}", err.to_string());
-                return Err(err);
+                log_and_return_error!(err)
             }
         }
 
@@ -339,8 +327,7 @@ impl Notation {
                 "Invalid move notation char(s) ({:?})",
                 rank_file_chars
             ));
-            log::error!("{}", err.to_string());
-            return Err(err);
+            log_and_return_error!(err)
         }
         // set rank and file chars if they are all valid
         if !notation.is_valid_file(to_file)
@@ -352,8 +339,7 @@ impl Notation {
                 "Invalid rank or file char(s) in vec: ({:?})",
                 rank_file_chars
             ));
-            log::error!("{}", err.to_string());
-            return Err(err);
+            log_and_return_error!(err)
         } else {
             notation.to_file = to_file;
             notation.to_rank = to_rank;
@@ -370,8 +356,7 @@ impl Notation {
                     "Invalid promotion piece char ({})",
                     promotion
                 ));
-                log::error!("{}", err.to_string());
-                return Err(err);
+                log_and_return_error!(err)
             }
         }
 
@@ -434,8 +419,7 @@ impl Notation {
                     "Error getting legal moves in BoardState: {}",
                     e
                 ));
-                log::error!("{}", err.to_string());
-                return Err(err);
+                log_and_return_error!(err)
             }
         };
         Ok(&NULL_MOVE)

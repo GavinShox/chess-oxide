@@ -1,6 +1,5 @@
 use core::fmt;
 use std::rc::Rc;
-use std::str::FromStr;
 
 use ahash;
 use log;
@@ -8,6 +7,7 @@ use log;
 use crate::engine;
 use crate::errors::BoardStateError;
 use crate::errors::FenParseError;
+use crate::log_and_return_error;
 use crate::movegen::*;
 use crate::position::*;
 use crate::transposition;
@@ -132,12 +132,11 @@ impl BoardState {
                 }
             }
             if wking_num > 1 || bking_num > 1 {
-                let err_msg = format!(
+                let err = FenParseError(format!(
                     "Multiple kings (white: {}, black: {}) in FEN: {}",
                     wking_num, bking_num, fen
-                );
-                log::error!("{}", err_msg);
-                return Err(FenParseError(err_msg));
+                ));
+                log_and_return_error!(err)
             }
         }
 
@@ -158,9 +157,9 @@ impl BoardState {
             halfmove_count = match fen_vec[4].parse::<u32>() {
                 Ok(halfmove_count) => halfmove_count,
                 Err(_) => {
-                    let err_msg = format!("Error parsing halfmove count: {}", fen_vec[4]);
-                    log::error!("{}", err_msg);
-                    return Err(FenParseError(err_msg));
+                    let err =
+                        FenParseError(format!("Error parsing halfmove count: {}", fen_vec[4]));
+                    log_and_return_error!(err)
                 }
             };
 
@@ -168,9 +167,9 @@ impl BoardState {
                 move_count = match fen_vec[5].parse::<u32>() {
                     Ok(move_count) => move_count,
                     Err(_) => {
-                        let err_msg = format!("Error parsing move count: {}", fen_vec[5]);
-                        log::error!("{}", err_msg);
-                        return Err(FenParseError(err_msg));
+                        let err =
+                            FenParseError(format!("Error parsing move count: {}", fen_vec[5]));
+                        log_and_return_error!(err)
                     }
                 };
             }
@@ -208,9 +207,8 @@ impl BoardState {
 
     pub fn find_move_from_notation(&self, notation: &str) -> Result<&Move, BoardStateError> {
         if self.lazy_legal_moves {
-            let err_msg = "find_move_from_notation called on BoardState with lazy_legal_moves flag set, cannot find move without all legal moves generated.".to_string();
-            log::error!("{}", err_msg);
-            return Err(BoardStateError::MoveNotFound(err_msg));
+            let err = BoardStateError::MoveNotFound("find_move_from_notation called on BoardState with lazy_legal_moves flag set, cannot find move without all legal moves generated.".to_string());
+            log_and_return_error!(err)
         }
         let mut chars = notation.chars();
         let piece = chars.next();
@@ -220,9 +218,10 @@ impl BoardState {
 
     pub fn last_move_as_notation(&self) -> Result<String, BoardStateError> {
         if self.last_move == NULL_MOVE {
-            return Err(BoardStateError::NullMove(
+            let err = BoardStateError::NullMove(
                 "last_move is NULL_MOVE, has a move been made yet?".to_string(),
-            ));
+            );
+            log_and_return_error!(err)
         }
 
         let notation_from = util::index_to_notation(self.last_move.from);
@@ -358,20 +357,18 @@ impl BoardState {
 
     pub fn next_state(&self, mv: &Move) -> Result<Self, BoardStateError> {
         if mv == &NULL_MOVE {
-            let err_msg =
-                "&NULL_MOVE was passed as an argument to BoardState::next_state()".to_string();
-            log::error!("{}", err_msg);
-            return Err(BoardStateError::NullMove(err_msg));
+            let err = BoardStateError::NullMove(
+                "&NULL_MOVE was passed as an argument to BoardState::next_state()".to_string(),
+            );
+            log_and_return_error!(err)
         }
         if self.lazy_legal_moves {
-            let err_msg = "next_state called on BoardState with lazy_legal_moves flag set, cannot generate next state without all legal moves being generated.".to_string();
-            log::error!("{}", err_msg);
-            return Err(BoardStateError::LazyIncompatiblity(err_msg));
+            let err = BoardStateError::LazyIncompatiblity("next_state called on BoardState with lazy_legal_moves flag set, cannot generate next state without all legal moves being generated.".to_string());
+            log_and_return_error!(err)
         }
         if !self.legal_moves.contains(mv) {
-            let err_msg = format!("{:?} is not a legal move", mv);
-            log::error!("{}", err_msg);
-            return Err(BoardStateError::IllegalMove(err_msg));
+            let err = BoardStateError::IllegalMove(format!("{:?} is not a legal move", mv));
+            log_and_return_error!(err)
         }
 
         let current_game_state = self.get_gamestate();
@@ -382,8 +379,7 @@ impl BoardState {
             || current_game_state == GameState::Repetition
         {
             let err = BoardStateError::NoLegalMoves(current_game_state);
-            log::error!("{}", err.to_string());
-            return Err(err);
+            log_and_return_error!(err)
         }
 
         let position = self.position.new_position(mv);
@@ -452,8 +448,7 @@ impl BoardState {
     pub fn get_legal_moves(&self) -> Result<&[Move], BoardStateError> {
         if self.lazy_legal_moves {
             let err = BoardStateError::LazyIncompatiblity("get_legal_moves called on BoardState with lazy_legal_moves flag set, legal_moves vec is empty".to_string());
-            log::error!("{}", err.to_string());
-            return Err(err);
+            log_and_return_error!(err)
         }
         Ok(&self.legal_moves)
     }
