@@ -25,10 +25,6 @@ pub struct Tokens {
     tokens: Vec<Token>,
 }
 impl Tokens {
-    pub fn from_vec(tokens: Vec<Token>) -> Self {
-        Self { tokens }
-    }
-
     pub fn from_pgn_str(pgn: &str) -> Self {
         Self {
             tokens: tokenize(pgn),
@@ -89,7 +85,7 @@ impl Tokens {
         Ok(notations)
     }
 }
-
+// calling .iter() on Tokens will iterator over the inner Vec
 impl Deref for Tokens {
     type Target = Vec<Token>;
 
@@ -259,7 +255,7 @@ mod test {
             Token::new("\""),
             Token::new("]"),
         ];
-        let tokens = Tokens::from_vec(tokens_vec);
+        let tokens = Tokens { tokens: tokens_vec };
         let tags = tokens.get_tags().unwrap();
 
         assert_eq!(tags.len(), 1);
@@ -282,7 +278,7 @@ mod test {
             Token::new("Q1d7+"),
             Token::new("1-0"),
         ];
-        let tokens = Tokens::from_vec(tokens_vec);
+        let tokens = Tokens { tokens: tokens_vec };
         let notations = tokens.get_move_notations().unwrap();
 
         assert_eq!(notations.len(), 3);

@@ -36,12 +36,38 @@ impl PGN {
         let tokens = Tokens::from_pgn_str(pgn);
         new.tags = tokens.get_tags()?;
         new.moves = tokens.get_move_notations()?;
-        // new.termination_marker = tokens.get_termination_marker()?;
-        Ok(new)
+        if !new.check_required_tags() {
+            log_and_return_error!(PGNParseError::InvalidTag(
+                "PGN is missing required tags".to_string()
+            ));
+        } else {
+            Ok(new)
+        }
     }
 
-    fn is_valid(&self) -> bool {
-        todo!()
+    fn check_required_tags(&self) -> bool {
+        let mut has_event = false;
+        let mut has_site = false;
+        let mut has_date = false;
+        let mut has_round = false;
+        let mut has_white = false;
+        let mut has_black = false;
+        let mut has_result = false;
+
+        for tag in &self.tags {
+            match tag {
+                Tag::Event(_) => has_event = true,
+                Tag::Site(_) => has_site = true,
+                Tag::Date(_) => has_date = true,
+                Tag::Round(_) => has_round = true,
+                Tag::White(_) => has_white = true,
+                Tag::Black(_) => has_black = true,
+                Tag::Result(_) => has_result = true,
+                _ => {}
+            }
+        }
+
+        has_event && has_site && has_date && has_round && has_white && has_black && has_result
     }
 
     fn from_board(board: &board::Board) -> Self {
