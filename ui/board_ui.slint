@@ -30,7 +30,6 @@ export struct Piece_UI {
 export struct Move_UI {
     from-square: int,
     to-square: int,
-    string: string,
 }
 
 export struct MoveNotation_UI {
@@ -957,7 +956,7 @@ export component Board_UI inherits Window {
         self.selected-from-square = -1;
         self.selected-to-square = -1;
         self.engine-made-move = true;
-        self.last-move = { from-square: -1, to-square: -1, string: "" };
+        self.last-move = { from-square: -1, to-square: -1 };
         root.player-colour = player-colour;
 
         refresh-position();

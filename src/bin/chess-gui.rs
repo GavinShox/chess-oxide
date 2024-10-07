@@ -143,14 +143,13 @@ fn main() -> Result<(), slint::PlatformError> {
         let pos = std::rc::Rc::new(slint::VecModel::from(ui_position));
 
         // generate move history as vector of move notations
-        let mut ui_moves: Vec<SharedString> = board_refresh_position
+        let ui_moves: Vec<SharedString> = board_refresh_position
             .lock()
             .unwrap()
-            .state_history
+            .move_history_as_notation()
             .iter()
-            .map(|x| x.last_move_as_notation().unwrap_or("".into()).into())
+            .map(|x| x.into())
             .collect();
-        ui_moves.remove(0); // remove first null move empty string
 
         let mut ui_move_history: Vec<MoveNotationUI> = vec![];
         for (i, chunk) in ui_moves.chunks(2).enumerate() {
@@ -213,25 +212,17 @@ fn main() -> Result<(), slint::PlatformError> {
                 .unwrap()
                 .current_state
                 .last_move;
-            let last_move_notation = board_refresh_position
-                .lock()
-                .unwrap()
-                .current_state
-                .last_move_as_notation()
-                .unwrap();
 
             if ui.get_player_colour() == PieceColour_UI::Black {
                 // reverse index if player is black as the board is flipped
                 ui.set_last_move(Move_UI {
                     from_square: 63 - last_move.from as i32,
                     to_square: 63 - last_move.to as i32,
-                    string: last_move_notation.into(),
                 });
             } else {
                 ui.set_last_move(Move_UI {
                     from_square: last_move.from as i32,
                     to_square: last_move.to as i32,
-                    string: last_move_notation.into(),
                 });
             }
         }

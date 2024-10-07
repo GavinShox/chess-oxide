@@ -1,5 +1,5 @@
 // Implementing standard from <https://ia902908.us.archive.org/26/items/pgn-standard-1994-03-12/PGN_standard_1994-03-12.txt>
-mod notation;
+pub mod notation;
 mod tag;
 mod token;
 

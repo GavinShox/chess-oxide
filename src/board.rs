@@ -7,8 +7,10 @@ use log;
 use crate::engine;
 use crate::errors::BoardStateError;
 use crate::errors::FenParseError;
+use crate::errors::PGNParseError;
 use crate::log_and_return_error;
 use crate::movegen::*;
+use crate::pgn::notation::Notation;
 use crate::position::*;
 use crate::transposition;
 use crate::util;
@@ -203,78 +205,6 @@ impl BoardState {
 
     pub fn get_pseudo_legal_moves(&self) -> &Vec<Move> {
         self.position.get_pseudo_legal_moves()
-    }
-
-    pub fn find_move_from_notation(&self, notation: &str) -> Result<&Move, BoardStateError> {
-        if self.lazy_legal_moves {
-            let err = BoardStateError::MoveNotFound("find_move_from_notation called on BoardState with lazy_legal_moves flag set, cannot find move without all legal moves generated.".to_string());
-            log_and_return_error!(err)
-        }
-        let mut chars = notation.chars();
-        let piece = chars.next();
-
-        Ok(&NULL_MOVE)
-    }
-
-    pub fn last_move_as_notation(&self) -> Result<String, BoardStateError> {
-        if self.last_move == NULL_MOVE {
-            let err = BoardStateError::NullMove(
-                "last_move is NULL_MOVE, has a move been made yet?".to_string(),
-            );
-            log_and_return_error!(err)
-        }
-
-        let notation_from = util::index_to_notation(self.last_move.from);
-        let notation_to = util::index_to_notation(self.last_move.to);
-
-        let get_piece_str = |ptype: PieceType| -> String {
-            match ptype {
-                PieceType::Pawn => notation_from.chars().next().unwrap().to_string(), // get pawns rank
-                PieceType::Knight => "N".to_string(),
-                PieceType::Bishop => "B".to_string(),
-                PieceType::Rook => "R".to_string(),
-                PieceType::Queen => "Q".to_string(),
-                PieceType::King => "K".to_string(),
-            }
-        };
-
-        let piece_str = get_piece_str(self.last_move.piece.ptype);
-
-        let notation = match self.last_move.move_type {
-            MoveType::EnPassant(ep) => format!("{}x{}", piece_str, util::index_to_notation(ep)),
-            MoveType::Promotion(promotion_type, capture) => match capture {
-                Some(_) => {
-                    format!(
-                        "{}x{}={}",
-                        piece_str,
-                        notation_to,
-                        get_piece_str(promotion_type)
-                    )
-                }
-                None => {
-                    format!("{}={}", notation_to, get_piece_str(promotion_type))
-                }
-            },
-            MoveType::Castle(castle_move) => {
-                if castle_move.rook_from.abs_diff(castle_move.rook_to) == 3 {
-                    "O-O-O".to_string()
-                } else {
-                    "O-O".to_string()
-                }
-            }
-            MoveType::DoublePawnPush => notation_to,
-            MoveType::PawnPush => notation_to,
-            MoveType::Capture(_) => format!("{}x{}", piece_str, notation_to),
-            MoveType::Normal => format!("{}{}", piece_str, notation_to),
-            MoveType::None => "".to_string(),
-        };
-        if self.get_gamestate() == GameState::Checkmate {
-            Ok(format!("{}#", notation))
-        } else if self.get_gamestate() == GameState::Check {
-            Ok(format!("{}+", notation))
-        } else {
-            Ok(notation)
-        }
     }
 
     // checks if a move would create a legal position, does not check for boardstate legality
@@ -531,6 +461,7 @@ impl BoardState {
 pub struct Board {
     pub current_state: BoardState,
     pub state_history: Vec<BoardState>,
+    pub move_history: Vec<Move>,
     transposition_table: transposition::TranspositionTable,
 }
 
@@ -543,7 +474,6 @@ impl Default for Board {
 impl Board {
     pub fn new() -> Self {
         let current_state = BoardState::new_starting();
-
         let mut state_history: Vec<BoardState> = Vec::new();
         log::info!("State history created");
         state_history.push(current_state.clone());
@@ -554,9 +484,11 @@ impl Board {
         Board {
             current_state,
             state_history,
+            move_history: Vec::new(),
             transposition_table,
         }
     }
+
     pub fn from_fen(fen: &str) -> Result<Self, FenParseError> {
         let current_state = BoardState::from_fen(fen)?;
         let state_history: Vec<BoardState> = vec![current_state.clone()];
@@ -566,6 +498,7 @@ impl Board {
         Ok(Board {
             current_state,
             state_history,
+            move_history: Vec::new(),
             transposition_table,
         })
     }
@@ -574,16 +507,11 @@ impl Board {
         self.current_state.to_fen()
     }
 
-    pub fn branch(&self, _branch_state: Rc<BoardState>) -> Self {
-        // TODO, clone from specific state in state_history. Will probably need to store data differently like position_occurences
-        // probably will have to go through all position hashes after the branch node, and remove occurences one by one
-        todo!()
-    }
-
     pub fn make_move(&mut self, mv: &Move) -> Result<GameState, BoardStateError> {
         let next_state = self.current_state.next_state(mv)?;
         self.current_state = next_state;
         self.state_history.push(self.current_state.clone());
+        self.move_history.push(*mv);
 
         let game_state = self.current_state.get_gamestate();
         //println!("FEN: {}", self.to_fen());
@@ -598,6 +526,16 @@ impl Board {
         log::info!("Engine move chosen: {:?} @ eval: {}", engine_move, eval);
 
         self.make_move(&mv)
+    }
+
+    pub fn move_history_as_notation(&self) -> Vec<String> {
+        let mut notations = Vec::new();
+        for (state, mv) in self.state_history.iter().zip(self.move_history.iter()) {
+            // move will all be legal, so unwrap is safe
+            let notation = Notation::from_mv_with_context(state, mv).unwrap();
+            notations.push(notation.to_string());
+        }
+        notations
     }
 
     pub fn unmake_move(&mut self) -> Result<Rc<BoardState>, BoardStateError> {
