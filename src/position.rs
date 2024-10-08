@@ -582,7 +582,7 @@ impl Position {
 
         // fourth field of FEN defines en passant flag, it gives notation of the square the pawn jumped over
         if fen_vec[3] != "-" {
-            let ep_mv_idx = util::notation_to_index(fen_vec[3]);
+            let ep_mv_idx = util::notation_to_index(fen_vec[3])?;
 
             // error if index is out of bounds. FEN defines the index behind the pawn that moved, so valid indexes are only 16->47 (excluded top and bottom two ranks)
             if !(16..=47).contains(&ep_mv_idx) {

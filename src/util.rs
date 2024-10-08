@@ -1,13 +1,23 @@
+use crate::errors::FenParseError;
 use crate::movegen::{PieceColour, PieceType, Square};
-use crate::BoardState;
+use crate::{log_and_return_error, BoardState};
 
-// TODO Add error handling for invalid str and usizes
 #[inline]
-pub fn notation_to_index(n: &str) -> usize {
+pub fn notation_to_index(n: &str) -> Result<usize, FenParseError> {
+    if n.len() != 2
+        || n.chars().nth(0).unwrap() < 'a'
+        || n.chars().nth(0).unwrap() > 'h'
+        || n.chars().nth(1).unwrap() < '1'
+        || n.chars().nth(1).unwrap() > '8'
+    {
+        log_and_return_error!(FenParseError(format!(
+            "Invalid notation ({}) when converting to index:",
+            n
+        )))
+    }
     let file: char = n.chars().next().unwrap();
     let rank: char = n.chars().nth(1).unwrap();
     let rank_starts = [56, 48, 40, 32, 24, 16, 8, 0]; // 1st to 8th rank starting indexes
-
     let file_offset = match file {
         'a' => 0,
         'b' => 1,
@@ -17,9 +27,10 @@ pub fn notation_to_index(n: &str) -> usize {
         'f' => 5,
         'g' => 6,
         'h' => 7,
-        _ => 0,
+        _ => unreachable!(), // see error checking at start of function
     };
-    file_offset + rank_starts[(rank.to_digit(10).unwrap() - 1) as usize]
+    let rank_digit = rank.to_digit(10).unwrap();
+    Ok(file_offset + rank_starts[(rank_digit - 1) as usize])
 }
 
 #[inline]
