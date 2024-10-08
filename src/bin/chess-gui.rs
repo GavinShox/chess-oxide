@@ -1,10 +1,3 @@
-// #![allow(warnings)]
-//#![allow(unused_must_use)]
-
-// #[global_allocator]
-// static GLOBAL: jemallocator::Jemalloc = jemallocator::Jemalloc;
-
-use chess::*;
 use env_logger::{Builder, Target};
 use slint::{ComponentHandle, SharedString};
 use std::env;
@@ -26,59 +19,23 @@ fn ui_convert_piece_colour(colour: chess::PieceColour) -> PieceColourUI {
 }
 
 fn ui_convert_piece(piece: chess::Piece) -> PieceUI {
-    match piece.pcolour {
-        chess::PieceColour::White => match piece.ptype {
-            chess::PieceType::Pawn => PieceUI {
-                piece_colour: PieceColourUI::White,
-                piece_type: PieceTypeUI::Pawn,
-            },
-            chess::PieceType::Bishop => PieceUI {
-                piece_colour: PieceColourUI::White,
-                piece_type: PieceTypeUI::Bishop,
-            },
-            chess::PieceType::Knight => PieceUI {
-                piece_colour: PieceColourUI::White,
-                piece_type: PieceTypeUI::Knight,
-            },
-            chess::PieceType::Rook => PieceUI {
-                piece_colour: PieceColourUI::White,
-                piece_type: PieceTypeUI::Rook,
-            },
-            chess::PieceType::Queen => PieceUI {
-                piece_colour: PieceColourUI::White,
-                piece_type: PieceTypeUI::Queen,
-            },
-            chess::PieceType::King => PieceUI {
-                piece_colour: PieceColourUI::White,
-                piece_type: PieceTypeUI::King,
-            },
-        },
-        chess::PieceColour::Black => match piece.ptype {
-            chess::PieceType::Pawn => PieceUI {
-                piece_colour: PieceColourUI::Black,
-                piece_type: PieceTypeUI::Pawn,
-            },
-            chess::PieceType::Knight => PieceUI {
-                piece_colour: PieceColourUI::Black,
-                piece_type: PieceTypeUI::Knight,
-            },
-            chess::PieceType::Bishop => PieceUI {
-                piece_colour: PieceColourUI::Black,
-                piece_type: PieceTypeUI::Bishop,
-            },
-            chess::PieceType::Rook => PieceUI {
-                piece_colour: PieceColourUI::Black,
-                piece_type: PieceTypeUI::Rook,
-            },
-            chess::PieceType::Queen => PieceUI {
-                piece_colour: PieceColourUI::Black,
-                piece_type: PieceTypeUI::Queen,
-            },
-            chess::PieceType::King => PieceUI {
-                piece_colour: PieceColourUI::Black,
-                piece_type: PieceTypeUI::King,
-            },
-        },
+    let piece_colour = match piece.pcolour {
+        chess::PieceColour::White => PieceColourUI::White,
+        chess::PieceColour::Black => PieceColourUI::Black,
+    };
+
+    let piece_type = match piece.ptype {
+        chess::PieceType::Pawn => PieceTypeUI::Pawn,
+        chess::PieceType::Bishop => PieceTypeUI::Bishop,
+        chess::PieceType::Knight => PieceTypeUI::Knight,
+        chess::PieceType::Rook => PieceTypeUI::Rook,
+        chess::PieceType::Queen => PieceTypeUI::Queen,
+        chess::PieceType::King => PieceTypeUI::King,
+    };
+
+    PieceUI {
+        piece_colour,
+        piece_type,
     }
 }
 
@@ -89,11 +46,11 @@ fn main() -> Result<(), slint::PlatformError> {
     builder.target(Target::Stdout);
     builder.init();
 
-    let board = Arc::new(Mutex::new(Board::new()));
+    let board = Arc::new(Mutex::new(chess::Board::new()));
 
-    let ui = Board_UI::new().unwrap();
-    let import_fen_dialog = ImportFen_UI::new().unwrap();
-    let settings_dialog = SettingsDialog_UI::new().unwrap();
+    let ui = Board_UI::new()?;
+    let import_fen_dialog = ImportFen_UI::new()?;
+    let settings_dialog = SettingsDialog_UI::new()?;
 
     let ui_weak_get_gamestate = ui.as_weak();
     let board_get_gamestate = board.clone();
@@ -113,7 +70,7 @@ fn main() -> Result<(), slint::PlatformError> {
     let board_new_game = board.clone();
     ui.on_new_game(move || {
         let ui = ui_weak_new_game.upgrade().unwrap();
-        *board_new_game.lock().unwrap() = board::Board::new();
+        *board_new_game.lock().unwrap() = chess::board::Board::new();
         ui.invoke_refresh_position();
     });
 
@@ -205,7 +162,7 @@ fn main() -> Result<(), slint::PlatformError> {
             .unwrap()
             .current_state
             .last_move
-            != NULL_MOVE
+            != chess::NULL_MOVE
         {
             let last_move = board_refresh_position
                 .lock()
@@ -236,7 +193,7 @@ fn main() -> Result<(), slint::PlatformError> {
 
         let from = ui.get_selected_from_square();
         let to = ui.get_selected_to_square();
-        let mut legal_mv: chess::Move = NULL_MOVE;
+        let mut legal_mv: chess::Move = chess::NULL_MOVE;
 
         for mv in board_make_move
             .lock()
@@ -263,7 +220,7 @@ fn main() -> Result<(), slint::PlatformError> {
     let board_engine_make_move = board.clone();
     ui.on_engine_make_move(move || {
         let ui = ui_weak_engine_make_move.clone();
-        let bmem: Arc<Mutex<Board>> = board_engine_make_move.clone();
+        let bmem: Arc<Mutex<chess::Board>> = board_engine_make_move.clone();
         let depth = ui
             .upgrade()
             .unwrap()
@@ -309,7 +266,7 @@ fn main() -> Result<(), slint::PlatformError> {
         let import_fen_dialog = import_fen_dialog_weak_import.upgrade().unwrap();
         let ui = ui_weak_import_fen.upgrade().unwrap();
 
-        let new_board = match board::Board::from_fen(&fen.trim()) {
+        let new_board = match chess::board::Board::from_fen(&fen.trim()) {
             Ok(b) => {
                 import_fen_dialog.set_error(false);
                 import_fen_dialog.set_fen_str("".into());
