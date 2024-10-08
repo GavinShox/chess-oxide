@@ -751,6 +751,7 @@ name = "chess-oxide"
 version = "0.2.3"
 dependencies = [
  "ahash",
+ "chrono",
  "env_logger",
  "log",
  "rand",

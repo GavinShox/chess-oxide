@@ -103,7 +103,7 @@ fn main() -> Result<(), slint::PlatformError> {
         let ui_moves: Vec<SharedString> = board_refresh_position
             .lock()
             .unwrap()
-            .move_history_as_notation()
+            .move_history_string_notation()
             .iter()
             .map(|x| x.into())
             .collect();

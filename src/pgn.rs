@@ -7,9 +7,13 @@ use std::fmt;
 use std::fs;
 use std::path::Path;
 
+use chrono::prelude::*;
+
 use crate::board;
 use crate::errors::PGNParseError;
 use crate::log_and_return_error;
+use crate::GameState;
+use crate::PieceColour;
 use notation::*;
 use tag::*;
 use token::*;
@@ -76,11 +80,77 @@ impl PGN {
             moves: Vec::new(),
         };
 
+        new.tags.push(Tag::Event("Chess Oxide Export".to_string()));
+        new.tags.push(Tag::Site("chess-oxide".to_string()));
+
+        // set date tag
+        let date_time = Local::now();
+        let date = date_time.format("%Y.%m.%d").to_string();
+        new.tags.push(Tag::Date(date));
+
+        new.tags.push(Tag::Round("?".to_string()));
+        new.tags.push(Tag::White("?".to_string()));
+        new.tags.push(Tag::Black("?".to_string()));
+
+        // set result tag based on game state
+        let gs = board.get_gamestate();
+        if gs.is_draw() {
+            new.tags.push(Tag::Result("1/2-1/2".to_string()));
+        } else if gs.is_game_over() {
+            if board.current_state.side_to_move == PieceColour::White {
+                new.tags.push(Tag::Result("0-1".to_string()));
+            } else {
+                new.tags.push(Tag::Result("1-0".to_string()));
+            }
+        } else {
+            new.tags.push(Tag::Result("*".to_string()));
+        }
+        // set a custom field for the FEN of starting position, state_history[0] is guaranteed to be initialised
+        new.tags.push(Tag::CustomTag {
+            name: "FEN".to_string(),
+            value: board.get_starting().to_fen(),
+        });
+
+        new.moves = board.move_history_notation();
+
         new
     }
 
     fn to_string(&self) -> String {
-        todo!()
+        let mut sorted_tags = self.tags.to_vec();
+        sorted_tags.sort();
+
+        let mut pgn = String::new();
+        for tag in &sorted_tags {
+            pgn.push_str(&format!("{}\n", tag));
+        }
+        pgn.push('\n');
+        // wrap lines at 80 characters
+        let mut chars_since_newline = 0;
+        for (i, mv) in self.moves.iter().enumerate() {
+            if chars_since_newline >= 80 {
+                pgn.push('\n');
+                chars_since_newline = 0;
+            }
+            if i % 2 == 0 {
+                let str = format!("{}.", i / 2 + 1);
+                pgn.push_str(&str);
+                chars_since_newline += str.len();
+            }
+            let mv_str = mv.to_string();
+            pgn.push_str(&format!("{} ", mv_str));
+            chars_since_newline += mv_str.len() + 1;
+        }
+        let termination_indicator = match self.tags.iter().find(|tag| match tag {
+            Tag::Result(_) => true,
+            _ => false,
+        }) {
+            Some(Tag::Result(result)) => result,
+            _ => "*",
+        };
+        pgn.push_str(&format!(" {}\n", termination_indicator));
+
+        pgn
     }
 
     fn to_board(&self) -> board::Board {
@@ -96,6 +166,11 @@ mod tests {
     fn test_pgn_from_file() {
         let pgn = PGN::from_file(Path::new("test_data/test.pgn")).unwrap();
         println!("{:#?}", pgn);
+        println!("{}", pgn.to_string());
+
+        let from_board = board::Board::new();
+        let from_board_pgn = PGN::from_board(&from_board);
+        println!("{}", from_board_pgn.to_string());
 
         assert_eq!(pgn.tags.len(), 10);
         assert_eq!(pgn.moves.len(), 115);

@@ -507,6 +507,10 @@ impl Board {
         self.current_state.to_fen()
     }
 
+    pub fn get_starting(&self) -> &BoardState {
+        &self.state_history[0]
+    }
+
     pub fn make_move(&mut self, mv: &Move) -> Result<GameState, BoardStateError> {
         let next_state = self.current_state.next_state(mv)?;
         self.current_state = next_state;
@@ -528,12 +532,21 @@ impl Board {
         self.make_move(&mv)
     }
 
-    pub fn move_history_as_notation(&self) -> Vec<String> {
+    pub fn move_history_string_notation(&self) -> Vec<String> {
+        let mut notations_string = Vec::new();
+        let notations = self.move_history_notation();
+        for n in notations {
+            notations_string.push(n.to_string());
+        }
+        notations_string
+    }
+
+    pub fn move_history_notation(&self) -> Vec<Notation> {
         let mut notations = Vec::new();
         for (state, mv) in self.state_history.iter().zip(self.move_history.iter()) {
             // move will all be legal, so unwrap is safe
             let notation = Notation::from_mv_with_context(state, mv).unwrap();
-            notations.push(notation.to_string());
+            notations.push(notation);
         }
         notations
     }

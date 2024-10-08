@@ -2,13 +2,13 @@ use std::fmt;
 
 use crate::{errors::PGNParseError, log_and_return_error};
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct CustomTag {
     name: String,
     value: String,
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq, Ord, Eq, PartialOrd, Clone)]
 pub enum Tag {
     Event(String),
     Site(String),
