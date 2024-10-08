@@ -94,7 +94,7 @@ mod tests {
 
     #[test]
     fn test_pgn_from_file() {
-        let pgn = PGN::from_file(Path::new("test.pgn")).unwrap();
+        let pgn = PGN::from_file(Path::new("test_data/test.pgn")).unwrap();
         println!("{:#?}", pgn);
 
         assert_eq!(pgn.tags.len(), 10);
