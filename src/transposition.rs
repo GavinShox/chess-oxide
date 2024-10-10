@@ -9,11 +9,10 @@ use crate::{util, ShortMove, NULL_SHORT_MOVE};
 const DEFAULT_TABLE_SIZE_MB: usize = 200; // in MiB
 const NUM_BUCKETS: usize = 3;
 const UNINIT_ENTRY: TableEntry = TableEntry {
-    bound_type: BoundType::Exact,
+    bound_type: BoundType::Invalid,
     depth: 0,
     eval: 0,
     mv: NULL_SHORT_MOVE,
-    valid: false,
 };
 
 // TT with generic type T as TableEntry
@@ -26,11 +25,12 @@ pub trait TTData {
     fn is_empty(&self) -> bool;
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub enum BoundType {
     Exact,
     Lower,
     Upper,
+    Invalid,
 }
 
 // TODO detect checkmate distance
@@ -40,7 +40,6 @@ pub struct TableEntry {
     pub depth: u8,
     pub eval: i32,
     pub mv: ShortMove,
-    pub valid: bool,
 }
 impl TTData for TableEntry {
     fn new() -> Self {
@@ -52,7 +51,7 @@ impl TTData for TableEntry {
     }
 
     fn is_empty(&self) -> bool {
-        !self.valid
+        self.bound_type == BoundType::Invalid
     }
 }
 
@@ -69,7 +68,6 @@ impl<T: TTData + Copy + Clone> TT<T> {
 
     pub fn with_size(size_mb: usize) -> Self {
         let table = vec![Entry::<T>::new(); Self::mb_to_len(size_mb)];
-        //table.shrink_to_fit();
         Self {
             table,
             entry_count: 0,
@@ -164,7 +162,7 @@ impl<T: TTData + Copy + Clone> Entry<T> {
                 idx = i;
             }
         }
-        let was_empty = self.buckets[idx].data.is_empty();
+        let was_empty = self.buckets[idx].hash == 0;
         self.buckets[idx].hash = hash;
         self.buckets[idx].data = data;
         if !was_empty {

@@ -270,6 +270,9 @@ fn negamax(
                 BoundType::Upper => {
                     beta = cmp::min(beta, entry.eval);
                 }
+                _ => {
+                    unreachable!("Invalid bound type returned in transposition table entry");
+                }
             }
             if alpha >= beta {
                 return entry.eval;
@@ -359,7 +362,6 @@ fn negamax(
         depth,
         eval: max_eval,
         mv: best_move,
-        valid: true,
     };
     // set bound type to Upper or Lower, otherwise it stays Exact
     if entry.eval <= alpha_orig {
