@@ -17,7 +17,6 @@ pub struct Notation {
     castle_str: Option<String>,
 }
 
-// TODO end of game notation shouldnt be handled here I think? WIP
 // CONSTRUCTORS
 impl Notation {
     // (private) new uninitialised Notation struct
@@ -142,9 +141,9 @@ impl Notation {
                     }
                 }
                 // disambiguate the move by setting the file, or setting the rank, or setting both if needed in that order
-                if !same_file && same_rank {
+                if !same_file {
                     notation.dis_file = Some(mv_from_file);
-                } else if !same_rank && same_file {
+                } else if !same_rank {
                     notation.dis_rank = Some(mv_from_rank);
                 } else {
                     notation.dis_file = Some(mv_from_file);

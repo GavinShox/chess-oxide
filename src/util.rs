@@ -200,6 +200,7 @@ pub fn low_bits(x: u64) -> u32 {
 }
 
 // return pretty-print string of a hash (full width hex hash)
+#[inline(always)]
 pub fn hash_to_string(hash: u64) -> String {
     format!("{:016x}", hash)
 }
