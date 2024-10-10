@@ -8,7 +8,6 @@ pub enum BoardStateError {
     IllegalMove(String),
     NullMove(String),
     NoLegalMoves(GameState),
-    MoveNotFound(String),
     LazyIncompatiblity(String),
 }
 
@@ -18,7 +17,6 @@ impl fmt::Display for BoardStateError {
             BoardStateError::IllegalMove(s) => write!(f, "Illegal move: {}", s),
             BoardStateError::NullMove(s) => write!(f, "Null move: {}", s),
             BoardStateError::NoLegalMoves(gs) => write!(f, "No legal moves in GameState: {}", gs),
-            BoardStateError::MoveNotFound(s) => write!(f, "Move not found: {}", s),
             BoardStateError::LazyIncompatiblity(s) => {
                 write!(f, "Lazy legal move generation incompatibility: {}", s)
             }
@@ -44,6 +42,7 @@ pub enum PGNParseError {
     InvalidTag(String),
     NotationParseError(String),
     FileError(String),
+    MoveNotFound(String),
 }
 
 impl fmt::Display for PGNParseError {
@@ -52,6 +51,7 @@ impl fmt::Display for PGNParseError {
             PGNParseError::InvalidTag(s) => write!(f, "Invalid tag: {}", s),
             PGNParseError::NotationParseError(s) => write!(f, "Error parsing notation: {}", s),
             PGNParseError::FileError(s) => write!(f, "Error reading file: {}", s),
+            PGNParseError::MoveNotFound(s) => write!(f, "Move not found: {}", s),
         }
     }
 }

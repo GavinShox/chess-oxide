@@ -178,6 +178,15 @@ pub enum MoveType {
     Normal,
     None, // used to represent null move, or moves that are only used in generating defend map, and are not actually possible to play
 }
+impl MoveType {
+    #[inline]
+    pub fn is_capture(&self) -> bool {
+        matches!(
+            self,
+            MoveType::Capture(_) | MoveType::EnPassant(_) | MoveType::Promotion(_, Some(_))
+        )
+    }
+}
 
 pub trait MoveMap {
     fn add_move(&mut self, _: &Move);

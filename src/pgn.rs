@@ -153,8 +153,16 @@ impl PGN {
         pgn
     }
 
-    fn to_board(&self) -> board::Board {
-        board::Board::new()
+    fn to_board(&self) -> Result<board::Board, PGNParseError> {
+        let mut board = board::Board::new();
+        for notation in &self.moves {
+            let mv = notation.to_move(&board.current_state)?;
+            match board.make_move(&mv) {
+                Ok(_) => {}
+                Err(e) => log_and_return_error!(PGNParseError::NotationParseError(e.to_string())),
+            }
+        }
+        Ok(board)
     }
 }
 
@@ -171,6 +179,12 @@ mod tests {
         let from_board = board::Board::new();
         let from_board_pgn = PGN::from_board(&from_board);
         println!("{}", from_board_pgn.to_string());
+
+        let b1 = pgn.to_board().unwrap();
+        println!("{}", pgn.to_string());
+        let pgn1 = PGN::from_board(&b1);
+        println!("{}", pgn1.to_string());
+        println!("{}", b1.get_gamestate());
 
         assert_eq!(pgn.tags.len(), 10);
         assert_eq!(pgn.moves.len(), 115);

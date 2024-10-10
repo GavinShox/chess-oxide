@@ -95,11 +95,7 @@ impl Notation {
         notation.to_rank = util::index_to_rank_notation(mv.to);
 
         // SET CAPTURE FLAG (Normal capture, en passant capture, or promotion capture)
-        notation.capture = match mv.move_type {
-            MoveType::Capture(_) | MoveType::EnPassant(_) => true,
-            MoveType::Promotion(_, cap) => cap.is_some(),
-            _ => false,
-        };
+        notation.capture = mv.move_type.is_capture();
 
         // SET PROMOTION CHAR
         if let MoveType::Promotion(prom, _) = mv.move_type {
@@ -411,7 +407,7 @@ impl Notation {
     }
 
     // tries to find a move, and disambiguates as best as possible, for use in PGN import format so if it is missing some disambiguating information but the move can still be identified, it is fine
-    pub fn to_move(&self, bs: &BoardState) -> Result<&Move, PGNParseError> {
+    pub fn to_move(&self, bs: &BoardState) -> Result<Move, PGNParseError> {
         let legal_moves = match bs.get_legal_moves() {
             Ok(moves) => moves,
             Err(e) => {
@@ -422,7 +418,140 @@ impl Notation {
                 log_and_return_error!(err)
             }
         };
-        Ok(&NULL_MOVE)
+
+        if let Some(castle_str) = &self.castle_str {
+            let castle_side = match castle_str.as_str() {
+                "O-O" => CastleSide::Short,
+                "O-O-O" => CastleSide::Long,
+                _ => {
+                    let err = PGNParseError::NotationParseError(format!(
+                        "Unreachable code: Invalid castle string ({}) in to_move function",
+                        &castle_str
+                    ));
+                    log_and_return_error!(err)
+                }
+            };
+            for mv in legal_moves {
+                if let MoveType::Castle(cm) = mv.move_type {
+                    if cm.get_castle_side() == castle_side {
+                        return Ok(*mv);
+                    }
+                }
+            }
+            let err = PGNParseError::MoveNotFound(format!(
+                "No legal move found for castle notation ({}) in BoardState (hash: {:016x})",
+                &castle_str, bs.board_hash
+            ));
+            log_and_return_error!(err)
+        } else {
+            let possible_moves = legal_moves
+                .iter()
+                .filter(|mv| {
+                    if let Some(piece) = self.piece {
+                        if mv.piece.ptype
+                            != match piece {
+                                'N' => PieceType::Knight,
+                                'B' => PieceType::Bishop,
+                                'R' => PieceType::Rook,
+                                'Q' => PieceType::Queen,
+                                'K' => PieceType::King,
+                                _ => {
+                                    unreachable!("Invalid piece char in to_move function");
+                                }
+                            }
+                        {
+                            return false;
+                        }
+                    } else {
+                        // PAWN HANDLING - no piece char can only be a castle move which is already handled, or a pawn move
+                        if mv.piece.ptype != PieceType::Pawn {
+                            return false;
+                        }
+                    }
+
+                    if self.to_file != util::index_to_file_notation(mv.to)
+                        || self.to_rank != util::index_to_rank_notation(mv.to)
+                    {
+                        return false;
+                    }
+                    if self.capture && !mv.move_type.is_capture() {
+                        return false;
+                    }
+                    if let Some(promotion) = self.promotion {
+                        if let MoveType::Promotion(promotion_ptype, _) = mv.move_type {
+                            if promotion_ptype
+                                != match promotion {
+                                    'Q' => PieceType::Queen,
+                                    'R' => PieceType::Rook,
+                                    'B' => PieceType::Bishop,
+                                    'N' => PieceType::Knight,
+                                    _ => unreachable!("Invalid promotion char in to_move function"),
+                                }
+                            {
+                                return false;
+                            }
+                        } else {
+                            return false;
+                        }
+                    }
+                    // if move passes all checks, return true
+                    true
+                })
+                .collect::<Vec<&Move>>();
+            if possible_moves.len() == 1 {
+                return Ok(*possible_moves[0]);
+            } else if possible_moves.len() > 1 {
+                let mut dis_file_possible_idxs = None;
+                let mut dis_rank_possible_idxs = None;
+
+                if let Some(dis_file_char) = self.dis_file {
+                    dis_file_possible_idxs =
+                        Some(util::file_notation_to_indexes_unchecked(dis_file_char));
+                }
+                if let Some(dis_rank_char) = self.dis_rank {
+                    dis_rank_possible_idxs =
+                        Some(util::rank_notation_to_indexes_unchecked(dis_rank_char));
+                }
+
+                let mut possible_dis_moves = Vec::new();
+                for mv in &possible_moves {
+                    if dis_file_possible_idxs.is_some() && dis_rank_possible_idxs.is_some() {
+                        if dis_file_possible_idxs.unwrap().contains(&mv.from)
+                            && dis_rank_possible_idxs.unwrap().contains(&mv.from)
+                        {
+                            possible_dis_moves.push(*mv);
+                        }
+                    } else if let Some(dis_file_idxs) = dis_file_possible_idxs {
+                        if dis_file_idxs.contains(&mv.from) {
+                            possible_dis_moves.push(*mv);
+                        }
+                    } else if let Some(dis_rank_idxs) = dis_rank_possible_idxs {
+                        if dis_rank_idxs.contains(&mv.from) {
+                            possible_dis_moves.push(*mv);
+                        }
+                    }
+                }
+
+                if possible_dis_moves.len() == 1 {
+                    return Ok(*possible_dis_moves[0]);
+                } else {
+                    let err = PGNParseError::MoveNotFound(format!(
+                        "No legal move found for notation ({}) in BoardState (hash: {:016x}) => Could not use notation to disambiguate between multiple possible moves: {:?}",
+                        self.to_string(),
+                        bs.board_hash,
+                        possible_moves
+                    ));
+                    log_and_return_error!(err)
+                }
+            } else {
+                let err = PGNParseError::MoveNotFound(format!(
+                    "No legal move found for notation ({}) in BoardState (hash: {:016x})",
+                    self.to_string(),
+                    bs.board_hash
+                ));
+                log_and_return_error!(err)
+            }
+        }
     }
 
     #[inline]
