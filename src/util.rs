@@ -330,4 +330,10 @@ mod tests {
         assert_eq!(low_bits(0x123456789ABCDEF0), 0x9ABCDEF0);
         assert_eq!(low_bits(0xFFFFFFFFFFFFFFFF), 0xFFFFFFFF);
     }
+
+    #[test]
+    fn test_hash_to_string() {
+        assert_eq!(hash_to_string(0x123456789ABCDEF0), "123456789abcdef0");
+        assert_eq!(hash_to_string(0xFFFFFFFFFFFFFF), "00ffffffffffffff");
+    }
 }
