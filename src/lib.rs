@@ -14,4 +14,7 @@ mod zobrist;
 
 pub mod test;
 
-pub use {board::*, movegen::*, perft::*, position::*, transposition::*, util::print_board};
+pub use {
+    board::*, movegen::*, perft::*, position::*, transposition::*, util::hash_to_string,
+    util::print_board,
+};

@@ -93,7 +93,7 @@ impl PGN {
         new.tags.push(Tag::Black("?".to_string()));
 
         // set result tag based on game state
-        let gs = board.get_gamestate();
+        let gs = board.get_current_gamestate();
         if gs.is_draw() {
             new.tags.push(Tag::Result("1/2-1/2".to_string()));
         } else if gs.is_game_over() {
@@ -184,7 +184,7 @@ mod tests {
         println!("{}", pgn.to_string());
         let pgn1 = PGN::from_board(&b1);
         println!("{}", pgn1.to_string());
-        println!("{}", b1.get_gamestate());
+        println!("{}", b1.get_current_gamestate());
 
         assert_eq!(pgn.tags.len(), 10);
         assert_eq!(pgn.moves.len(), 115);

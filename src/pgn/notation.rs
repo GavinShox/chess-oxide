@@ -1,6 +1,6 @@
 use crate::errors::PGNParseError;
-use crate::log_and_return_error;
 use crate::{board, util};
+use crate::{hash_to_string, log_and_return_error};
 use crate::{movegen::*, BoardState};
 
 #[derive(Debug, PartialEq, Eq, Clone)]
@@ -439,8 +439,9 @@ impl Notation {
                 }
             }
             let err = PGNParseError::MoveNotFound(format!(
-                "No legal move found for castle notation ({}) in BoardState (hash: {:016x})",
-                &castle_str, bs.board_hash
+                "No legal move found for castle notation ({}) in BoardState (hash: {})",
+                &castle_str,
+                hash_to_string(bs.board_hash)
             ));
             log_and_return_error!(err)
         } else {
@@ -536,18 +537,18 @@ impl Notation {
                     return Ok(*possible_dis_moves[0]);
                 } else {
                     let err = PGNParseError::MoveNotFound(format!(
-                        "No legal move found for notation ({}) in BoardState (hash: {:016x}) => Could not use notation to disambiguate between multiple possible moves: {:?}",
+                        "No legal move found for notation ({}) in BoardState (hash: {}) => Could not use notation to disambiguate between multiple possible moves: {:?}",
                         self.to_string(),
-                        bs.board_hash,
+                        hash_to_string(bs.board_hash),
                         possible_moves
                     ));
                     log_and_return_error!(err)
                 }
             } else {
                 let err = PGNParseError::MoveNotFound(format!(
-                    "No legal move found for notation ({}) in BoardState (hash: {:016x})",
+                    "No legal move found for notation ({}) in BoardState (hash: {})",
                     self.to_string(),
-                    bs.board_hash
+                    hash_to_string(bs.board_hash)
                 ));
                 log_and_return_error!(err)
             }

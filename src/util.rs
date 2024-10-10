@@ -198,6 +198,12 @@ pub fn low_bits(x: u64) -> u32 {
     // type casting to u32 truncates the high bits
     x as u32
 }
+
+// return pretty-print string of a hash (full width hex hash)
+pub fn hash_to_string(hash: u64) -> String {
+    format!("{:016x}", hash)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

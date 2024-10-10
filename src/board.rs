@@ -231,7 +231,10 @@ impl BoardState {
             self.position_hash,
             mv,
         );
-        log::trace!("New position hash generated: {:016x}", position_hash);
+        log::trace!(
+            "New position hash generated: {}",
+            util::hash_to_string(position_hash)
+        );
         let side_to_move = position.side;
         let last_move = *mv;
         // deref all legal moves
@@ -259,7 +262,7 @@ impl BoardState {
 
         let board_hash = zobrist::board_state_hash(position_hash, *po, halfmove_count);
         //let board_hash = position_hash ^ (*po as u64) ^ (halfmove_count as u64);
-        log::trace!("Board hash: {:016x}", board_hash);
+        log::trace!("Board hash: {}", util::hash_to_string(board_hash));
 
         log::trace!("New BoardState created from move: {:?}", mv);
         Self {
@@ -320,7 +323,10 @@ impl BoardState {
             self.position_hash,
             mv,
         );
-        log::trace!("New position hash generated: {:016x}", position_hash);
+        log::trace!(
+            "New position hash generated: {}",
+            util::hash_to_string(position_hash)
+        );
         let side_to_move = position.side;
         let last_move = *mv;
         // deref all legal moves
@@ -349,7 +355,7 @@ impl BoardState {
 
         let board_hash = zobrist::board_state_hash(position_hash, *po, halfmove_count);
         //let board_hash = position_hash ^ (*po as u64) ^ (halfmove_count as u64);
-        log::trace!("Board hash: {:016x}", board_hash);
+        log::trace!("Board hash: {}", util::hash_to_string(board_hash));
 
         log::trace!("New BoardState created from move: {:?}", mv);
         Ok(Self {
@@ -460,6 +466,7 @@ impl BoardState {
 #[derive(Debug)]
 pub struct Board {
     pub current_state: BoardState,
+    pub detached_idx: Option<usize>,
     pub state_history: Vec<BoardState>,
     pub move_history: Vec<Move>,
     transposition_table: transposition::TranspositionTable,
@@ -483,6 +490,7 @@ impl Board {
         log::info!("New Board created");
         Board {
             current_state,
+            detached_idx: None,
             state_history,
             move_history: Vec::new(),
             transposition_table,
@@ -497,6 +505,7 @@ impl Board {
         log::info!("New Board created from FEN: {}", fen);
         Ok(Board {
             current_state,
+            detached_idx: None,
             state_history,
             move_history: Vec::new(),
             transposition_table,
@@ -508,6 +517,7 @@ impl Board {
     }
 
     pub fn get_starting(&self) -> &BoardState {
+        // first element in state_history is guarenteed to be initialised as starting BoardState
         &self.state_history[0]
     }
 
@@ -555,7 +565,7 @@ impl Board {
         todo!()
     }
 
-    pub fn get_gamestate(&self) -> GameState {
+    pub fn get_current_gamestate(&self) -> GameState {
         self.current_state.get_gamestate()
     }
 }

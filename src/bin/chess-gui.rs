@@ -1,3 +1,4 @@
+use chess::hash_to_string;
 use env_logger::{Builder, Target};
 use slint::{ComponentHandle, SharedString};
 use std::env;
@@ -139,21 +140,25 @@ fn main() -> Result<(), slint::PlatformError> {
                 .into(),
         );
         log::debug!(
-            "FEN: {} generated from boardstate with hash: {:016x}",
+            "FEN: {} generated from boardstate with hash: {}",
             ui.get_fen(),
-            board_refresh_position
-                .lock()
-                .unwrap()
-                .current_state
-                .board_hash
+            hash_to_string(
+                board_refresh_position
+                    .lock()
+                    .unwrap()
+                    .current_state
+                    .board_hash
+            )
         );
         log::debug!(
-            "Current position hash: {:016x}",
-            board_refresh_position
-                .lock()
-                .unwrap()
-                .current_state
-                .position_hash
+            "Current position hash: {}",
+            hash_to_string(
+                board_refresh_position
+                    .lock()
+                    .unwrap()
+                    .current_state
+                    .position_hash
+            )
         );
 
         // only set last move in GUI if it is not NULL_MOVE, then unwrap() is safe
