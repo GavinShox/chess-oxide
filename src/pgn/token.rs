@@ -1,5 +1,5 @@
+use std::ops::Deref;
 use std::vec;
-use std::{fmt, ops::Deref};
 
 use super::notation::*;
 use super::tag::*;

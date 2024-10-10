@@ -10,6 +10,7 @@ use crate::errors::FenParseError;
 use crate::errors::PGNParseError;
 use crate::log_and_return_error;
 use crate::movegen::*;
+use crate::pgn;
 use crate::pgn::notation::Notation;
 use crate::position::*;
 use crate::transposition;
@@ -372,14 +373,14 @@ impl BoardState {
         })
     }
 
-    fn gen_legal_moves(&mut self) {
-        self.legal_moves = self
-            .position
-            .get_legal_moves()
-            .into_iter()
-            .cloned()
-            .collect();
-    }
+    // fn gen_legal_moves(&mut self) {
+    //     self.legal_moves = self
+    //         .position
+    //         .get_legal_moves()
+    //         .into_iter()
+    //         .cloned()
+    //         .collect();
+    // }
 
     pub fn get_legal_moves(&self) -> Result<&[Move], BoardStateError> {
         if self.lazy_legal_moves {
@@ -512,8 +513,18 @@ impl Board {
         })
     }
 
+    pub fn from_pgn(pgn: &str) -> Result<Self, PGNParseError> {
+        let board = pgn::pgn_to_board(pgn)?;
+        Ok(board)
+    }
+
     pub fn to_fen(&self) -> String {
         self.current_state.to_fen()
+    }
+
+    pub fn to_pgn(&self) -> String {
+        let pgn = pgn::board_to_pgn(self);
+        pgn.to_string()
     }
 
     pub fn get_starting(&self) -> &BoardState {

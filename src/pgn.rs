@@ -3,7 +3,6 @@ pub mod notation;
 mod tag;
 mod token;
 
-use std::fmt;
 use std::fs;
 use std::path::Path;
 
@@ -12,19 +11,28 @@ use chrono::prelude::*;
 use crate::board;
 use crate::errors::PGNParseError;
 use crate::log_and_return_error;
-use crate::GameState;
 use crate::PieceColour;
 use notation::*;
 use tag::*;
 use token::*;
 
+pub fn pgn_to_board(pgn: &str) -> Result<board::Board, PGNParseError> {
+    let pgn = PGN::from_str(pgn)?;
+    pgn.to_board()
+}
+
+pub fn board_to_pgn(board: &board::Board) -> String {
+    let pgn = PGN::from_board(board);
+    pgn.to_string()
+}
+
 #[derive(Debug)]
-struct PGN {
+pub struct PGN {
     tags: Vec<Tag>,
     moves: Vec<Notation>,
 }
 impl PGN {
-    fn from_file(file_path: &Path) -> Result<Self, PGNParseError> {
+    pub fn from_file(file_path: &Path) -> Result<Self, PGNParseError> {
         let pgn = match fs::read_to_string(file_path) {
             Ok(pgn) => pgn,
             Err(e) => log_and_return_error!(PGNParseError::FileError(e.to_string())),
@@ -32,7 +40,7 @@ impl PGN {
         Self::from_str(&pgn)
     }
 
-    fn from_str(pgn: &str) -> Result<Self, PGNParseError> {
+    pub fn from_str(pgn: &str) -> Result<Self, PGNParseError> {
         let mut new = Self {
             tags: Vec::new(),
             moves: Vec::new(),
@@ -49,32 +57,7 @@ impl PGN {
         }
     }
 
-    fn check_required_tags(&self) -> bool {
-        let mut has_event = false;
-        let mut has_site = false;
-        let mut has_date = false;
-        let mut has_round = false;
-        let mut has_white = false;
-        let mut has_black = false;
-        let mut has_result = false;
-
-        for tag in &self.tags {
-            match tag {
-                Tag::Event(_) => has_event = true,
-                Tag::Site(_) => has_site = true,
-                Tag::Date(_) => has_date = true,
-                Tag::Round(_) => has_round = true,
-                Tag::White(_) => has_white = true,
-                Tag::Black(_) => has_black = true,
-                Tag::Result(_) => has_result = true,
-                _ => {}
-            }
-        }
-
-        has_event && has_site && has_date && has_round && has_white && has_black && has_result
-    }
-
-    fn from_board(board: &board::Board) -> Self {
+    pub fn from_board(board: &board::Board) -> Self {
         let mut new = Self {
             tags: Vec::new(),
             moves: Vec::new(),
@@ -106,17 +89,17 @@ impl PGN {
             new.tags.push(Tag::Result("*".to_string()));
         }
         // set a custom field for the FEN of starting position, state_history[0] is guaranteed to be initialised
-        new.tags.push(Tag::CustomTag {
-            name: "FEN".to_string(),
-            value: board.get_starting().to_fen(),
-        });
+        new.tags.push(Tag::CustomTag(CustomTag::new(
+            "FEN",
+            &board.get_starting().to_fen(),
+        )));
 
         new.moves = board.move_history_notation();
 
         new
     }
 
-    fn to_string(&self) -> String {
+    pub fn to_string(&self) -> String {
         let mut sorted_tags = self.tags.to_vec();
         sorted_tags.sort();
 
@@ -153,7 +136,7 @@ impl PGN {
         pgn
     }
 
-    fn to_board(&self) -> Result<board::Board, PGNParseError> {
+    pub fn to_board(&self) -> Result<board::Board, PGNParseError> {
         let mut board = board::Board::new();
         for notation in &self.moves {
             let mv = notation.to_move(&board.current_state)?;
@@ -163,6 +146,31 @@ impl PGN {
             }
         }
         Ok(board)
+    }
+
+    fn check_required_tags(&self) -> bool {
+        let mut has_event = false;
+        let mut has_site = false;
+        let mut has_date = false;
+        let mut has_round = false;
+        let mut has_white = false;
+        let mut has_black = false;
+        let mut has_result = false;
+
+        for tag in &self.tags {
+            match tag {
+                Tag::Event(_) => has_event = true,
+                Tag::Site(_) => has_site = true,
+                Tag::Date(_) => has_date = true,
+                Tag::Round(_) => has_round = true,
+                Tag::White(_) => has_white = true,
+                Tag::Black(_) => has_black = true,
+                Tag::Result(_) => has_result = true,
+                _ => {}
+            }
+        }
+
+        has_event && has_site && has_date && has_round && has_white && has_black && has_result
     }
 }
 

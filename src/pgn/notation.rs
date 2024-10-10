@@ -36,7 +36,6 @@ impl Notation {
     }
 
     // from move with boardstate context, disambiguaating notation will only be used if required
-    // TODO using next_state is slow, but will this ever be used in a performance critical area? Look into it
     pub fn from_mv_with_context(
         bs_context: &board::BoardState,
         mv: &Move,
@@ -606,15 +605,22 @@ mod test {
         assert_eq!(notation.to_string(), "Nxf3");
     }
 
-    // TODO: implement from_move test
-    // #[test]
-    // fn test_notation_from_mv() {
-    //     let bs = board::BoardState::new();
-    //     let mv = Move::new(0, 0, 0, 0); // Replace with a valid move
-    //     let notation = Notation::from_mv(&bs, &mv);
-
-    //     assert!(notation.is_ok());
-    // }
+    #[test]
+    fn test_notation_from_mv_with_context() {
+        let bs = board::BoardState::new_starting();
+        let mv = Move {
+            piece: Piece {
+                ptype: PieceType::Knight,
+                pcolour: PieceColour::White,
+            },
+            from: 62,
+            to: 45,
+            move_type: MoveType::Normal,
+        };
+        let notation = Notation::from_mv_with_context(&bs, &mv);
+        assert!(notation.is_ok());
+        assert_eq!(notation.unwrap().to_string(), "Nf3");
+    }
 
     #[test]
     fn test_notation_from_str() -> Result<(), PGNParseError> {
