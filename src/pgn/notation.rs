@@ -590,6 +590,7 @@ fn extract_legal_moves(bs: &board::BoardState) -> Result<&[Move], PGNParseError>
     }
 }
 
+#[cfg(test)]
 mod test {
     use super::*;
 
