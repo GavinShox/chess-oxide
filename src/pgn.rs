@@ -139,7 +139,7 @@ impl PGN {
     pub fn to_board(&self) -> Result<board::Board, PGNParseError> {
         let mut board = board::Board::new();
         for notation in &self.moves {
-            let mv = notation.to_move(&board.current_state)?;
+            let mv = notation.to_move_with_context(&board.current_state)?;
             match board.make_move(&mv) {
                 Ok(_) => {}
                 Err(e) => log_and_return_error!(PGNParseError::NotationParseError(e.to_string())),

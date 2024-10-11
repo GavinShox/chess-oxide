@@ -40,16 +40,7 @@ impl Notation {
         bs_context: &board::BoardState,
         mv: &Move,
     ) -> Result<Notation, PGNParseError> {
-        let legal_moves = match bs_context.get_legal_moves() {
-            Ok(moves) => moves,
-            Err(e) => {
-                let err = PGNParseError::NotationParseError(format!(
-                    "Error getting legal moves in BoardState: {}",
-                    e
-                ));
-                log_and_return_error!(err)
-            }
-        };
+        let legal_moves = extract_legal_moves(bs_context)?;
 
         // create new uninitialised Notation struct
         let mut notation = Self::new();
@@ -206,10 +197,20 @@ impl Notation {
                     log_and_return_error!(err)
                 }
             } else if c == 'x' {
+                // Nxg7 len = 4, cap_idx = 1
                 // handle captures
                 // capture checked first before rank and file as 'x' is ascii lowercase
                 if !capture {
-                    capture = true;
+                    // must be at least 2 more chars after 'x' for a valid capture
+                    if (notation_str.len() - i) < 3 {
+                        let err = PGNParseError::NotationParseError(format!(
+                            "Invalid notation, no rank or file after capture char (char: '{}' at index: {})",
+                            notation_str, i
+                        ));
+                        log_and_return_error!(err)
+                    } else {
+                        capture = true;
+                    }
                 } else {
                     let err = PGNParseError::NotationParseError(format!(
                         "Invalid notation, multiple capture chars (char: '{}' at index: {})",
@@ -263,7 +264,6 @@ impl Notation {
                     ));
                     log_and_return_error!(err)
                 }
-                break;
             } else if c == '#' {
                 if !checkmate {
                     checkmate = true;
@@ -274,7 +274,6 @@ impl Notation {
                     ));
                     log_and_return_error!(err)
                 }
-                break;
             } else {
                 let err = PGNParseError::NotationParseError(format!(
                     "Invalid character in notation (char: '{}' at index: {})",
@@ -405,152 +404,151 @@ impl Notation {
     }
 
     // tries to find a move, and disambiguates as best as possible, for use in PGN import format so if it is missing some disambiguating information but the move can still be identified, it is fine
-    pub fn to_move(&self, bs: &BoardState) -> Result<Move, PGNParseError> {
-        let legal_moves = match bs.get_legal_moves() {
-            Ok(moves) => moves,
-            Err(e) => {
-                let err = PGNParseError::NotationParseError(format!(
-                    "Error getting legal moves in BoardState: {}",
-                    e
-                ));
-                log_and_return_error!(err)
-            }
-        };
+    pub fn to_move_with_context(&self, bs_context: &BoardState) -> Result<Move, PGNParseError> {
+        let legal_moves = extract_legal_moves(bs_context)?;
+        let possible_moves = self.filter_possible_moves(legal_moves);
+        if possible_moves.len() == 1 {
+            return Ok(*possible_moves[0]);
+        } else if possible_moves.len() > 1 {
+            let mut dis_file_possible_idxs = None;
+            let mut dis_rank_possible_idxs = None;
 
-        if let Some(castle_str) = &self.castle_str {
-            let castle_side = match castle_str.as_str() {
-                "O-O" => CastleSide::Short,
-                "O-O-O" => CastleSide::Long,
-                _ => {
-                    let err = PGNParseError::NotationParseError(format!(
-                        "Unreachable code: Invalid castle string ({}) in to_move function",
-                        &castle_str
-                    ));
-                    log_and_return_error!(err)
-                }
-            };
-            for mv in legal_moves {
-                if let MoveType::Castle(cm) = mv.move_type {
-                    if cm.get_castle_side() == castle_side {
-                        return Ok(*mv);
+            if let Some(dis_file_char) = self.dis_file {
+                dis_file_possible_idxs =
+                    Some(util::file_notation_to_indexes_unchecked(dis_file_char));
+            }
+            if let Some(dis_rank_char) = self.dis_rank {
+                dis_rank_possible_idxs =
+                    Some(util::rank_notation_to_indexes_unchecked(dis_rank_char));
+            }
+
+            let mut possible_dis_moves = Vec::new();
+            for mv in &possible_moves {
+                if dis_file_possible_idxs.is_some() && dis_rank_possible_idxs.is_some() {
+                    if dis_file_possible_idxs.unwrap().contains(&mv.from)
+                        && dis_rank_possible_idxs.unwrap().contains(&mv.from)
+                    {
+                        possible_dis_moves.push(*mv);
+                    }
+                } else if let Some(dis_file_idxs) = dis_file_possible_idxs {
+                    if dis_file_idxs.contains(&mv.from) {
+                        possible_dis_moves.push(*mv);
+                    }
+                } else if let Some(dis_rank_idxs) = dis_rank_possible_idxs {
+                    if dis_rank_idxs.contains(&mv.from) {
+                        possible_dis_moves.push(*mv);
                     }
                 }
             }
+
+            if possible_dis_moves.len() == 1 {
+                return Ok(*possible_dis_moves[0]);
+            } else {
+                let err = PGNParseError::MoveNotFound(format!(
+                    "No legal move found for notation ({}) in BoardState (hash: {}) => Could not use notation to disambiguate between multiple possible moves: {:?}",
+                    self.to_string(),
+                    hash_to_string(bs_context.board_hash),
+                    possible_moves
+                ));
+                log_and_return_error!(err)
+            }
+        } else {
             let err = PGNParseError::MoveNotFound(format!(
-                "No legal move found for castle notation ({}) in BoardState (hash: {})",
-                &castle_str,
-                hash_to_string(bs.board_hash)
+                "No legal move found for notation ({}) in BoardState (hash: {})",
+                self.to_string(),
+                hash_to_string(bs_context.board_hash)
             ));
             log_and_return_error!(err)
+        }
+    }
+
+    fn get_piece_type(&self) -> Option<PieceType> {
+        match self.piece {
+            Some('N') => Some(PieceType::Knight),
+            Some('B') => Some(PieceType::Bishop),
+            Some('R') => Some(PieceType::Rook),
+            Some('Q') => Some(PieceType::Queen),
+            Some('K') => Some(PieceType::King),
+            Some(_) => {
+                unreachable!("Invalid piece char in get_piece_type function")
+            }
+            None => None,
+        }
+    }
+
+    fn get_promotion_piece_type(&self) -> Option<PieceType> {
+        match self.promotion {
+            Some('Q') => Some(PieceType::Queen),
+            Some('R') => Some(PieceType::Rook),
+            Some('B') => Some(PieceType::Bishop),
+            Some('N') => Some(PieceType::Knight),
+            Some(_) => {
+                unreachable!("Invalid promotion char in get_promotion_piece_type function")
+            }
+            None => None,
+        }
+    }
+
+    fn get_castle_side(&self) -> Option<CastleSide> {
+        if let Some(castle_str) = &self.castle_str {
+            match castle_str.as_str() {
+                "O-O" => Some(CastleSide::Short),
+                "O-O-O" => Some(CastleSide::Long),
+                _ => {
+                    unreachable!("Invalid castle string in get_castle_side function");
+                }
+            }
         } else {
-            let possible_moves = legal_moves
-                .iter()
-                .filter(|mv| {
-                    if let Some(piece) = self.piece {
-                        if mv.piece.ptype
-                            != match piece {
-                                'N' => PieceType::Knight,
-                                'B' => PieceType::Bishop,
-                                'R' => PieceType::Rook,
-                                'Q' => PieceType::Queen,
-                                'K' => PieceType::King,
-                                _ => {
-                                    unreachable!("Invalid piece char in to_move function");
-                                }
-                            }
-                        {
+            None
+        }
+    }
+
+    fn filter_possible_moves<'a>(&self, moves: &'a [Move]) -> Vec<&'a Move> {
+        moves
+            .iter()
+            .filter(|mv| {
+                if let Some(castle_side) = self.get_castle_side() {
+                    if let MoveType::Castle(cm) = mv.move_type {
+                        return if cm.get_castle_side() == castle_side {
+                            true
+                        } else {
+                            false
+                        };
+                    }
+                }
+
+                if let Some(piece) = self.get_piece_type() {
+                    if mv.piece.ptype != piece {
+                        return false;
+                    }
+                } else {
+                    // PAWN HANDLING - no piece char can only be a castle move which is already handled, or a pawn move
+                    if mv.piece.ptype != PieceType::Pawn {
+                        return false;
+                    }
+                }
+
+                if self.to_file != util::index_to_file_notation(mv.to)
+                    || self.to_rank != util::index_to_rank_notation(mv.to)
+                {
+                    return false;
+                }
+                if self.capture && !mv.move_type.is_capture() {
+                    return false;
+                }
+                if let Some(promotion) = self.get_promotion_piece_type() {
+                    if let MoveType::Promotion(promotion_ptype, _) = mv.move_type {
+                        if promotion_ptype != promotion {
                             return false;
                         }
                     } else {
-                        // PAWN HANDLING - no piece char can only be a castle move which is already handled, or a pawn move
-                        if mv.piece.ptype != PieceType::Pawn {
-                            return false;
-                        }
-                    }
-
-                    if self.to_file != util::index_to_file_notation(mv.to)
-                        || self.to_rank != util::index_to_rank_notation(mv.to)
-                    {
                         return false;
                     }
-                    if self.capture && !mv.move_type.is_capture() {
-                        return false;
-                    }
-                    if let Some(promotion) = self.promotion {
-                        if let MoveType::Promotion(promotion_ptype, _) = mv.move_type {
-                            if promotion_ptype
-                                != match promotion {
-                                    'Q' => PieceType::Queen,
-                                    'R' => PieceType::Rook,
-                                    'B' => PieceType::Bishop,
-                                    'N' => PieceType::Knight,
-                                    _ => unreachable!("Invalid promotion char in to_move function"),
-                                }
-                            {
-                                return false;
-                            }
-                        } else {
-                            return false;
-                        }
-                    }
-                    // if move passes all checks, return true
-                    true
-                })
-                .collect::<Vec<&Move>>();
-            if possible_moves.len() == 1 {
-                return Ok(*possible_moves[0]);
-            } else if possible_moves.len() > 1 {
-                let mut dis_file_possible_idxs = None;
-                let mut dis_rank_possible_idxs = None;
-
-                if let Some(dis_file_char) = self.dis_file {
-                    dis_file_possible_idxs =
-                        Some(util::file_notation_to_indexes_unchecked(dis_file_char));
                 }
-                if let Some(dis_rank_char) = self.dis_rank {
-                    dis_rank_possible_idxs =
-                        Some(util::rank_notation_to_indexes_unchecked(dis_rank_char));
-                }
-
-                let mut possible_dis_moves = Vec::new();
-                for mv in &possible_moves {
-                    if dis_file_possible_idxs.is_some() && dis_rank_possible_idxs.is_some() {
-                        if dis_file_possible_idxs.unwrap().contains(&mv.from)
-                            && dis_rank_possible_idxs.unwrap().contains(&mv.from)
-                        {
-                            possible_dis_moves.push(*mv);
-                        }
-                    } else if let Some(dis_file_idxs) = dis_file_possible_idxs {
-                        if dis_file_idxs.contains(&mv.from) {
-                            possible_dis_moves.push(*mv);
-                        }
-                    } else if let Some(dis_rank_idxs) = dis_rank_possible_idxs {
-                        if dis_rank_idxs.contains(&mv.from) {
-                            possible_dis_moves.push(*mv);
-                        }
-                    }
-                }
-
-                if possible_dis_moves.len() == 1 {
-                    return Ok(*possible_dis_moves[0]);
-                } else {
-                    let err = PGNParseError::MoveNotFound(format!(
-                        "No legal move found for notation ({}) in BoardState (hash: {}) => Could not use notation to disambiguate between multiple possible moves: {:?}",
-                        self.to_string(),
-                        hash_to_string(bs.board_hash),
-                        possible_moves
-                    ));
-                    log_and_return_error!(err)
-                }
-            } else {
-                let err = PGNParseError::MoveNotFound(format!(
-                    "No legal move found for notation ({}) in BoardState (hash: {})",
-                    self.to_string(),
-                    hash_to_string(bs.board_hash)
-                ));
-                log_and_return_error!(err)
-            }
-        }
+                // if move passes all checks, return true
+                true
+            })
+            .collect::<Vec<&Move>>()
     }
 
     #[inline]
@@ -573,6 +571,20 @@ impl Notation {
     fn is_valid_promotion(&self, promotion: char) -> bool {
         let valid_promotions = ['Q', 'R', 'B', 'N'];
         promotion.is_ascii_uppercase() && valid_promotions.contains(&promotion)
+    }
+}
+
+// get legal moves from BoardState, on error return BoardStateError wrapped in PGNParseError
+fn extract_legal_moves(bs: &BoardState) -> Result<&[Move], PGNParseError> {
+    match bs.get_legal_moves() {
+        Ok(moves) => Ok(moves),
+        Err(e) => {
+            let err = PGNParseError::NotationParseError(format!(
+                "Error getting legal moves in BoardState: {}",
+                e
+            ));
+            log_and_return_error!(err)
+        }
     }
 }
 
@@ -643,5 +655,110 @@ mod test {
                 return Err(e);
             }
         }
+    }
+
+    #[test]
+    fn test_notation_from_str_castle() -> Result<(), PGNParseError> {
+        let notation_str = "O-O";
+        let notation = Notation::from_str(notation_str)?;
+        assert_eq!(notation.castle_str, Some("O-O".to_string()));
+        assert!(!notation.check);
+        assert!(!notation.checkmate);
+
+        let notation_str = "O-O+";
+        let notation = Notation::from_str(notation_str)?;
+        assert_eq!(notation.castle_str, Some("O-O".to_string()));
+        assert!(notation.check);
+        assert!(!notation.checkmate);
+
+        let notation_str = "O-O-O#";
+        let notation = Notation::from_str(notation_str)?;
+        assert_eq!(notation.castle_str, Some("O-O-O".to_string()));
+        assert!(!notation.check);
+        assert!(notation.checkmate);
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_notation_from_str_promotion() -> Result<(), PGNParseError> {
+        let notation_str = "e8=Q";
+        let notation = Notation::from_str(notation_str)?;
+        assert_eq!(notation.piece, None);
+        assert_eq!(notation.to_file, 'e');
+        assert_eq!(notation.to_rank, '8');
+        assert_eq!(notation.promotion, Some('Q'));
+        assert!(!notation.capture);
+        assert!(!notation.check);
+        assert!(!notation.checkmate);
+
+        let notation_str = "e8=Q+";
+        let notation = Notation::from_str(notation_str)?;
+        assert_eq!(notation.piece, None);
+        assert_eq!(notation.to_file, 'e');
+        assert_eq!(notation.to_rank, '8');
+        assert_eq!(notation.promotion, Some('Q'));
+        assert!(!notation.capture);
+        assert!(notation.check);
+        assert!(!notation.checkmate);
+
+        let notation_str = "e8=Q#";
+        let notation = Notation::from_str(notation_str)?;
+        assert_eq!(notation.piece, None);
+        assert_eq!(notation.to_file, 'e');
+        assert_eq!(notation.to_rank, '8');
+        assert_eq!(notation.promotion, Some('Q'));
+        assert!(!notation.capture);
+        assert!(!notation.check);
+        assert!(notation.checkmate);
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_notation_from_str_invalid() {
+        let notation_str = "Qf9";
+        let notation = Notation::from_str(notation_str);
+        assert!(notation.is_err());
+
+        let notation_str = "Qz3";
+        let notation = Notation::from_str(notation_str);
+        assert!(notation.is_err());
+
+        let notation_str = "Qf3x";
+        let notation = Notation::from_str(notation_str);
+        assert!(notation.is_err());
+
+        let notation_str = "Qf3=";
+        let notation = Notation::from_str(notation_str);
+        assert!(notation.is_err());
+
+        let notation_str = "Qf3++";
+        let notation = Notation::from_str(notation_str);
+        assert!(notation.is_err());
+
+        let notation_str = "Qf3##";
+        let notation = Notation::from_str(notation_str);
+        assert!(notation.is_err());
+    }
+
+    #[test]
+    fn test_notation_to_move_with_context() {
+        let bs = board::BoardState::new_starting();
+        let notation = Notation::from_str("Nf3").unwrap();
+        let mv = notation.to_move_with_context(&bs);
+        assert!(mv.is_ok());
+        let mv = mv.unwrap();
+        assert_eq!(mv.piece.ptype, PieceType::Knight);
+        assert_eq!(mv.from, 62);
+        assert_eq!(mv.to, 45);
+
+        let notation = Notation::from_str("e4").unwrap();
+        let mv = notation.to_move_with_context(&bs);
+        assert!(mv.is_ok());
+        let mv = mv.unwrap();
+        assert_eq!(mv.piece.ptype, PieceType::Pawn);
+        assert_eq!(mv.from, 52);
+        assert_eq!(mv.to, 36);
     }
 }

@@ -25,7 +25,7 @@ pub enum Tag {
     White(String),
     Black(String),
     Result(String),
-    CustomTag(CustomTag),  // TODO add more variants instead of just custom tags, required tags in PGN standard is handled in PGN struct not here
+    CustomTag(CustomTag), // TODO add more variants instead of just custom tags, required tags in PGN standard is handled in PGN struct not here
 }
 impl fmt::Display for Tag {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
