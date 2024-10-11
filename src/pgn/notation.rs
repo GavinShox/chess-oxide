@@ -1,7 +1,6 @@
 use crate::errors::PGNParseError;
-use crate::{board, util};
+use crate::{board, movegen::*, util};
 use crate::{hash_to_string, log_and_return_error};
-use crate::{movegen::*, BoardState};
 
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub struct Notation {
@@ -404,11 +403,14 @@ impl Notation {
     }
 
     // tries to find a move, and disambiguates as best as possible, for use in PGN import format so if it is missing some disambiguating information but the move can still be identified, it is fine
-    pub fn to_move_with_context(&self, bs_context: &BoardState) -> Result<Move, PGNParseError> {
+    pub fn to_move_with_context(
+        &self,
+        bs_context: &board::BoardState,
+    ) -> Result<Move, PGNParseError> {
         let legal_moves = extract_legal_moves(bs_context)?;
         let possible_moves = self.filter_possible_moves(legal_moves);
         if possible_moves.len() == 1 {
-            return Ok(*possible_moves[0]);
+            Ok(*possible_moves[0])
         } else if possible_moves.len() > 1 {
             let mut dis_file_possible_idxs = None;
             let mut dis_rank_possible_idxs = None;
@@ -575,7 +577,7 @@ impl Notation {
 }
 
 // get legal moves from BoardState, on error return BoardStateError wrapped in PGNParseError
-fn extract_legal_moves(bs: &BoardState) -> Result<&[Move], PGNParseError> {
+fn extract_legal_moves(bs: &board::BoardState) -> Result<&[Move], PGNParseError> {
     match bs.get_legal_moves() {
         Ok(moves) => Ok(moves),
         Err(e) => {
@@ -649,11 +651,9 @@ mod test {
                 assert_eq!(notation.dis_rank.is_some(), true);
                 assert_eq!(notation.dis_file.unwrap(), 'f');
                 assert_eq!(notation.dis_rank.unwrap(), '3');
-                return Ok(());
+                Ok(())
             }
-            Err(e) => {
-                return Err(e);
-            }
+            Err(e) => Err(e),
         }
     }
 
