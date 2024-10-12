@@ -58,12 +58,12 @@ fn main() -> Result<(), slint::PlatformError> {
     ui.on_get_gamestate(move || {
         let ui = ui_weak_get_gamestate.upgrade().unwrap();
         let board = board_get_gamestate.lock().unwrap();
-        let side_to_move = if board.current_state.side_to_move == chess::PieceColour::White {
+        let side_to_move = if board.get_current_state().side_to_move == chess::PieceColour::White {
             "White"
         } else {
             "Black"
         };
-        let gamestate = board.current_state.get_gamestate().to_string();
+        let gamestate = board.get_current_state().get_gamestate().to_string();
         ui.set_gamestate(format!("{}'s turn: {}", side_to_move, gamestate).into());
     });
 
@@ -83,7 +83,7 @@ fn main() -> Result<(), slint::PlatformError> {
         for s in board_refresh_position
             .lock()
             .unwrap()
-            .current_state
+            .get_current_state()
             .get_pos64()
         {
             match s {
@@ -135,7 +135,7 @@ fn main() -> Result<(), slint::PlatformError> {
             board_refresh_position
                 .lock()
                 .unwrap()
-                .current_state
+                .get_current_state()
                 .to_fen()
                 .into(),
         );
@@ -146,7 +146,7 @@ fn main() -> Result<(), slint::PlatformError> {
                 board_refresh_position
                     .lock()
                     .unwrap()
-                    .current_state
+                    .get_current_state()
                     .board_hash
             )
         );
@@ -156,7 +156,7 @@ fn main() -> Result<(), slint::PlatformError> {
                 board_refresh_position
                     .lock()
                     .unwrap()
-                    .current_state
+                    .get_current_state()
                     .position_hash
             )
         );
@@ -165,14 +165,14 @@ fn main() -> Result<(), slint::PlatformError> {
         if board_refresh_position
             .lock()
             .unwrap()
-            .current_state
+            .get_current_state()
             .last_move
             != chess::NULL_MOVE
         {
             let last_move = board_refresh_position
                 .lock()
                 .unwrap()
-                .current_state
+                .get_current_state()
                 .last_move;
 
             if ui.get_player_colour() == PieceColour_UI::Black {
@@ -203,7 +203,7 @@ fn main() -> Result<(), slint::PlatformError> {
         for mv in board_make_move
             .lock()
             .unwrap()
-            .current_state
+            .get_current_state()
             .get_legal_moves()
             .unwrap()
         // unwrap is safe as we are not using lazy legal move generation
@@ -284,7 +284,7 @@ fn main() -> Result<(), slint::PlatformError> {
             }
         };
 
-        let side_to_move = ui_convert_piece_colour(new_board.current_state.side_to_move);
+        let side_to_move = ui_convert_piece_colour(new_board.get_current_state().side_to_move);
         let player_side = if import_fen_dialog.get_as_white() {
             PieceColour_UI::White
         } else {

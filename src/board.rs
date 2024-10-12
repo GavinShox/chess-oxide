@@ -466,10 +466,10 @@ impl BoardState {
 
 #[derive(Debug)]
 pub struct Board {
-    pub current_state: BoardState,
-    pub detached_idx: Option<usize>,
-    pub state_history: Vec<BoardState>,
-    pub move_history: Vec<Move>,
+    current_state: BoardState,
+    detached_idx: Option<usize>,
+    state_history: Vec<BoardState>,
+    move_history: Vec<Move>,
     transposition_table: transposition::TranspositionTable,
 }
 
@@ -527,9 +527,17 @@ impl Board {
         pgn.to_string()
     }
 
-    pub fn get_starting(&self) -> &BoardState {
+    pub fn get_starting_state(&self) -> &BoardState {
         // first element in state_history is guarenteed to be initialised as starting BoardState
         &self.state_history[0]
+    }
+
+    pub fn get_current_state(&self) -> &BoardState {
+        &self.current_state
+    }
+
+    pub fn get_state_history(&self) -> &Vec<BoardState> {
+        &self.state_history
     }
 
     pub fn make_move(&mut self, mv: &Move) -> Result<GameState, BoardStateError> {

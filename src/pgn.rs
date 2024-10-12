@@ -80,7 +80,7 @@ impl PGN {
         if gs.is_draw() {
             new.tags.push(Tag::Result("1/2-1/2".to_string()));
         } else if gs.is_game_over() {
-            if board.current_state.side_to_move == PieceColour::White {
+            if board.get_current_state().side_to_move == PieceColour::White {
                 new.tags.push(Tag::Result("0-1".to_string()));
             } else {
                 new.tags.push(Tag::Result("1-0".to_string()));
@@ -91,7 +91,7 @@ impl PGN {
         // set a custom field for the FEN of starting position, state_history[0] is guaranteed to be initialised
         new.tags.push(Tag::CustomTag(CustomTag::new(
             "FEN",
-            &board.get_starting().to_fen(),
+            &board.get_starting_state().to_fen(),
         )));
 
         new.moves = board.move_history_notation();
@@ -139,7 +139,7 @@ impl PGN {
     pub fn to_board(&self) -> Result<board::Board, PGNParseError> {
         let mut board = board::Board::new();
         for notation in &self.moves {
-            let mv = notation.to_move_with_context(&board.current_state)?;
+            let mv = notation.to_move_with_context(&board.get_current_state())?;
             match board.make_move(&mv) {
                 Ok(_) => {}
                 Err(e) => log_and_return_error!(PGNParseError::NotationParseError(e.to_string())),

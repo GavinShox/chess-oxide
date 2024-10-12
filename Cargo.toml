@@ -1,6 +1,7 @@
 [package]
+authors = ["Gavin Shaughnessy <gavinshaug>"]
 name = "chess-oxide"
-version = "0.2.3"
+version = "0.3.0"
 edition = "2021"
 build = "build.rs"
 description = "A chess engine library written in Rust, with a GUI bin to play against it."
