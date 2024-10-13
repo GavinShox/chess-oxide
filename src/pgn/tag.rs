@@ -42,33 +42,35 @@ impl fmt::Display for Tag {
     }
 }
 
-pub fn parse_tag(tag: &str) -> Result<Tag, PGNParseError> {
-    let tag_str = tag.trim_matches(&['[', ']']).trim();
-    let mut parts = tag_str.splitn(2, ' ').map(str::trim);
+impl Tag {
+    pub fn from_str(tag: &str) -> Result<Tag, PGNParseError> {
+        let tag_str = tag.trim_matches(&['[', ']']).trim();
+        let mut parts = tag_str.splitn(2, ' ').map(str::trim);
 
-    let name = match parts.next() {
-        Some(name) => name,
-        None => {
-            let err = PGNParseError::InvalidTag(format!("Tag {} has invalid name", tag));
-            log_and_return_error!(err)
+        let name = match parts.next() {
+            Some(name) => name,
+            None => {
+                let err = PGNParseError::InvalidTag(format!("Tag {} has invalid name", tag));
+                log_and_return_error!(err)
+            }
+        };
+        let value = match parts.next() {
+            Some(value) => value.trim_matches('"'),
+            None => {
+                let err = PGNParseError::InvalidTag(format!("Tag {} has invalid value", tag));
+                log_and_return_error!(err)
+            }
+        };
+        match name {
+            "Event" => Ok(Tag::Event(value.to_string())),
+            "Site" => Ok(Tag::Site(value.to_string())),
+            "Date" => Ok(Tag::Date(value.to_string())),
+            "Round" => Ok(Tag::Round(value.to_string())),
+            "White" => Ok(Tag::White(value.to_string())),
+            "Black" => Ok(Tag::Black(value.to_string())),
+            "Result" => Ok(Tag::Result(value.to_string())),
+            c => Ok(Tag::CustomTag(CustomTag::new(c, value))),
         }
-    };
-    let value = match parts.next() {
-        Some(value) => value.trim_matches('"'),
-        None => {
-            let err = PGNParseError::InvalidTag(format!("Tag {} has invalid value", tag));
-            log_and_return_error!(err)
-        }
-    };
-    match name {
-        "Event" => Ok(Tag::Event(value.to_string())),
-        "Site" => Ok(Tag::Site(value.to_string())),
-        "Date" => Ok(Tag::Date(value.to_string())),
-        "Round" => Ok(Tag::Round(value.to_string())),
-        "White" => Ok(Tag::White(value.to_string())),
-        "Black" => Ok(Tag::Black(value.to_string())),
-        "Result" => Ok(Tag::Result(value.to_string())),
-        c => Ok(Tag::CustomTag(CustomTag::new(c, value))),
     }
 }
 
@@ -79,7 +81,7 @@ mod test {
     #[test]
     fn test_parse_tag() {
         let tag_str = "[Event    \"Test Game\"]"; // multiple spaces between tag and value should be parsed correctly
-        let tag = parse_tag(tag_str).unwrap();
+        let tag = Tag::from_str(tag_str).unwrap();
 
         match tag {
             Tag::Event(value) => assert_eq!(value, "Test Game"),

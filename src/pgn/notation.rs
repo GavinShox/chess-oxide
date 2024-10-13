@@ -16,7 +16,7 @@ pub struct Notation {
     castle_str: Option<String>,
 }
 
-// CONSTRUCTORS
+// CONSTRUCTORS AND RELATED FUNCTIONS
 impl Notation {
     // (private) new uninitialised Notation struct
     fn new() -> Notation {
@@ -69,14 +69,7 @@ impl Notation {
         }
 
         // SET PIECE CHAR
-        notation.piece = match mv.piece.ptype {
-            PieceType::Pawn => None,
-            PieceType::Knight => Some('N'),
-            PieceType::Bishop => Some('B'),
-            PieceType::Rook => Some('R'),
-            PieceType::Queen => Some('Q'),
-            PieceType::King => Some('K'),
-        };
+        notation.piece = ptype_to_piece_char(&mv.piece.ptype);
 
         // SET TO FILE AND TO RANK
         notation.to_file = util::index_to_file_notation(mv.to);
@@ -86,18 +79,7 @@ impl Notation {
         notation.capture = mv.move_type.is_capture();
 
         // SET PROMOTION CHAR
-        if let MoveType::Promotion(prom, _) = mv.move_type {
-            notation.promotion = Some(match prom {
-                PieceType::Queen => 'Q',
-                PieceType::Rook => 'R',
-                PieceType::Bishop => 'B',
-                PieceType::Knight => 'N',
-                _ => {
-                    // unreachable as move has been legality checked at top of function
-                    unreachable!();
-                }
-            });
-        }
+        notation.promotion = mv_type_to_promotion_char(&mv.move_type);
 
         // DISAMBIGUATING MOVES
         // pawn moves that are captures or en passants only need dis_file, otherwise only to_file and to_rank are needed
@@ -144,7 +126,7 @@ impl Notation {
         Ok(notation)
     }
 
-    pub fn from_str<'a>(notation_str: &str) -> Result<Notation, PGNParseError> {
+    pub fn from_str(notation_str: &str) -> Result<Notation, PGNParseError> {
         // check that str is valid ascii
         if !notation_str.is_ascii() {
             let err = PGNParseError::NotationParseError(format!(
@@ -283,66 +265,41 @@ impl Notation {
         }
 
         // set piece char if it is valid
+        notation.set_piece_char(piece_char)?;
+
+        // set rank and file chars, checking if there are any disambiguating chars
+        notation.set_rank_file_chars(&rank_file_chars)?;
+
+        // set promotion char if it is valid
+        notation.set_promotion_char(promotion)?;
+
+        // set boolean flags
+        notation.capture = capture;
+        notation.check = check;
+        notation.checkmate = checkmate;
+
+        Ok(notation)
+    }
+
+    #[inline]
+    fn set_piece_char(&mut self, piece_char: Option<char>) -> Result<(), PGNParseError> {
         if let Some(piece) = piece_char {
-            if notation.is_valid_piece(piece) {
-                notation.piece = Some(piece);
+            if is_valid_piece(piece) {
+                self.piece = Some(piece);
             } else {
                 let err =
                     PGNParseError::NotationParseError(format!("Invalid piece char ({})", piece));
                 log_and_return_error!(err)
             }
         }
+        Ok(())
+    }
 
-        // set rank and file chars, checking if there are any disambiguating chars
-        let to_file: char;
-        let to_rank: char;
-        let mut dis_file = None;
-        let mut dis_rank = None;
-        if rank_file_chars.len() == 2 {
-            to_file = rank_file_chars[0];
-            to_rank = rank_file_chars[1];
-        } else if rank_file_chars.len() == 3 {
-            if rank_file_chars[0].is_ascii_lowercase() {
-                dis_file = Some(rank_file_chars[0]); // disambiguating file
-            } else {
-                dis_rank = Some(rank_file_chars[0]); // disambiguating rank
-            }
-            to_file = rank_file_chars[1];
-            to_rank = rank_file_chars[2];
-        } else if rank_file_chars.len() == 4 {
-            dis_file = Some(rank_file_chars[0]);
-            dis_rank = Some(rank_file_chars[1]);
-            to_file = rank_file_chars[2];
-            to_rank = rank_file_chars[3];
-        } else {
-            let err = PGNParseError::NotationParseError(format!(
-                "Invalid move notation char(s) ({:?})",
-                rank_file_chars
-            ));
-            log_and_return_error!(err)
-        }
-        // set rank and file chars if they are all valid
-        if !notation.is_valid_file(to_file)
-            || !notation.is_valid_rank(to_rank)
-            || dis_file.map_or(false, |c| !notation.is_valid_file(c))
-            || dis_rank.map_or(false, |c| !notation.is_valid_rank(c))
-        {
-            let err = PGNParseError::NotationParseError(format!(
-                "Invalid rank or file char(s) in vec: ({:?})",
-                rank_file_chars
-            ));
-            log_and_return_error!(err)
-        } else {
-            notation.to_file = to_file;
-            notation.to_rank = to_rank;
-            notation.dis_file = dis_file;
-            notation.dis_rank = dis_rank;
-        }
-
-        // set promotion char if it is valid
+    #[inline]
+    fn set_promotion_char(&mut self, promotion: Option<char>) -> Result<(), PGNParseError> {
         if let Some(promotion) = promotion {
-            if notation.is_valid_promotion(promotion) {
-                notation.promotion = Some(promotion);
+            if is_valid_promotion(promotion) {
+                self.promotion = Some(promotion);
             } else {
                 let err = PGNParseError::NotationParseError(format!(
                     "Invalid promotion piece char ({})",
@@ -351,13 +308,59 @@ impl Notation {
                 log_and_return_error!(err)
             }
         }
+        Ok(())
+    }
 
-        // set boolean flags
-        notation.capture = capture;
-        notation.check = check;
-        notation.checkmate = checkmate;
-
-        Ok(notation)
+    fn set_rank_file_chars(&mut self, rank_file_chars: &[char]) -> Result<(), PGNParseError> {
+        let to_file: char;
+        let to_rank: char;
+        let mut dis_file = None;
+        let mut dis_rank = None;
+        match rank_file_chars.len() {
+            2 => {
+                to_file = rank_file_chars[0];
+                to_rank = rank_file_chars[1];
+            }
+            3 => {
+                if rank_file_chars[0].is_ascii_lowercase() {
+                    dis_file = Some(rank_file_chars[0]); // disambiguating file
+                } else {
+                    dis_rank = Some(rank_file_chars[0]); // disambiguating rank
+                }
+                to_file = rank_file_chars[1];
+                to_rank = rank_file_chars[2];
+            }
+            4 => {
+                dis_file = Some(rank_file_chars[0]);
+                dis_rank = Some(rank_file_chars[1]);
+                to_file = rank_file_chars[2];
+                to_rank = rank_file_chars[3];
+            }
+            _ => {
+                let err = PGNParseError::NotationParseError(format!(
+                    "Invalid move notation char(s) ({:?})",
+                    rank_file_chars
+                ));
+                log_and_return_error!(err)
+            }
+        }
+        if !is_valid_file(to_file)
+            || !is_valid_rank(to_rank)
+            || dis_file.map_or(false, |c| !is_valid_file(c))
+            || dis_rank.map_or(false, |c| !is_valid_rank(c))
+        {
+            let err = PGNParseError::NotationParseError(format!(
+                "Invalid rank or file char(s) in vec: ({:?})",
+                rank_file_chars
+            ));
+            log_and_return_error!(err)
+        } else {
+            self.to_file = to_file;
+            self.to_rank = to_rank;
+            self.dis_file = dis_file;
+            self.dis_rank = dis_rank;
+        }
+        Ok(())
     }
 }
 
@@ -552,28 +555,6 @@ impl Notation {
             })
             .collect::<Vec<&Move>>()
     }
-
-    #[inline]
-    fn is_valid_file(&self, file: char) -> bool {
-        file.is_ascii_lowercase() && file >= 'a' && file <= 'h'
-    }
-
-    #[inline]
-    fn is_valid_rank(&self, rank: char) -> bool {
-        rank.is_ascii_digit() && rank >= '1' && rank <= '8'
-    }
-
-    #[inline]
-    fn is_valid_piece(&self, piece: char) -> bool {
-        let valid_pieces = ['P', 'N', 'B', 'R', 'Q', 'K'];
-        piece.is_ascii_uppercase() && valid_pieces.contains(&piece)
-    }
-
-    #[inline]
-    fn is_valid_promotion(&self, promotion: char) -> bool {
-        let valid_promotions = ['Q', 'R', 'B', 'N'];
-        promotion.is_ascii_uppercase() && valid_promotions.contains(&promotion)
-    }
 }
 
 // get legal moves from BoardState, on error return BoardStateError wrapped in PGNParseError
@@ -588,6 +569,55 @@ fn extract_legal_moves(bs: &board::BoardState) -> Result<&[Move], PGNParseError>
             log_and_return_error!(err)
         }
     }
+}
+
+#[inline]
+fn ptype_to_piece_char(ptype: &PieceType) -> Option<char> {
+    match ptype {
+        PieceType::Pawn => None,
+        PieceType::Knight => Some('N'),
+        PieceType::Bishop => Some('B'),
+        PieceType::Rook => Some('R'),
+        PieceType::Queen => Some('Q'),
+        PieceType::King => Some('K'),
+    }
+}
+
+#[inline]
+fn mv_type_to_promotion_char(mv_type: &MoveType) -> Option<char> {
+    if let MoveType::Promotion(promotion, _) = mv_type {
+        match promotion {
+            PieceType::Queen => Some('Q'),
+            PieceType::Rook => Some('R'),
+            PieceType::Bishop => Some('B'),
+            PieceType::Knight => Some('N'),
+            _ => unreachable!("Invalid MoveType. Not possible from crate::movegen"),
+        }
+    } else {
+        None
+    }
+}
+
+#[inline]
+fn is_valid_file(file: char) -> bool {
+    file.is_ascii_lowercase() && file >= 'a' && file <= 'h'
+}
+
+#[inline]
+fn is_valid_rank(rank: char) -> bool {
+    rank.is_ascii_digit() && rank >= '1' && rank <= '8'
+}
+
+#[inline]
+fn is_valid_piece(piece: char) -> bool {
+    let valid_pieces = ['P', 'N', 'B', 'R', 'Q', 'K'];
+    piece.is_ascii_uppercase() && valid_pieces.contains(&piece)
+}
+
+#[inline]
+fn is_valid_promotion(promotion: char) -> bool {
+    let valid_promotions = ['Q', 'R', 'B', 'N'];
+    promotion.is_ascii_uppercase() && valid_promotions.contains(&promotion)
 }
 
 #[cfg(test)]

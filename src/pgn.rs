@@ -16,16 +16,6 @@ use notation::*;
 use tag::*;
 use token::*;
 
-pub fn pgn_to_board(pgn: &str) -> Result<board::Board, PGNParseError> {
-    let pgn = PGN::from_str(pgn)?;
-    pgn.to_board()
-}
-
-pub fn board_to_pgn(board: &board::Board) -> String {
-    let pgn = PGN::from_board(board);
-    pgn.to_string()
-}
-
 #[derive(Debug)]
 pub struct PGN {
     tags: Vec<Tag>,

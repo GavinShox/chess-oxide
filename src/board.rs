@@ -513,8 +513,8 @@ impl Board {
         })
     }
 
-    pub fn from_pgn(pgn: &str) -> Result<Self, PGNParseError> {
-        let board = pgn::pgn_to_board(pgn)?;
+    pub fn from_pgn(pgn: &pgn::PGN) -> Result<Self, PGNParseError> {
+        let board = pgn.to_board()?;
         Ok(board)
     }
 
@@ -522,9 +522,8 @@ impl Board {
         self.current_state.to_fen()
     }
 
-    pub fn to_pgn(&self) -> String {
-        let pgn = pgn::board_to_pgn(self);
-        pgn.to_string()
+    pub fn to_pgn(&self) -> pgn::PGN {
+        pgn::PGN::from_board(&self)
     }
 
     pub fn get_starting_state(&self) -> &BoardState {
