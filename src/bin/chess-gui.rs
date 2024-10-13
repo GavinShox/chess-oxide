@@ -1,3 +1,4 @@
+use chess::fen::FEN;
 use chess::hash_to_string;
 use env_logger::{Builder, Target};
 use slint::{ComponentHandle, SharedString};
@@ -138,6 +139,7 @@ fn main() -> Result<(), slint::PlatformError> {
                 .unwrap()
                 .get_current_state()
                 .to_fen()
+                .to_string()
                 .into(),
         );
         log::debug!(
@@ -272,18 +274,18 @@ fn main() -> Result<(), slint::PlatformError> {
         let import_fen_dialog = import_fen_dialog_weak_import.upgrade().unwrap();
         let ui = ui_weak_import_fen.upgrade().unwrap();
 
-        let new_board = match chess::board::Board::from_fen(&fen.trim()) {
-            Ok(b) => {
+        let new_board = chess::board::Board::from_fen(match &FEN::from_str(&fen.trim()) {
+            Ok(f) => {
                 import_fen_dialog.set_error(false);
                 import_fen_dialog.set_fen_str("".into());
-                b
+                f
             }
             Err(e) => {
                 import_fen_dialog.set_error(true);
                 import_fen_dialog.set_error_message(e.to_string().into());
                 return;
             }
-        };
+        });
 
         let side_to_move = ui_convert_piece_colour(new_board.get_current_state().side_to_move);
         let player_side = if import_fen_dialog.get_as_white() {

@@ -256,6 +256,7 @@ fn negamax(
     let alpha_orig = alpha;
     let mut best_move = NULL_SHORT_MOVE; // will be set on tt hit
     if let Some(entry) = tt.get(&bs.board_hash) {
+        //TODO does adding halfmove count to the hash make sense? test performance
         if cfg!(feature = "debug_engine_logging") {
             nodes.transposition_table_hits += 1;
         }

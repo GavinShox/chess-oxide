@@ -8,6 +8,8 @@ use crate::engine;
 use crate::errors::BoardStateError;
 use crate::errors::FenParseError;
 use crate::errors::PGNParseError;
+use crate::fen;
+use crate::fen::FEN;
 use crate::log_and_return_error;
 use crate::movegen::*;
 use crate::pgn;
@@ -109,99 +111,49 @@ impl BoardState {
         }
     }
 
-    // TODO check for overflows
-    pub fn from_fen(fen: &str) -> Result<Self, FenParseError> {
-        let (position, fen_vec) = Position::from_fen_partial_impl(fen)?;
-
-        // check for multiple kings, should be the only issue in terms of pieces on the board
-        let mut wking_num = 0;
-        let mut bking_num = 0;
-        for s in position.pos64.iter() {
-            match s {
-                Square::Piece(p) => {
-                    if p.ptype == PieceType::King {
-                        match p.pcolour {
-                            PieceColour::White => {
-                                wking_num += 1;
-                            }
-                            PieceColour::Black => {
-                                bking_num += 1;
-                            }
-                        }
-                    }
-                }
-                Square::Empty => {
-                    continue;
-                }
-            }
-            if wking_num > 1 || bking_num > 1 {
-                let err = FenParseError(format!(
-                    "Multiple kings (white: {}, black: {}) in FEN: {}",
-                    wking_num, bking_num, fen
-                ));
-                log_and_return_error!(err)
-            }
-        }
-
-        log::debug!("New Position created from FEN");
-        log::trace!("FEN: {fen}, Position: {position:?}");
+    pub(crate) fn from_parts(position: Position, halfmove_count: u32, move_count: u32) -> Self {
         let position_hash: PositionHash = position.pos_hash();
+        let board_hash = zobrist::board_state_hash(position_hash, 1, halfmove_count);
         let side_to_move = position.side;
         // deref all legal moves, performance isn't as important here, so avoid lifetime specifiers to make things easier to look at
         let legal_moves = position.get_legal_moves().into_iter().cloned().collect();
         let mut position_occurences = ahash::AHashMap::default();
         position_occurences.insert(position_hash, 1);
-
-        // default values for move count and halfmove count if not provided see <https://www.talkchess.com/forum3/viewtopic.php?f=7&t=79627>
-        let mut halfmove_count: u32 = 0;
-        let mut move_count: u32 = 1;
-
-        if fen_vec.len() >= 5 {
-            halfmove_count = match fen_vec[4].parse::<u32>() {
-                Ok(halfmove_count) => halfmove_count,
-                Err(_) => {
-                    let err =
-                        FenParseError(format!("Error parsing halfmove count: {}", fen_vec[4]));
-                    log_and_return_error!(err)
-                }
-            };
-
-            if fen_vec.len() == 6 {
-                move_count = match fen_vec[5].parse::<u32>() {
-                    Ok(move_count) => move_count,
-                    Err(_) => {
-                        let err =
-                            FenParseError(format!("Error parsing move count: {}", fen_vec[5]));
-                        log_and_return_error!(err)
-                    }
-                };
-            }
-        }
-
-        let board_hash = zobrist::board_state_hash(position_hash, 1, halfmove_count); // FEN doesnt store position occurrence info, so set to 1
-
-        log::info!("New BoardState created from FEN");
-        Ok(BoardState {
-            side_to_move,
-            last_move: NULL_MOVE,
-            legal_moves,
+        log::info!("New BoardState created from parts");
+        BoardState {
             position,
             move_count,
             halfmove_count,
             position_hash,
             board_hash,
+            side_to_move,
+            last_move: NULL_MOVE,
+            legal_moves,
             position_occurences,
             lazy_legal_moves: false,
-        })
+        }
     }
 
-    pub fn to_fen(&self) -> String {
-        // final two fields of the FEN string, halfmove count and move count
-        let mut fen_str = self.position.to_fen_partial_impl();
-        fen_str.push_str(&format!("{} {}", self.halfmove_count, self.move_count));
-        log::info!("Converted BoardState to FEN: {}", fen_str);
+    pub fn from_fen(fen: &FEN) -> Self {
+        fen.to_board_state()
+    }
 
-        fen_str
+    pub fn to_fen(&self) -> FEN {
+        let fen = FEN::from_board_state(self);
+        log::info!("Converted BoardState to FEN: {}", fen.to_string());
+        fen
+    }
+
+    pub(crate) fn position(&self) -> &Position {
+        &self.position
+    }
+
+    pub fn halfmove_count(&self) -> u32 {
+        self.halfmove_count
+    }
+
+    pub fn move_count(&self) -> u32 {
+        self.move_count
     }
 
     pub fn get_pseudo_legal_moves(&self) -> &Vec<Move> {
@@ -498,19 +450,19 @@ impl Board {
         }
     }
 
-    pub fn from_fen(fen: &str) -> Result<Self, FenParseError> {
-        let current_state = BoardState::from_fen(fen)?;
+    pub fn from_fen(fen: &FEN) -> Self {
+        let current_state = BoardState::from_fen(fen);
         let state_history: Vec<BoardState> = vec![current_state.clone()];
 
         let transposition_table = transposition::TranspositionTable::new();
-        log::info!("New Board created from FEN: {}", fen);
-        Ok(Board {
+        log::info!("New Board created from FEN: {}", fen.to_string());
+        Board {
             current_state,
             detached_idx: None,
             state_history,
             move_history: Vec::new(),
             transposition_table,
-        })
+        }
     }
 
     pub fn from_pgn(pgn: &pgn::PGN) -> Result<Self, PGNParseError> {
@@ -518,7 +470,7 @@ impl Board {
         Ok(board)
     }
 
-    pub fn to_fen(&self) -> String {
+    pub fn to_fen(&self) -> FEN {
         self.current_state.to_fen()
     }
 

@@ -3,6 +3,7 @@ pub mod notation;
 mod tag;
 mod token;
 
+use std::fmt;
 use std::fs;
 use std::path::Path;
 
@@ -20,6 +21,11 @@ use token::*;
 pub struct PGN {
     tags: Vec<Tag>,
     moves: Vec<Notation>,
+}
+impl fmt::Display for PGN {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "{}", self.to_string())
+    }
 }
 impl PGN {
     pub fn from_file(file_path: &Path) -> Result<Self, PGNParseError> {
@@ -81,7 +87,7 @@ impl PGN {
         // set a custom field for the FEN of starting position, state_history[0] is guaranteed to be initialised
         new.tags.push(Tag::CustomTag(CustomTag::new(
             "FEN",
-            &board.get_starting_state().to_fen(),
+            &board.get_starting_state().to_fen().to_string(),
         )));
 
         new.moves = board.move_history_notation();

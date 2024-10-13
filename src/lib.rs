@@ -1,13 +1,13 @@
 pub mod board;
 mod engine;
 mod errors;
-mod fen;
+pub mod fen;
 mod macros;
 mod magic;
 mod mailbox;
 mod movegen;
 mod perft;
-mod pgn;
+pub mod pgn;
 mod position;
 mod transposition;
 mod util;

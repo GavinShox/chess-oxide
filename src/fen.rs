@@ -1,25 +1,37 @@
-use crate::board::*;
-use crate::errors::FenParseError;
+use std::fmt;
+
 use crate::movegen::*;
-use crate::position;
-use crate::position::*;
+use crate::position::{Pos64, Position, ABOVE_BELOW};
+use crate::board::BoardState;
+use crate::errors::FenParseError;
+use crate::log_and_return_error;
 use crate::util;
 
 pub struct FEN {
-    string: String,
+    pos64: Pos64,
+    side: PieceColour,
+    movegen_flags: MovegenFlags,
+    pub(crate) halfmove_count: u32,
+    pub(crate) move_count: u32,
 }
-
-impl FEN {
-    pub fn from_string(fen: String) -> Self {
-        Self { string: fen }
+impl fmt::Display for FEN {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}", self.to_string())
     }
-    // partial implementation of the FEN format, last 2 fields are not used here
-    // OK => returns completed Position struct and the parsed FEN fields
-    // Err => returns the error message
-    pub fn to_position(fen: &str) -> Result<(Position, Vec<&str>), FenParseError> {
-        let mut pos = Pos64::default();
-        let fen_vec: Vec<&str> = fen.split(' ').collect();
+}
+impl FEN {
+    fn new() -> Self {
+        Self {
+            pos64: Pos64::default(),
+            side: PieceColour::White,
+            movegen_flags: MovegenFlags::default(),
+            halfmove_count: 0,
+            move_count: 1,
+        }
+    }
 
+    pub fn from_str(fen_str: &str) -> Result<Self, FenParseError> {
+        let fen_vec: Vec<&str> = fen_str.split(' ').collect();
         // check if the FEN string has the correct number of fields, accept the last two as optional with default values given in BoardState
         if fen_vec.len() < 4 || fen_vec.len() > 6 {
             return Err(FenParseError(format!(
@@ -27,10 +39,156 @@ impl FEN {
                 fen_vec.len()
             )));
         }
-
+        let mut fen = Self::new();
         // first field of FEN defines the piece positions
+        fen.parse_pos_field(fen_vec[0])?;
+        // second filed of FEN defines which side it is to move, either 'w' or 'b'
+        fen.parse_side_field(fen_vec[1])?;
+        // third field of FEN defines castling flags
+        fen.parse_castling_flags(fen_vec[2])?;
+        // fourth field of FEN defines en passant flag, it gives notation of the square the pawn jumped over
+        fen.parse_en_passant_flag(fen_vec[3])?;
+        // set last two fields if they exist, otherwise default values are 0 and 1 already set in new()
+        fen.parse_halfmove_move_count(fen_vec.get(4).copied(), fen_vec.get(5).copied())?;
+
+        Ok(fen)
+    }
+
+    pub fn from_board_state(board_state: &BoardState) -> Self {
+        let mut fen = Self::from_position(board_state.position());
+        fen.halfmove_count = board_state.halfmove_count();
+        fen.move_count = board_state.move_count();
+        fen
+    }
+
+    fn from_position(pos: &Position) -> Self {
+        // default halfmove and move count to 0 and 1 respectively as Position does not store this information
+        Self {
+            pos64: pos.pos64,
+            side: pos.side,
+            movegen_flags: pos.movegen_flags,
+            halfmove_count: 0,
+            move_count: 1,
+        }
+    }
+
+    pub fn to_string(&self) -> String {
+        let mut fen_str = String::new();
+
+        let mut empty_count: i32 = 0;
+        for (idx, sq) in self.pos64.iter().enumerate() {
+            match sq {
+                Square::Piece(p) => {
+                    if empty_count > 0 {
+                        fen_str.push_str(empty_count.to_string().as_str());
+                        empty_count = 0;
+                    }
+
+                    match p.ptype {
+                        PieceType::Pawn => match p.pcolour {
+                            PieceColour::White => fen_str.push('P'),
+                            PieceColour::Black => fen_str.push('p'),
+                        },
+                        PieceType::Knight => match p.pcolour {
+                            PieceColour::White => fen_str.push('N'),
+                            PieceColour::Black => fen_str.push('n'),
+                        },
+                        PieceType::Bishop => match p.pcolour {
+                            PieceColour::White => fen_str.push('B'),
+                            PieceColour::Black => fen_str.push('b'),
+                        },
+                        PieceType::Rook => match p.pcolour {
+                            PieceColour::White => fen_str.push('R'),
+                            PieceColour::Black => fen_str.push('r'),
+                        },
+                        PieceType::Queen => match p.pcolour {
+                            PieceColour::White => fen_str.push('Q'),
+                            PieceColour::Black => fen_str.push('q'),
+                        },
+                        PieceType::King => match p.pcolour {
+                            PieceColour::White => fen_str.push('K'),
+                            PieceColour::Black => fen_str.push('k'),
+                        },
+                    }
+                }
+                Square::Empty => {
+                    empty_count += 1;
+                }
+            }
+
+            // new rank insert '/', except when at last index, then only insert empty count if it's > 0
+            if (idx + 1) % 8 == 0 {
+                if empty_count > 0 {
+                    fen_str.push_str(empty_count.to_string().as_str());
+                    empty_count = 0;
+                }
+                if idx != 63 {
+                    fen_str.push('/');
+                }
+            }
+        }
+        fen_str.push(' ');
+
+        match self.side {
+            PieceColour::White => fen_str.push('w'),
+            PieceColour::Black => fen_str.push('b'),
+        }
+        fen_str.push(' ');
+
+        if self.movegen_flags.white_castle_short {
+            fen_str.push('K');
+        }
+        if self.movegen_flags.white_castle_long {
+            fen_str.push('Q');
+        }
+        if self.movegen_flags.black_castle_short {
+            fen_str.push('k');
+        }
+        if self.movegen_flags.black_castle_long {
+            fen_str.push('q');
+        }
+        if !(self.movegen_flags.white_castle_short
+            || self.movegen_flags.white_castle_long
+            || self.movegen_flags.black_castle_short
+            || self.movegen_flags.black_castle_long)
+        {
+            fen_str.push('-');
+        }
+        fen_str.push(' ');
+
+        match self.movegen_flags.en_passant {
+            Some(idx) => {
+                if self.side == PieceColour::White {
+                    fen_str.push_str(util::index_to_notation(idx - ABOVE_BELOW).as_str());
+                } else {
+                    fen_str.push_str(util::index_to_notation(idx + ABOVE_BELOW).as_str());
+                }
+            }
+            None => {
+                fen_str.push('-');
+            }
+        }
+        fen_str.push(' ');
+        fen_str.push_str(&format!("{} {}", self.halfmove_count, self.move_count));
+
+        fen_str
+    }
+
+    pub fn to_board_state(&self) -> BoardState {
+        BoardState::from_parts(self.to_position(), self.halfmove_count, self.move_count)
+    }
+
+    pub(crate) fn to_position(&self) -> Position {
+        Position::new_from_pub_parts(self.pos64, self.side, self.movegen_flags)
+    }
+
+    fn parse_pos_field(&mut self, field: &str) -> Result<(), FenParseError> {
+        let mut pos = Pos64::default();
         let mut rank_start_idx = 0;
-        for rank in fen_vec[0].split('/') {
+        // check for multiple kings, should be the only issue in terms of pieces on the board
+        let mut wking_num = 0;
+        let mut bking_num = 0;
+        for rank in field.split('/') {
             // check to see if there is 8 squares in a rank.
             let mut square_count = 0;
             for c in rank.chars() {
@@ -91,14 +249,20 @@ impl FEN {
                         pcolour: PieceColour::White,
                         ptype: PieceType::Queen,
                     }),
-                    'k' => Square::Piece(Piece {
-                        pcolour: PieceColour::Black,
-                        ptype: PieceType::King,
-                    }),
-                    'K' => Square::Piece(Piece {
-                        pcolour: PieceColour::White,
-                        ptype: PieceType::King,
-                    }),
+                    'k' => {
+                        bking_num += 1;
+                        Square::Piece(Piece {
+                            pcolour: PieceColour::Black,
+                            ptype: PieceType::King,
+                        })
+                    }
+                    'K' => {
+                        wking_num += 1;
+                        Square::Piece(Piece {
+                            pcolour: PieceColour::White,
+                            ptype: PieceType::King,
+                        })
+                    }
                     x if x.is_ascii_digit() => {
                         for _ in 0..x.to_digit(10).unwrap() {
                             pos[i + rank_start_idx] = Square::Empty;
@@ -107,10 +271,8 @@ impl FEN {
                         continue; // skip the below square assignment for pieces
                     }
                     other => {
-                        return Err(FenParseError(format!(
-                            "Invalid char in first field: {}",
-                            other
-                        )));
+                        let err = FenParseError(format!("Invalid char in first field: {}", other));
+                        log_and_return_error!(err)
                     }
                 };
                 pos[i + rank_start_idx] = square;
@@ -119,12 +281,25 @@ impl FEN {
             rank_start_idx += 8; // next rank
         }
 
-        // second filed of FEN defines which side it is to move, either 'w' or 'b'
-        let mut side = PieceColour::White;
-        match fen_vec[1] {
-            "w" => { /* already set as white */ }
+        if wking_num > 1 || bking_num > 1 {
+            let err = FenParseError(format!(
+                "Multiple kings (white: {}, black: {}) in FEN field: {}",
+                wking_num, bking_num, field
+            ));
+            log_and_return_error!(err)
+        }
+
+        self.pos64 = pos;
+        Ok(())
+    }
+
+    fn parse_side_field(&mut self, field: &str) -> Result<(), FenParseError> {
+        match field {
+            "w" => {
+                self.side = PieceColour::White;
+            }
             "b" => {
-                side = PieceColour::Black;
+                self.side = PieceColour::Black;
             }
             other => {
                 return Err(FenParseError(format!(
@@ -133,24 +308,23 @@ impl FEN {
                 )));
             }
         }
+        Ok(())
+    }
 
-        // initialise movegen flags for the next two FEN fields
-        let mut movegen_flags = MovegenFlags::default();
-
-        // third field of FEN defines castling flags
-        for c in fen_vec[2].chars() {
+    fn parse_castling_flags(&mut self, field: &str) -> Result<(), FenParseError> {
+        for c in field.chars() {
             match c {
                 'q' => {
-                    movegen_flags.black_castle_long = true;
+                    self.movegen_flags.black_castle_long = true;
                 }
                 'Q' => {
-                    movegen_flags.white_castle_long = true;
+                    self.movegen_flags.white_castle_long = true;
                 }
                 'k' => {
-                    movegen_flags.black_castle_short = true;
+                    self.movegen_flags.black_castle_short = true;
                 }
                 'K' => {
-                    movegen_flags.white_castle_short = true;
+                    self.movegen_flags.white_castle_short = true;
                 }
                 '-' => {}
                 other => {
@@ -161,139 +335,138 @@ impl FEN {
                 }
             }
         }
+        Ok(())
+    }
 
-        // fourth field of FEN defines en passant flag, it gives notation of the square the pawn jumped over
-        if fen_vec[3] != "-" {
-            let ep_mv_idx = util::notation_to_index(fen_vec[3])?;
+    fn parse_en_passant_flag(&mut self, field: &str) -> Result<(), FenParseError> {
+        if field != "-" {
+            let ep_mv_idx = util::notation_to_index(field)?;
 
             // error if index is out of bounds. FEN defines the index behind the pawn that moved, so valid indexes are only 16->47 (excluded top and bottom two ranks)
             if !(16..=47).contains(&ep_mv_idx) {
                 return Err(FenParseError(format!(
                     "Invalid en passant square: {}. Index is out of bounds",
-                    fen_vec[3]
+                    field
                 )));
             }
 
             // in our struct however, we store the idx of the pawn to be captured
-            let ep_flag = if side == PieceColour::White {
+            let ep_flag = if self.side == PieceColour::White {
                 ep_mv_idx + ABOVE_BELOW
             } else {
                 ep_mv_idx - ABOVE_BELOW
             };
-            movegen_flags.en_passant = Some(ep_flag);
+            self.movegen_flags.en_passant = Some(ep_flag);
 
             // set polyglot en passant flag if the ep_flag is beside a pawn of side to move colour
-            if pos.polyglot_is_pawn_beside(ep_flag, side) {
-                movegen_flags.polyglot_en_passant = Some(ep_flag);
+            if self.pos64.polyglot_is_pawn_beside(ep_flag, self.side) {
+                self.movegen_flags.polyglot_en_passant = Some(ep_flag);
             }
         }
-
-        // initialise the new Position struct
-        let new = Position::new_from_pub_parts(pos, side, movegen_flags);
-
-        Ok((new, fen_vec))
+        Ok(())
     }
 
-    pub fn from_position(pos: &Position) -> Self {
-        let mut fen_str = String::new();
-
-        let mut empty_count: i32 = 0;
-
-        for (idx, sq) in pos.pos64.iter().enumerate() {
-            match sq {
-                Square::Piece(p) => {
-                    if empty_count > 0 {
-                        fen_str.push_str(empty_count.to_string().as_str());
-                        empty_count = 0;
-                    }
-
-                    match p.ptype {
-                        PieceType::Pawn => match p.pcolour {
-                            PieceColour::White => fen_str.push('P'),
-                            PieceColour::Black => fen_str.push('p'),
-                        },
-                        PieceType::Knight => match p.pcolour {
-                            PieceColour::White => fen_str.push('N'),
-                            PieceColour::Black => fen_str.push('n'),
-                        },
-                        PieceType::Bishop => match p.pcolour {
-                            PieceColour::White => fen_str.push('B'),
-                            PieceColour::Black => fen_str.push('b'),
-                        },
-                        PieceType::Rook => match p.pcolour {
-                            PieceColour::White => fen_str.push('R'),
-                            PieceColour::Black => fen_str.push('r'),
-                        },
-                        PieceType::Queen => match p.pcolour {
-                            PieceColour::White => fen_str.push('Q'),
-                            PieceColour::Black => fen_str.push('q'),
-                        },
-                        PieceType::King => match p.pcolour {
-                            PieceColour::White => fen_str.push('K'),
-                            PieceColour::Black => fen_str.push('k'),
-                        },
-                    }
+    fn parse_halfmove_move_count(
+        &mut self,
+        hm_field: Option<&str>,
+        m_field: Option<&str>,
+    ) -> Result<(), FenParseError> {
+        if let Some(hm) = hm_field {
+            self.halfmove_count = match hm.parse::<u32>() {
+                Ok(halfmove_count) => halfmove_count,
+                Err(_) => {
+                    let err = FenParseError(format!("Error parsing halfmove count: {}", hm));
+                    log_and_return_error!(err)
                 }
-                Square::Empty => {
-                    empty_count += 1;
+            };
+        }
+        if let Some(m) = m_field {
+            self.move_count = match m.parse::<u32>() {
+                Ok(move_count) => move_count,
+                Err(_) => {
+                    let err = FenParseError(format!("Error parsing move count: {}", m));
+                    log_and_return_error!(err)
                 }
-            }
+            };
+        }
+        Ok(())
+    }
+}
 
-            // new rank insert '/', except when at last index, then only insert empty count if it's > 0
-            if (idx + 1) % 8 == 0 {
-                if empty_count > 0 {
-                    fen_str.push_str(empty_count.to_string().as_str());
-                    empty_count = 0;
-                }
-                if idx != 63 {
-                    fen_str.push('/');
-                }
-            }
-        }
-        fen_str.push(' ');
+#[cfg(test)]
+mod tests {
+    use super::*;
 
-        match pos.side {
-            PieceColour::White => fen_str.push('w'),
-            PieceColour::Black => fen_str.push('b'),
-        }
-        fen_str.push(' ');
+    #[test]
+    fn test_fen_from_str_valid() {
+        let fen_str = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
+        let fen = FEN::from_str(fen_str).unwrap();
+        assert_eq!(fen.to_string(), fen_str);
+    }
 
-        if pos.movegen_flags.white_castle_short {
-            fen_str.push('K');
-        }
-        if pos.movegen_flags.white_castle_long {
-            fen_str.push('Q');
-        }
-        if pos.movegen_flags.black_castle_short {
-            fen_str.push('k');
-        }
-        if pos.movegen_flags.black_castle_long {
-            fen_str.push('q');
-        }
-        if !(pos.movegen_flags.white_castle_short
-            || pos.movegen_flags.white_castle_long
-            || pos.movegen_flags.black_castle_short
-            || pos.movegen_flags.black_castle_long)
-        {
-            fen_str.push('-');
-        }
-        fen_str.push(' ');
+    #[test]
+    fn test_fen_from_str_invalid_fields() {
+        let fen_str = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq";
+        assert!(FEN::from_str(fen_str).is_err());
+    }
 
-        match pos.movegen_flags.en_passant {
-            Some(idx) => {
-                if pos.side == PieceColour::White {
-                    fen_str.push_str(util::index_to_notation(idx - ABOVE_BELOW).as_str());
-                } else {
-                    fen_str.push_str(util::index_to_notation(idx + ABOVE_BELOW).as_str());
-                }
-            }
-            None => {
-                fen_str.push('-');
-            }
-        }
-        fen_str.push(' ');
+    #[test]
+    fn test_fen_from_str_invalid_piece_positions() {
+        let fen_str = "rnbqkbnr/pppppppp/0/8/8/8/PPPPPPPP/RNBQKBNKK w KQkq - 0 1";
+        assert!(FEN::from_str(fen_str).is_err());
+    }
 
-        // last two fields implemented in BoardState
-        Self::from_string(fen_str)
+    #[test]
+    fn test_fen_from_str_invalid_side() {
+        let fen_str = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR xw KQkq - 0 1";
+        assert!(FEN::from_str(fen_str).is_err());
+    }
+
+    #[test]
+    fn test_fen_from_str_invalid_castling_flags() {
+        let fen_str = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KdQkq - 0 1";
+        assert!(FEN::from_str(fen_str).is_err());
+    }
+
+    #[test]
+    fn test_fen_from_str_invalid_en_passant() {
+        let fen_str = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq x2 0 1";
+        assert!(FEN::from_str(fen_str).is_err());
+    }
+
+    #[test]
+    fn test_fen_from_str_invalid_halfmove_count() {
+        let fen_str = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - x 1";
+        assert!(FEN::from_str(fen_str).is_err());
+    }
+
+    #[test]
+    fn test_fen_from_str_invalid_move_count() {
+        let fen_str = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 x";
+        assert!(FEN::from_str(fen_str).is_err());
+    }
+
+    #[test]
+    fn test_fen_to_string() {
+        let fen = FEN::new();
+        let fen_str = "8/8/8/8/8/8/8/8 w - - 0 1";
+        assert_eq!(fen.to_string(), fen_str);
+    }
+
+    #[test]
+    fn test_fen_from_board_state() {
+        let board_state = BoardState::new_starting();
+        let fen = FEN::from_board_state(&board_state);
+        let fen_str = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
+        assert_eq!(fen.to_string(), fen_str);
+    }
+
+    #[test]
+    fn test_fen_to_board_state() {
+        let fen_str = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
+        let fen = FEN::from_str(fen_str).unwrap();
+        let board_state = fen.to_board_state();
+        let fen_from_board = FEN::from_board_state(&board_state);
+        assert_eq!(fen_from_board.to_string(), fen_str);
     }
 }
