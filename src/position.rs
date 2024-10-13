@@ -1,3 +1,7 @@
+use std::ops::Deref;
+use std::ops::Index;
+use std::ops::IndexMut;
+
 use crate::errors::FenParseError;
 use crate::mailbox;
 use crate::movegen::*;
@@ -5,9 +9,63 @@ use crate::util;
 use crate::zobrist;
 use crate::zobrist::PositionHash;
 
-const ABOVE_BELOW: usize = 8; // 8 indexes from i is the square directly above/below in the pos64 array
+pub(crate) const ABOVE_BELOW: usize = 8; // 8 indexes from i is the square directly above/below in the pos64 array
 
-pub type Pos64 = [Square; 64];
+#[derive(Debug, PartialEq, Clone, Copy)]
+pub struct Pos64([Square; 64]);
+impl Index<usize> for Pos64 {
+    type Output = Square;
+
+    fn index(&self, index: usize) -> &Self::Output {
+        &self.0[index]
+    }
+}
+impl IndexMut<usize> for Pos64 {
+    fn index_mut(&mut self, index: usize) -> &mut Self::Output {
+        &mut self.0[index]
+    }
+}
+impl Deref for Pos64 {
+    type Target = [Square; 64];
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+impl Default for Pos64 {
+    fn default() -> Self {
+        Self([Square::Empty; 64])
+    }
+}
+impl Pos64 {
+    // is a pawn of colour 'pawn_colour' is either side of square at index i, used for setting polyglot en passant flag
+    #[inline(always)]
+    pub fn polyglot_is_pawn_beside(&self, i: usize, pawn_colour: PieceColour) -> bool {
+        let piece = Piece {
+            pcolour: pawn_colour,
+            ptype: PieceType::Pawn,
+        };
+        let left = mailbox::next_mailbox_number(i, -1);
+        // valid mailbox index
+        if left >= 0 {
+            if let Square::Piece(p) = &self[left as usize] {
+                if p == &piece {
+                    return true;
+                }
+            }
+        }
+        let right = mailbox::next_mailbox_number(i, 1);
+        // valid mailbox index
+        if right >= 0 {
+            if let Square::Piece(p) = &self[right as usize] {
+                if p == &piece {
+                    return true;
+                }
+            }
+        }
+        false
+    }
+}
 
 #[derive(Debug, PartialEq, Clone)]
 pub struct AttackMap(Vec<Move>);
@@ -62,7 +120,7 @@ pub struct Position {
 impl Position {
     // new board with starting Position
     pub fn new_starting() -> Self {
-        let mut pos: Pos64 = [Square::Empty; 64];
+        let mut pos: Pos64 = Pos64::default();
 
         let movegen_flags = MovegenFlags {
             white_castle_short: true,
@@ -168,6 +226,25 @@ impl Position {
         new
     }
 
+    pub(crate) fn new_from_pub_parts(
+        pos64: Pos64,
+        side: PieceColour,
+        movegen_flags: MovegenFlags,
+    ) -> Self {
+        let mut new = Self {
+            pos64,
+            side,
+            movegen_flags,
+            defend_map: DefendMap::new(),
+            attack_map: AttackMap::new(),
+            wking_idx: 0,
+            bking_idx: 0,
+        };
+        new.update_king_idx();
+        new.gen_maps();
+        new
+    }
+
     // Assumes a legal move, no legality checks are done, so no bounds checking is done here
     pub fn new_position(&self, mv: &Move) -> Self {
         let mut new_pos = self.clone();
@@ -206,6 +283,21 @@ impl Position {
     #[inline(always)]
     pub fn pos_hash(&self) -> PositionHash {
         zobrist::pos_hash(self)
+    }
+
+    #[inline(always)]
+    fn update_king_idx(&mut self) {
+        for (i, s) in self.pos64.iter().enumerate() {
+            if let Square::Piece(p) = s {
+                if p.ptype == PieceType::King {
+                    if p.pcolour == PieceColour::White {
+                        self.wking_idx = i;
+                    } else {
+                        self.bking_idx = i;
+                    }
+                }
+            }
+        }
     }
 
     // TODO maybe consolidate all movegen flag updates into one place if possible?
@@ -305,40 +397,12 @@ impl Position {
         legal_moves
     }
 
-    // is a pawn of colour 'pawn_colour' is either side of square at index i, used for setting polyglot en passant flag
-    #[inline(always)]
-    fn polyglot_is_pawn_beside(&self, i: usize, pawn_colour: PieceColour) -> bool {
-        let piece = Piece {
-            pcolour: pawn_colour,
-            ptype: PieceType::Pawn,
-        };
-        let left = mailbox::next_mailbox_number(i, -1);
-        // valid mailbox index
-        if left >= 0 {
-            if let Square::Piece(p) = &self.pos64[left as usize] {
-                if p == &piece {
-                    return true;
-                }
-            }
-        }
-        let right = mailbox::next_mailbox_number(i, 1);
-        // valid mailbox index
-        if right >= 0 {
-            if let Square::Piece(p) = &self.pos64[right as usize] {
-                if p == &piece {
-                    return true;
-                }
-            }
-        }
-        false
-    }
-
     // sets enpassant movegen flag to Some(idx of pawn that can be captured), if the move is a double pawn push
     #[inline(always)]
     fn set_en_passant_flag(&mut self, mv: &Move) {
         if mv.move_type == MoveType::DoublePawnPush {
             // if the pawn is beside an enemy pawn, set the polyglot en passant flag
-            if self.polyglot_is_pawn_beside(mv.to, !self.side) {
+            if self.pos64.polyglot_is_pawn_beside(mv.to, !self.side) {
                 self.movegen_flags.polyglot_en_passant = Some(mv.to);
             } else {
                 self.movegen_flags.polyglot_en_passant = None;
@@ -393,7 +457,7 @@ impl Position {
         }
     }
 
-    fn gen_maps(&mut self) {
+    pub(crate) fn gen_maps(&mut self) {
         self.defend_map.clear();
         self.attack_map.clear();
 
@@ -417,7 +481,7 @@ impl Position {
     // OK => returns completed Position struct and the parsed FEN fields
     // Err => returns the error message
     pub fn from_fen_partial_impl(fen: &str) -> Result<(Self, Vec<&str>), FenParseError> {
-        let mut pos: Pos64 = [Square::Empty; 64];
+        let mut pos: Pos64 = Pos64::default();
         let fen_vec: Vec<&str> = fen.split(' ').collect();
 
         // check if the FEN string has the correct number of fields, accept the last two as optional with default values given in BoardState
@@ -601,7 +665,7 @@ impl Position {
             new.movegen_flags.en_passant = Some(ep_flag);
 
             // set polyglot en passant flag if the ep_flag is beside a pawn of side to move colour
-            if new.polyglot_is_pawn_beside(ep_flag, new.side) {
+            if new.pos64.polyglot_is_pawn_beside(ep_flag, new.side) {
                 new.movegen_flags.polyglot_en_passant = Some(ep_flag);
             }
         }

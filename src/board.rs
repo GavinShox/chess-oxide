@@ -116,7 +116,7 @@ impl BoardState {
         // check for multiple kings, should be the only issue in terms of pieces on the board
         let mut wking_num = 0;
         let mut bking_num = 0;
-        for s in position.pos64 {
+        for s in position.pos64.iter() {
             match s {
                 Square::Piece(p) => {
                     if p.ptype == PieceType::King {

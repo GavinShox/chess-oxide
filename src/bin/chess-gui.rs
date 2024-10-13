@@ -85,6 +85,7 @@ fn main() -> Result<(), slint::PlatformError> {
             .unwrap()
             .get_current_state()
             .get_pos64()
+            .iter()
         {
             match s {
                 chess::Square::Piece(p) => ui_position.push(ui_convert_piece(*p)),
