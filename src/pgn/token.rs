@@ -78,13 +78,17 @@ impl Tokens {
             }
             move_tokens = new_tokens;
         }
+        // truncate at game termination marker
+        if let Some(pos) = move_tokens
+            .iter()
+            .position(|token| token.is_game_termination_marker())
+        {
+            move_tokens.truncate(pos);
+        }
         // remove all single character tokens that are left
         move_tokens.retain(|token| token.value.len() > 1);
         // remove move numbers
         move_tokens.retain(|token| !token.value.chars().all(|c| c.is_ascii_digit()));
-        // remove game termination marker
-        move_tokens.retain(|token| !token.is_game_termination_marker());
-
         let mut notations = Vec::new();
         for token in move_tokens {
             let notation = Notation::from_str(&token.value)?;

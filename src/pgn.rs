@@ -250,7 +250,10 @@ mod tests {
         println!("{}", pgn1.to_string());
         println!("{}", pgn2.to_string());
         assert_eq!(pgn1.to_string(), pgn2.to_string());
-        assert_eq!(b1.get_current_state().board_hash, b2.get_current_state().board_hash);
+        assert_eq!(
+            b1.get_current_state().board_hash,
+            b2.get_current_state().board_hash
+        );
 
         assert_eq!(pgn.tags.len(), 10);
         assert_eq!(pgn.moves.len(), 115);
