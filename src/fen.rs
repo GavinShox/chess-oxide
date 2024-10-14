@@ -1,18 +1,18 @@
 use std::fmt;
 
-use crate::movegen::*;
-use crate::position::{Pos64, Position, ABOVE_BELOW};
 use crate::board::BoardState;
 use crate::errors::FenParseError;
 use crate::log_and_return_error;
+use crate::movegen::{MovegenFlags, Piece, PieceColour, PieceType, Square};
+use crate::position::{Pos64, Position, ABOVE_BELOW};
 use crate::util;
 
 pub struct FEN {
     pos64: Pos64,
     side: PieceColour,
     movegen_flags: MovegenFlags,
-    pub(crate) halfmove_count: u32,
-    pub(crate) move_count: u32,
+    halfmove_count: u32,
+    move_count: u32,
 }
 impl fmt::Display for FEN {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {

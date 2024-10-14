@@ -20,7 +20,7 @@ use crate::util;
 use crate::zobrist;
 use crate::zobrist::PositionHash;
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum GameState {
     Check,
     Checkmate,
@@ -416,12 +416,21 @@ impl BoardState {
     }
 }
 
+#[derive(Debug, Clone, Copy)]
+pub enum GameOverState {
+    WhiteResign,
+    BlackResign,
+    AgreedDraw,
+    Forced(GameState),
+}
+
 #[derive(Debug)]
 pub struct Board {
     current_state: BoardState,
     detached_idx: Option<usize>,
     state_history: Vec<BoardState>,
     move_history: Vec<Move>,
+    game_over_state: Option<GameOverState>,
     transposition_table: transposition::TranspositionTable,
 }
 
@@ -446,6 +455,7 @@ impl Board {
             detached_idx: None,
             state_history,
             move_history: Vec::new(),
+            game_over_state: None,
             transposition_table,
         }
     }
@@ -461,6 +471,7 @@ impl Board {
             detached_idx: None,
             state_history,
             move_history: Vec::new(),
+            game_over_state: None,
             transposition_table,
         }
     }
@@ -478,6 +489,18 @@ impl Board {
         pgn::PGN::from_board(&self)
     }
 
+    pub fn set_resign(&mut self, side: PieceColour) {
+        let gos = match side {
+            PieceColour::White => GameOverState::WhiteResign,
+            PieceColour::Black => GameOverState::BlackResign,
+        };
+        self.game_over_state = Some(gos);
+    }
+
+    pub fn set_draw(&mut self) {
+        self.game_over_state = Some(GameOverState::AgreedDraw);
+    }
+
     pub fn get_starting_state(&self) -> &BoardState {
         // first element in state_history is guarenteed to be initialised as starting BoardState
         &self.state_history[0]
@@ -492,18 +515,24 @@ impl Board {
     }
 
     pub fn make_move(&mut self, mv: &Move) -> Result<GameState, BoardStateError> {
+        if let Some(gos) = self.game_over_state {
+            let err = BoardStateError::GameOver(gos);
+            log_and_return_error!(err)
+        }
         let next_state = self.current_state.next_state(mv)?;
         self.current_state = next_state;
         self.state_history.push(self.current_state.clone());
         self.move_history.push(*mv);
 
         let game_state = self.current_state.get_gamestate();
-        //println!("FEN: {}", self.to_fen());
-
         Ok(game_state)
     }
 
     pub fn make_engine_move(&mut self, depth: u8) -> Result<GameState, BoardStateError> {
+        if let Some(gos) = self.game_over_state {
+            let err = BoardStateError::GameOver(gos);
+            log_and_return_error!(err)
+        }
         let (eval, engine_move) =
             engine::choose_move(&self.current_state, depth, &mut self.transposition_table);
         let mv = *engine_move;

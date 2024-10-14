@@ -1,7 +1,7 @@
 use std::error;
 use std::fmt;
 
-use crate::GameState;
+use crate::{GameOverState, GameState};
 
 #[derive(Debug)]
 pub enum BoardStateError {
@@ -9,6 +9,7 @@ pub enum BoardStateError {
     NullMove(String),
     NoLegalMoves(GameState),
     LazyIncompatiblity(String),
+    GameOver(GameOverState),
 }
 
 impl fmt::Display for BoardStateError {
@@ -20,6 +21,7 @@ impl fmt::Display for BoardStateError {
             BoardStateError::LazyIncompatiblity(s) => {
                 write!(f, "Lazy legal move generation incompatibility: {}", s)
             }
+            BoardStateError::GameOver(gos) => write!(f, "Game over: {:?}", gos),
         }
     }
 }
