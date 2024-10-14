@@ -42,10 +42,15 @@ impl GameState {
                 | GameState::InsufficientMaterial
         )
     }
+    // gamestates that are wins
+    #[inline]
+    pub fn is_win(&self) -> bool {
+        matches!(self, GameState::Checkmate)
+    }
     // gamestates that end game
     #[inline]
     pub fn is_game_over(&self) -> bool {
-        matches!(self, GameState::Checkmate | GameState::Stalemate) || self.is_draw()
+        self.is_win() || self.is_draw()
     }
 }
 // String representation of GameState
@@ -416,7 +421,7 @@ impl BoardState {
     }
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum GameOverState {
     WhiteResign,
     BlackResign,
@@ -463,8 +468,8 @@ impl Board {
     pub fn from_fen(fen: &FEN) -> Self {
         let current_state = BoardState::from_fen(fen);
         let state_history: Vec<BoardState> = vec![current_state.clone()];
-
         let transposition_table = transposition::TranspositionTable::new();
+        // TODO gos
         log::info!("New Board created from FEN: {}", fen.to_string());
         Board {
             current_state,
@@ -494,16 +499,28 @@ impl Board {
             PieceColour::White => GameOverState::WhiteResign,
             PieceColour::Black => GameOverState::BlackResign,
         };
-        self.game_over_state = Some(gos);
+        if self.game_over_state.is_none() {
+            self.game_over_state = Some(gos);
+        } else {
+            log::warn!("Game over state already set, ignoring set_resign");
+        }
     }
 
     pub fn set_draw(&mut self) {
-        self.game_over_state = Some(GameOverState::AgreedDraw);
+        if self.game_over_state.is_none() {
+            self.game_over_state = Some(GameOverState::AgreedDraw);
+        } else {
+            log::warn!("Game over state already set, ignoring set_draw");
+        }
     }
 
     pub fn get_starting_state(&self) -> &BoardState {
         // first element in state_history is guarenteed to be initialised as starting BoardState
         &self.state_history[0]
+    }
+
+    pub fn get_side_to_move(&self) -> PieceColour {
+        self.current_state.side_to_move
     }
 
     pub fn get_current_state(&self) -> &BoardState {
@@ -512,6 +529,10 @@ impl Board {
 
     pub fn get_state_history(&self) -> &Vec<BoardState> {
         &self.state_history
+    }
+
+    pub fn get_game_over_state(&self) -> Option<GameOverState> {
+        self.game_over_state
     }
 
     pub fn make_move(&mut self, mv: &Move) -> Result<GameState, BoardStateError> {
@@ -525,6 +546,9 @@ impl Board {
         self.move_history.push(*mv);
 
         let game_state = self.current_state.get_gamestate();
+        if game_state.is_game_over() {
+            self.game_over_state = Some(GameOverState::Forced(game_state));
+        }
         Ok(game_state)
     }
 

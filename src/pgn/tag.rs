@@ -18,6 +18,7 @@ impl CustomTag {
 
 #[derive(Debug, PartialEq, Ord, Eq, PartialOrd, Clone)]
 pub enum Tag {
+    // REQUIRED TAGS
     Event(String),
     Site(String),
     Date(String),
@@ -25,7 +26,13 @@ pub enum Tag {
     White(String),
     Black(String),
     Result(String),
-    CustomTag(CustomTag), // TODO add more variants instead of just custom tags, required tags in PGN standard is handled in PGN struct not here
+    // OPTIONAL TAGS
+    Eco(String),
+    SetUp(String),
+    FEN(String),
+    Termination(String),
+    Annotator(String),
+    CustomTag(CustomTag),
 }
 impl fmt::Display for Tag {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
@@ -37,6 +44,11 @@ impl fmt::Display for Tag {
             Tag::White(value) => write!(f, "[White \"{}\"]", value),
             Tag::Black(value) => write!(f, "[Black \"{}\"]", value),
             Tag::Result(value) => write!(f, "[Result \"{}\"]", value),
+            Tag::Eco(value) => write!(f, "[ECO \"{}\"]", value),
+            Tag::SetUp(value) => write!(f, "[SetUp \"{}\"]", value),
+            Tag::FEN(value) => write!(f, "[FEN \"{}\"]", value),
+            Tag::Termination(value) => write!(f, "[Termination \"{}\"]", value),
+            Tag::Annotator(value) => write!(f, "[Annotator \"{}\"]", value),
             Tag::CustomTag(ct) => write!(f, "[{} \"{}\"]", ct.name, ct.value),
         }
     }
@@ -69,6 +81,11 @@ impl Tag {
             "White" => Ok(Tag::White(value.to_string())),
             "Black" => Ok(Tag::Black(value.to_string())),
             "Result" => Ok(Tag::Result(value.to_string())),
+            "ECO" => Ok(Tag::Eco(value.to_string())),
+            "SetUp" => Ok(Tag::SetUp(value.to_string())),
+            "FEN" => Ok(Tag::FEN(value.to_string())),
+            "Termination" => Ok(Tag::Termination(value.to_string())),
+            "Annotator" => Ok(Tag::Annotator(value.to_string())),
             c => Ok(Tag::CustomTag(CustomTag::new(c, value))),
         }
     }

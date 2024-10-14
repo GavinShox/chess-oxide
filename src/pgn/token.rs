@@ -51,6 +51,15 @@ impl Tokens {
         Ok(tags)
     }
 
+    pub fn get_game_termination(&self) -> Option<String> {
+        for token in self.tokens.iter() {
+            if token.is_game_termination_marker() {
+                return Some(token.value.clone());
+            }
+        }
+        None
+    }
+
     pub fn get_move_notations(&self) -> Result<Vec<Notation>, PGNParseError> {
         // for now trim comments, variations and move numbers from the movetext as we won't use them for now
         let mut move_tokens = self.tokens.clone();
