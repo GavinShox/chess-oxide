@@ -412,7 +412,7 @@ fn main() -> Result<(), slint::PlatformError> {
         let import_pgn_dialog = import_pgn_dialog_weak_close.upgrade().unwrap();
         import_pgn_dialog.set_error(false);
         import_pgn_dialog.set_error_message("".into());
-        import_pgn_dialog.set_pgn_str("sssssssssssssssssssssssss".into());
+        import_pgn_dialog.set_pgn_str("".into());
         import_pgn_dialog.hide().unwrap();
     });
 
