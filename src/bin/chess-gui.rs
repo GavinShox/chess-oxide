@@ -1,9 +1,12 @@
-use chess::fen::FEN;
-use chess::hash_to_string;
-use env_logger::{Builder, Target};
-use slint::{ComponentHandle, SharedString};
 use std::env;
 use std::sync::{Arc, Mutex};
+
+use env_logger::{Builder, Target};
+use slint::{ComponentHandle, SharedString};
+
+use chess::fen::FEN;
+use chess::hash_to_string;
+use chess::pgn::PGN;
 
 slint::include_modules!();
 
@@ -53,6 +56,7 @@ fn main() -> Result<(), slint::PlatformError> {
     let ui = Board_UI::new()?;
     let import_fen_dialog = ImportFen_UI::new()?;
     let settings_dialog = SettingsDialog_UI::new()?;
+    let import_pgn_dialog = ImportPGN_UI::new()?;
 
     let ui_weak_get_gamestate = ui.as_weak();
     let board_get_gamestate = board.clone();
@@ -349,6 +353,78 @@ fn main() -> Result<(), slint::PlatformError> {
         let settings_dialog = settings_dialog_weak_close.upgrade().unwrap();
         settings_dialog.hide().unwrap();
     });
+
+    let import_pgn_dialog_weak_run = import_pgn_dialog.as_weak();
+    ui.on_import_pgn_dialog(move || {
+        let import_pgn_dialog = import_pgn_dialog_weak_run.upgrade().unwrap();
+        import_pgn_dialog.show().unwrap();
+    });
+
+    let ui_weak_import_pgn = ui.as_weak();
+    let import_pgn_dialog_weak_import_pgn = import_pgn_dialog.as_weak();
+    let board_import_pgn = board.clone();
+    import_pgn_dialog.on_import_pgn(move |pgn: SharedString| {
+        let import_pgn_dialog = import_pgn_dialog_weak_import_pgn.upgrade().unwrap();
+        let ui = ui_weak_import_pgn.upgrade().unwrap();
+
+        log::debug!("Importing PGN: {}", pgn);
+
+        let pgn_import = PGN::from_str(pgn.as_str());
+        match pgn_import {
+            Ok(p) => {
+                log::debug!("Successfully parsed PGN: {:?}", p);
+                let new_board = chess::board::Board::from_pgn(&p);
+                match new_board {
+                    Ok(b) => {
+                        log::debug!("Successfully created board from PGN");
+                        import_pgn_dialog.set_error(false);
+                        import_pgn_dialog.set_error_message("".into());
+                        log::debug!("Resetting UI properties and refreshing position");
+                        let side = b.get_side_to_move();
+                        *board_import_pgn.lock().unwrap() = b;
+                        // TODO for now set both to sidetomove so engine doesnt make move
+                        ui.invoke_reset_properties(
+                            ui_convert_piece_colour(side),
+                            ui_convert_piece_colour(side),
+                        );
+                        ui.invoke_refresh_position();
+                        import_pgn_dialog.hide().unwrap();
+                    }
+                    Err(e) => {
+                        log::error!("Error creating board from PGN: {}", e);
+                        import_pgn_dialog.set_error(true);
+                        import_pgn_dialog.set_error_message(e.to_string().into());
+                        return;
+                    }
+                }
+            }
+            Err(e) => {
+                log::error!("Error parsing PGN: {}", e);
+                import_pgn_dialog.set_error(true);
+                import_pgn_dialog.set_error_message(e.to_string().into());
+                return;
+            }
+        }
+    });
+
+    let import_pgn_dialog_weak_close = import_pgn_dialog.as_weak();
+    import_pgn_dialog.on_close(move || {
+        let import_pgn_dialog = import_pgn_dialog_weak_close.upgrade().unwrap();
+        import_pgn_dialog.set_error(false);
+        import_pgn_dialog.set_error_message("".into());
+        import_pgn_dialog.set_pgn_str("sssssssssssssssssssssssss".into());
+        import_pgn_dialog.hide().unwrap();
+    });
+
+    // on close window, invoke on_close to reset state
+    let import_pgn_dialog_weak_close_requested = import_pgn_dialog.as_weak();
+    import_pgn_dialog
+        .window()
+        .on_close_requested(move || -> slint::CloseRequestResponse {
+            let import_pgn_dialog = import_pgn_dialog_weak_close_requested.upgrade().unwrap();
+            import_pgn_dialog.invoke_close();
+            slint::CloseRequestResponse::HideWindow
+        });
 
     ui.invoke_refresh_position();
     ui.run()
