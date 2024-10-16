@@ -1,4 +1,4 @@
-import { StandardButton, TextEdit } from "std-widgets.slint";
+import { StandardButton, TextEdit, Button } from "std-widgets.slint";
 
 export component ImportPGN_UI inherits Dialog {
     title: "Import FEN";
@@ -10,9 +10,10 @@ export component ImportPGN_UI inherits Dialog {
 
     in property <bool> error: false;
     in property <string> error-message: "";
-    in property <string> pgn_str <=> pgn.text;
+    in-out property <string> pgn_str <=> pgn.text;
 
     callback import-pgn(string);
+    callback get-file() -> string;
     callback close();
 
     VerticalLayout {
@@ -34,6 +35,13 @@ export component ImportPGN_UI inherits Dialog {
             placeholder-text: "Enter PGN";
             font-size: 12px;
             read-only: false;
+        }
+
+        Button {
+            text: "Load PGN from file";
+            clicked => {
+                root.pgn_str = get-file();
+            }
         }
         
         Text {

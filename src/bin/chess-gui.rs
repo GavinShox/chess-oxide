@@ -367,12 +367,12 @@ fn main() -> Result<(), slint::PlatformError> {
         let import_pgn_dialog = import_pgn_dialog_weak_import_pgn.upgrade().unwrap();
         let ui = ui_weak_import_pgn.upgrade().unwrap();
 
-        log::debug!("Importing PGN: {}", pgn);
+        log::debug!("Importing PGN: \n{}", pgn);
 
         let pgn_import = PGN::from_str(pgn.as_str());
         match pgn_import {
             Ok(p) => {
-                log::debug!("Successfully parsed PGN: {:?}", p);
+                log::debug!("Successfully parsed PGN: {:#?}", p);
                 let new_board = chess::board::Board::from_pgn(&p);
                 match new_board {
                     Ok(b) => {
@@ -388,6 +388,7 @@ fn main() -> Result<(), slint::PlatformError> {
                             ui_convert_piece_colour(side),
                         );
                         ui.invoke_refresh_position();
+                        import_pgn_dialog.set_pgn_str("".into());
                         import_pgn_dialog.hide().unwrap();
                     }
                     Err(e) => {
@@ -405,6 +406,45 @@ fn main() -> Result<(), slint::PlatformError> {
                 return;
             }
         }
+    });
+
+    let import_pgn_dialog_weak_file = import_pgn_dialog.as_weak();
+    import_pgn_dialog.on_get_file(move || -> SharedString {
+        let import_pgn_dialog = import_pgn_dialog_weak_file.upgrade().unwrap();
+        let path = match native_dialog::FileDialog::new()
+            .set_location("~/Desktop")
+            .add_filter("PGN File", &["pgn"])
+            .show_open_single_file()
+        {
+            Ok(p) => match p {
+                Some(path) => path,
+                None => {
+                    log::warn!("No file selected");
+                    return "".into();
+                }
+            },
+            Err(e) => {
+                log::error!("Error opening file dialog: {}", e);
+                import_pgn_dialog.set_error(true);
+                import_pgn_dialog.set_error_message(e.to_string().into());
+                return "".into();
+            }
+        };
+
+        return match std::fs::read_to_string(&path) {
+            Ok(p) => {
+                // clear error state on successful file read
+                import_pgn_dialog.set_error(false);
+                import_pgn_dialog.set_error_message("".into());
+                p.into()
+            }
+            Err(e) => {
+                log::error!("Error reading file: {}", e);
+                import_pgn_dialog.set_error(true);
+                import_pgn_dialog.set_error_message(e.to_string().into());
+                "".into()
+            }
+        };
     });
 
     let import_pgn_dialog_weak_close = import_pgn_dialog.as_weak();
