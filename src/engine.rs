@@ -63,7 +63,7 @@ pub fn choose_move<'a>(
 ) -> (i32, &'a Move) {
     let mut nodes = Nodes::new();
     // TODO add check if position is in endgame, for different evaluation
-    let (eval, mv) = negamax_root(bs, depth, bs.side_to_move, tt, &mut nodes);
+    let (eval, mv) = negamax_root(bs, depth, tt, &mut nodes);
 
     if cfg!(feature = "debug_engine_logging") {
         log::info!("Nodes searched: {}", nodes.total_nodes());
@@ -108,7 +108,7 @@ fn quiescence(
             if cfg!(feature = "debug_engine_logging") {
                 nodes.quiescence_nodes += 1;
             }
-            return -CHECKMATE_VALUE + ply as i32
+            return -CHECKMATE_VALUE + ply as i32;
         }
         // draw states
         GameState::Stalemate
@@ -135,14 +135,7 @@ fn quiescence(
             continue; // skip illegal moves
         }
         let child_bs = bs.lazy_next_state_unchecked(&mv);
-        let eval = -quiescence(
-            &child_bs,
-            depth - 1,
-            ply + 1,
-            -beta,
-            -alpha,
-            nodes,
-        );
+        let eval = -quiescence(&child_bs, depth - 1, ply + 1, -beta, -alpha, nodes);
         max_eval = cmp::max(max_eval, eval);
         alpha = cmp::max(alpha, max_eval);
 
@@ -163,7 +156,6 @@ fn quiescence(
 fn negamax_root<'a>(
     bs: &'a BoardState,
     depth: u8,
-    maxi_colour: PieceColour,
     tt: &mut TranspositionTable,
     nodes: &mut Nodes,
 ) -> (i32, &'a Move) {
@@ -174,10 +166,7 @@ fn negamax_root<'a>(
             if cfg!(feature = "debug_engine_logging") {
                 nodes.negamax_nodes += 1;
             }
-            return (
-                -CHECKMATE_VALUE,
-                &NULL_MOVE,
-            );
+            return (-CHECKMATE_VALUE, &NULL_MOVE);
         }
         // draw states
         GameState::Stalemate
@@ -201,15 +190,7 @@ fn negamax_root<'a>(
             continue; // skip illegal moves
         }
         let child_bs = bs.lazy_next_state_unchecked(mv);
-        let eval = -negamax(
-            &child_bs,
-            depth - 1,
-            1,
-            -beta,
-            -alpha,
-            tt,
-            nodes,
-        );
+        let eval = -negamax(&child_bs, depth - 1, 1, -beta, -alpha, tt, nodes);
 
         if eval > max_eval {
             max_eval = eval;
@@ -294,14 +275,7 @@ fn negamax(
     }
 
     if depth == 0 {
-        return quiescence(
-            bs,
-            QUIECENCE_DEPTH,
-            ply + 1,
-            alpha,
-            beta,
-            nodes,
-        );
+        return quiescence(bs, QUIECENCE_DEPTH, ply + 1, alpha, beta, nodes);
     }
 
     let mut max_eval = MIN;
@@ -313,15 +287,7 @@ fn negamax(
         }
 
         let child_bs = bs.lazy_next_state_unchecked(mv);
-        let eval = -negamax(
-            &child_bs,
-            depth - 1,
-            ply + 1,
-            -beta,
-            -alpha,
-            tt,
-            nodes,
-        );
+        let eval = -negamax(&child_bs, depth - 1, ply + 1, -beta, -alpha, tt, nodes);
         if eval > max_eval {
             max_eval = eval;
             best_move = mv.short_move();
@@ -498,5 +464,9 @@ fn evaluate(bs: &BoardState) -> i32 {
         }
     }
     let eval = w_eval - b_eval;
-    return if maxi_colour == PieceColour::White {eval} else {-eval};
+    return if maxi_colour == PieceColour::White {
+        eval
+    } else {
+        -eval
+    };
 }
