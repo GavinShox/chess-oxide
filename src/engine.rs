@@ -99,7 +99,6 @@ fn quiescence(
     ply: u8,
     mut alpha: i32,
     beta: i32,
-    maxi_colour: PieceColour,
     nodes: &mut Nodes,
 ) -> i32 {
     let pseudo_legal_moves = bs.get_pseudo_legal_moves();
@@ -109,11 +108,7 @@ fn quiescence(
             if cfg!(feature = "debug_engine_logging") {
                 nodes.quiescence_nodes += 1;
             }
-            return if bs.side_to_move == maxi_colour {
-                -CHECKMATE_VALUE + ply as i32
-            } else {
-                CHECKMATE_VALUE - ply as i32
-            };
+            return -CHECKMATE_VALUE + ply as i32
         }
         // draw states
         GameState::Stalemate
@@ -128,7 +123,7 @@ fn quiescence(
         _ => {}
     }
 
-    let mut max_eval = evaluate(bs, maxi_colour);
+    let mut max_eval = evaluate(bs);
     if max_eval >= beta || depth == 0 {
         return max_eval;
     }
@@ -146,7 +141,6 @@ fn quiescence(
             ply + 1,
             -beta,
             -alpha,
-            !maxi_colour,
             nodes,
         );
         max_eval = cmp::max(max_eval, eval);
@@ -181,11 +175,7 @@ fn negamax_root<'a>(
                 nodes.negamax_nodes += 1;
             }
             return (
-                if bs.side_to_move == maxi_colour {
-                    -CHECKMATE_VALUE
-                } else {
-                    CHECKMATE_VALUE
-                },
+                -CHECKMATE_VALUE,
                 &NULL_MOVE,
             );
         }
@@ -217,7 +207,6 @@ fn negamax_root<'a>(
             1,
             -beta,
             -alpha,
-            !maxi_colour,
             tt,
             nodes,
         );
@@ -248,7 +237,6 @@ fn negamax(
     ply: u8,
     mut alpha: i32,
     mut beta: i32,
-    maxi_colour: PieceColour,
     tt: &mut TranspositionTable,
     nodes: &mut Nodes,
 ) -> i32 {
@@ -290,11 +278,7 @@ fn negamax(
             if cfg!(feature = "debug_engine_logging") {
                 nodes.negamax_nodes += 1;
             }
-            return if bs.side_to_move == maxi_colour {
-                -CHECKMATE_VALUE + ply as i32
-            } else {
-                CHECKMATE_VALUE - ply as i32
-            };
+            return -CHECKMATE_VALUE + ply as i32;
         }
         // draw states
         GameState::Stalemate
@@ -316,7 +300,6 @@ fn negamax(
             ply + 1,
             alpha,
             beta,
-            maxi_colour,
             nodes,
         );
     }
@@ -336,7 +319,6 @@ fn negamax(
             ply + 1,
             -beta,
             -alpha,
-            !maxi_colour,
             tt,
             nodes,
         );
@@ -496,7 +478,8 @@ fn get_piece_pos_value(i: usize, piece: &Piece, is_endgame: bool) -> i32 {
 }
 
 // adapted piece eval scores from here -> https://www.chessprogramming.org/Simplified_Evaluation_Function
-fn evaluate(bs: &BoardState, maxi_colour: PieceColour) -> i32 {
+fn evaluate(bs: &BoardState) -> i32 {
+    let maxi_colour = bs.side_to_move;
     let mut w_eval: i32 = 0;
     let mut b_eval: i32 = 0;
     for (i, s) in bs.get_pos64().iter().enumerate() {
@@ -515,9 +498,5 @@ fn evaluate(bs: &BoardState, maxi_colour: PieceColour) -> i32 {
         }
     }
     let eval = w_eval - b_eval;
-    eval * (if maxi_colour == PieceColour::White {
-        1
-    } else {
-        -1
-    })
+    return if maxi_colour == PieceColour::White {eval} else {-eval};
 }
