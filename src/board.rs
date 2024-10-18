@@ -6,9 +6,7 @@ use log;
 
 use crate::engine;
 use crate::errors::BoardStateError;
-use crate::errors::FenParseError;
 use crate::errors::PGNParseError;
-use crate::fen;
 use crate::fen::FEN;
 use crate::log_and_return_error;
 use crate::movegen::*;
@@ -432,7 +430,6 @@ pub enum GameOverState {
 #[derive(Debug)]
 pub struct Board {
     current_state: BoardState,
-    detached_idx: Option<usize>,
     state_history: Vec<BoardState>,
     move_history: Vec<Move>,
     game_over_state: Option<GameOverState>,
@@ -457,7 +454,6 @@ impl Board {
         log::info!("New Board created");
         Board {
             current_state,
-            detached_idx: None,
             state_history,
             move_history: Vec::new(),
             game_over_state: None,
@@ -473,7 +469,6 @@ impl Board {
         log::info!("New Board created from FEN: {}", fen.to_string());
         Board {
             current_state,
-            detached_idx: None,
             state_history,
             move_history: Vec::new(),
             game_over_state: None,

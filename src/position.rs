@@ -2,10 +2,8 @@ use std::ops::Deref;
 use std::ops::Index;
 use std::ops::IndexMut;
 
-use crate::errors::FenParseError;
 use crate::mailbox;
 use crate::movegen::*;
-use crate::util;
 use crate::zobrist;
 use crate::zobrist::PositionHash;
 

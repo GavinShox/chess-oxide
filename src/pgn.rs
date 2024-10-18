@@ -12,7 +12,7 @@ use chrono::prelude::*;
 use crate::errors::PGNParseError;
 use crate::log_and_return_error;
 use crate::PieceColour;
-use crate::{board, GameOverState, GameState};
+use crate::{board, GameOverState};
 use notation::*;
 use tag::*;
 use token::*;

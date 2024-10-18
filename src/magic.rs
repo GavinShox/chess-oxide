@@ -1,8 +1,5 @@
-pub fn polyglot_index_to_index(i: usize) -> usize {
-    let file = i % 8;
-    let rank = i / 8;
-    8 * (7 - rank) + file
-}
+// Zobrist hash seeds taken from Polyglot source code, structured to be compatible with chess-oxide structs
+// Used to make position hashes compatible with other engines that use the de-facto standard polyglot magic numbers
 
 pub const POLYGLOT_MAGIC_POS_TABLE: [[u64; 12]; 64] = [
     [
