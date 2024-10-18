@@ -441,7 +441,7 @@ mod tests {
 
     fn compute_zobrist_hash_from_fen(fen_str: &str) -> u64 {
         // BoardState uses this module to compute the hash
-        let bs = crate::BoardState::from_fen(&crate::fen::FEN::from_str(fen_str).unwrap());
+        let bs = crate::BoardState::from(fen_str.parse::<crate::fen::FEN>().unwrap());
 
         ZOBRIST_HASH_TABLE.polyglot_full_position_hash(bs.position())
     }

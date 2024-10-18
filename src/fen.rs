@@ -1,4 +1,5 @@
 use std::fmt;
+use std::str::FromStr;
 
 use crate::board::BoardState;
 use crate::errors::FenParseError;
@@ -7,6 +8,7 @@ use crate::movegen::{MovegenFlags, Piece, PieceColour, PieceType, Square};
 use crate::position::{Pos64, Position, ABOVE_BELOW};
 use crate::util;
 
+#[derive(Debug, Clone, Copy)]
 pub struct FEN {
     pos64: Pos64,
     side: PieceColour,
@@ -14,24 +16,12 @@ pub struct FEN {
     halfmove_count: u32,
     move_count: u32,
 }
-impl fmt::Display for FEN {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}", self.to_string())
-    }
-}
-impl FEN {
-    fn new() -> Self {
-        Self {
-            pos64: Pos64::default(),
-            side: PieceColour::White,
-            movegen_flags: MovegenFlags::default(),
-            halfmove_count: 0,
-            move_count: 1,
-        }
-    }
 
-    pub fn from_str(fen_str: &str) -> Result<Self, FenParseError> {
-        let fen_vec: Vec<&str> = fen_str.split(' ').collect();
+impl FromStr for FEN {
+    type Err = FenParseError;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let fen_vec: Vec<&str> = s.split(' ').collect();
         // check if the FEN string has the correct number of fields, accept the last two as optional with default values given in BoardState
         if fen_vec.len() < 4 || fen_vec.len() > 6 {
             return Err(FenParseError(format!(
@@ -53,26 +43,10 @@ impl FEN {
 
         Ok(fen)
     }
+}
 
-    pub fn from_board_state(board_state: &BoardState) -> Self {
-        let mut fen = Self::from_position(board_state.position());
-        fen.halfmove_count = board_state.halfmove_count();
-        fen.move_count = board_state.move_count();
-        fen
-    }
-
-    fn from_position(pos: &Position) -> Self {
-        // default halfmove and move count to 0 and 1 respectively as Position does not store this information
-        Self {
-            pos64: pos.pos64,
-            side: pos.side,
-            movegen_flags: pos.movegen_flags,
-            halfmove_count: 0,
-            move_count: 1,
-        }
-    }
-
-    pub fn to_string(&self) -> String {
+impl fmt::Display for FEN {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let mut fen_str = String::new();
 
         let mut empty_count: i32 = 0;
@@ -171,15 +145,61 @@ impl FEN {
         fen_str.push(' ');
         fen_str.push_str(&format!("{} {}", self.halfmove_count, self.move_count));
 
-        fen_str
+        write!(f, "{}", fen_str)
+    }
+}
+
+impl From<&BoardState> for FEN {
+    fn from(board_state: &BoardState) -> Self {
+        let mut fen = Self::from(board_state.position());
+        fen.halfmove_count = board_state.halfmove_count();
+        fen.move_count = board_state.move_count();
+        fen
+    }
+}
+
+impl From<&Position> for FEN {
+    fn from(pos: &Position) -> Self {
+        // default halfmove and move count to 0 and 1 respectively as Position does not store this information
+        Self {
+            pos64: pos.pos64,
+            side: pos.side,
+            movegen_flags: pos.movegen_flags,
+            halfmove_count: 0,
+            move_count: 1,
+        }
+    }
+}
+
+impl FEN {
+    fn new() -> Self {
+        Self {
+            pos64: Pos64::default(),
+            side: PieceColour::White,
+            movegen_flags: MovegenFlags::default(),
+            halfmove_count: 0,
+            move_count: 1,
+        }
     }
 
-    pub fn to_board_state(&self) -> BoardState {
-        BoardState::from_parts(self.to_position(), self.halfmove_count, self.move_count)
+    pub fn pos64(&self) -> Pos64 {
+        self.pos64
     }
 
-    pub(crate) fn to_position(&self) -> Position {
-        Position::new_from_pub_parts(self.pos64, self.side, self.movegen_flags)
+    pub fn side(&self) -> PieceColour {
+        self.side
+    }
+
+    pub fn movegen_flags(&self) -> MovegenFlags {
+        self.movegen_flags
+    }
+
+    pub fn halfmove_count(&self) -> u32 {
+        self.halfmove_count
+    }
+
+    pub fn move_count(&self) -> u32 {
+        self.move_count
     }
 
     fn parse_pos_field(&mut self, field: &str) -> Result<(), FenParseError> {
@@ -456,7 +476,7 @@ mod tests {
     #[test]
     fn test_fen_from_board_state() {
         let board_state = BoardState::new_starting();
-        let fen = FEN::from_board_state(&board_state);
+        let fen = FEN::from(&board_state);
         let fen_str = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
         assert_eq!(fen.to_string(), fen_str);
     }
@@ -465,8 +485,8 @@ mod tests {
     fn test_fen_to_board_state() {
         let fen_str = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
         let fen = FEN::from_str(fen_str).unwrap();
-        let board_state = fen.to_board_state();
-        let fen_from_board = FEN::from_board_state(&board_state);
+        let board_state: BoardState = fen.into();
+        let fen_from_board = FEN::from(&board_state);
         assert_eq!(fen_from_board.to_string(), fen_str);
     }
 }

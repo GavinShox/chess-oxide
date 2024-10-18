@@ -138,11 +138,7 @@ fn main() -> Result<(), slint::PlatformError> {
 
         // set current BoardState FEN
         ui.set_fen(
-            board_refresh_position
-                .lock()
-                .unwrap()
-                .get_current_state()
-                .to_fen()
+            FEN::from(board_refresh_position.lock().unwrap().get_current_state())
                 .to_string()
                 .into(),
         );
@@ -278,7 +274,7 @@ fn main() -> Result<(), slint::PlatformError> {
         let import_fen_dialog = import_fen_dialog_weak_import.upgrade().unwrap();
         let ui = ui_weak_import_fen.upgrade().unwrap();
 
-        let new_board = chess::board::Board::from_fen(match &FEN::from_str(&fen.trim()) {
+        let new_board = chess::board::Board::from(match fen.parse::<FEN>() {
             Ok(f) => {
                 import_fen_dialog.set_error(false);
                 import_fen_dialog.set_fen_str("".into());
@@ -369,11 +365,11 @@ fn main() -> Result<(), slint::PlatformError> {
 
         log::debug!("Importing PGN: \n{}", pgn);
 
-        let pgn_import = PGN::from_str(pgn.as_str());
+        let pgn_import = pgn.as_str().parse::<PGN>();
         match pgn_import {
             Ok(p) => {
                 log::debug!("Successfully parsed PGN: {:#?}", p);
-                let new_board = chess::board::Board::from_pgn(&p);
+                let new_board = chess::Board::try_from(p);
                 match new_board {
                     Ok(b) => {
                         log::debug!("Successfully created board from PGN");
@@ -403,7 +399,7 @@ fn main() -> Result<(), slint::PlatformError> {
                 log::error!("Error parsing PGN: {}", e);
                 import_pgn_dialog.set_error(true);
                 import_pgn_dialog.set_error_message(e.to_string().into());
-                return;
+                // return
             }
         }
     });
@@ -431,7 +427,7 @@ fn main() -> Result<(), slint::PlatformError> {
             }
         };
 
-        return match std::fs::read_to_string(&path) {
+        match std::fs::read_to_string(&path) {
             Ok(p) => {
                 // clear error state on successful file read
                 import_pgn_dialog.set_error(false);
@@ -444,7 +440,7 @@ fn main() -> Result<(), slint::PlatformError> {
                 import_pgn_dialog.set_error_message(e.to_string().into());
                 "".into()
             }
-        };
+        }
     });
 
     let import_pgn_dialog_weak_close = import_pgn_dialog.as_weak();

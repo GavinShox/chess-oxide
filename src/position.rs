@@ -2,6 +2,7 @@ use std::ops::Deref;
 use std::ops::Index;
 use std::ops::IndexMut;
 
+use crate::fen::FEN;
 use crate::mailbox;
 use crate::movegen::*;
 use crate::zobrist;
@@ -473,5 +474,11 @@ impl Position {
                 movegen(pos64, movegen_flags, p, i, is_defending, map);
             }
         }
+    }
+}
+
+impl From<FEN> for Position {
+    fn from(fen: FEN) -> Self {
+        Self::new_from_pub_parts(fen.pos64(), fen.side(), fen.movegen_flags())
     }
 }

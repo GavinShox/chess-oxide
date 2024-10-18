@@ -12,6 +12,7 @@ use crate::log_and_return_error;
 use crate::movegen::*;
 use crate::pgn;
 use crate::pgn::notation::Notation;
+use crate::pgn::tag::Tag;
 use crate::position::*;
 use crate::transposition;
 use crate::util;
@@ -87,6 +88,13 @@ impl PartialEq for BoardState {
     }
 }
 
+impl From<FEN> for BoardState {
+    fn from(fen: FEN) -> Self {
+        let pos = Position::from(fen);
+        Self::from_parts(pos, fen.halfmove_count(), fen.move_count())
+    }
+}
+
 impl BoardState {
     pub fn new_starting() -> Self {
         let position = Position::new_starting();
@@ -135,16 +143,6 @@ impl BoardState {
             position_occurences,
             lazy_legal_moves: false,
         }
-    }
-
-    pub fn from_fen(fen: &FEN) -> Self {
-        fen.to_board_state()
-    }
-
-    pub fn to_fen(&self) -> FEN {
-        let fen = FEN::from_board_state(self);
-        log::info!("Converted BoardState to FEN: {}", fen.to_string());
-        fen
     }
 
     pub(crate) fn position(&self) -> &Position {
@@ -442,6 +440,51 @@ impl Default for Board {
     }
 }
 
+impl From<FEN> for Board {
+    fn from(fen: FEN) -> Self {
+        let current_state = BoardState::from(fen);
+        let state_history: Vec<BoardState> = vec![current_state.clone()];
+        let transposition_table = transposition::TranspositionTable::new();
+        // TODO gos
+        log::info!("New Board created from FEN: {}", fen.to_string());
+        Board {
+            current_state,
+            state_history,
+            move_history: Vec::new(),
+            game_over_state: None,
+            transposition_table,
+        }
+    }
+}
+
+impl TryFrom<pgn::PGN> for Board {
+    type Error = PGNParseError;
+
+    fn try_from(pgn: pgn::PGN) -> Result<Self, PGNParseError> {
+        let mut board = Self::new();
+        for notation in pgn.moves() {
+            let mv = notation.to_move_with_context(&board.get_current_state())?;
+            match board.make_move(&mv) {
+                Ok(_) => {}
+                Err(e) => log_and_return_error!(PGNParseError::NotationParseError(e.to_string())),
+            }
+        }
+        //TODO when board can store more info set it here
+        for tag in pgn.tags() {
+            if let Tag::Result(result) = tag {
+                match result.as_str() {
+                    // these will be ignored if game over state is already set in Board, priority is given to Forced(GameState) FIXME this needs to be clearer
+                    "1-0" => board.set_resign(PieceColour::Black),
+                    "0-1" => board.set_resign(PieceColour::White),
+                    "1/2-1/2" => board.set_draw(),
+                    _ => {}
+                }
+            }
+        }
+        Ok(board)
+    }
+}
+
 impl Board {
     pub fn new() -> Self {
         let current_state = BoardState::new_starting();
@@ -459,34 +502,6 @@ impl Board {
             game_over_state: None,
             transposition_table,
         }
-    }
-
-    pub fn from_fen(fen: &FEN) -> Self {
-        let current_state = BoardState::from_fen(fen);
-        let state_history: Vec<BoardState> = vec![current_state.clone()];
-        let transposition_table = transposition::TranspositionTable::new();
-        // TODO gos
-        log::info!("New Board created from FEN: {}", fen.to_string());
-        Board {
-            current_state,
-            state_history,
-            move_history: Vec::new(),
-            game_over_state: None,
-            transposition_table,
-        }
-    }
-
-    pub fn from_pgn(pgn: &pgn::PGN) -> Result<Self, PGNParseError> {
-        let board = pgn.to_board()?;
-        Ok(board)
-    }
-
-    pub fn to_fen(&self) -> FEN {
-        self.current_state.to_fen()
-    }
-
-    pub fn to_pgn(&self) -> pgn::PGN {
-        pgn::PGN::from_board(&self)
     }
 
     pub fn set_resign(&mut self, side: PieceColour) {

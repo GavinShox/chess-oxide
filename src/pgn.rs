@@ -1,11 +1,12 @@
 // Implementing standard from <https://ia902908.us.archive.org/26/items/pgn-standard-1994-03-12/PGN_standard_1994-03-12.txt>
 pub mod notation;
-mod tag;
+pub mod tag;
 mod token;
 
 use std::fmt;
 use std::fs;
 use std::path::Path;
+use std::str::FromStr;
 
 use chrono::prelude::*;
 
@@ -34,39 +35,31 @@ impl fmt::Display for PGNResult {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct PGN {
     tags: Vec<Tag>,
     moves: Vec<Notation>,
 }
-impl fmt::Display for PGN {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        write!(f, "{}", self.to_string())
-    }
-}
-impl PGN {
-    pub fn from_file(file_path: &Path) -> Result<Self, PGNParseError> {
-        let pgn = match fs::read_to_string(file_path) {
-            Ok(pgn) => pgn,
-            Err(e) => log_and_return_error!(PGNParseError::FileError(e.to_string())),
-        };
-        Self::from_str(&pgn)
-    }
 
-    pub fn from_str(pgn: &str) -> Result<Self, PGNParseError> {
+impl FromStr for PGN {
+    type Err = PGNParseError;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
         let mut new = Self {
             tags: Vec::new(),
             moves: Vec::new(),
         };
-        let tokens = Tokens::from_pgn_str(pgn);
+        let tokens = Tokens::from_pgn_str(s);
         new.tags = tokens.get_tags()?;
         new.moves = tokens.get_move_notations()?;
         // set required tags to defaults if they are missing, using game termination marker as the Result tag if it is missing
         new.set_required_tags_defaults(tokens.get_game_termination());
         Ok(new)
     }
+}
 
-    pub fn from_board(board: &board::Board) -> Self {
+impl From<&board::Board> for PGN {
+    fn from(board: &board::Board) -> Self {
         let mut new = Self {
             tags: Vec::new(),
             moves: Vec::new(),
@@ -118,8 +111,10 @@ impl PGN {
 
         new
     }
+}
 
-    pub fn to_string(&self) -> String {
+impl fmt::Display for PGN {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         let mut sorted_tags = self.tags.to_vec();
         sorted_tags.sort();
 
@@ -157,31 +152,25 @@ impl PGN {
         };
         pgn.push_str(&format!(" {}\n", termination_indicator));
 
-        pgn
+        write!(f, "{}", pgn)
+    }
+}
+
+impl PGN {
+    pub fn tags(&self) -> &Vec<Tag> {
+        &self.tags
     }
 
-    pub fn to_board(&self) -> Result<board::Board, PGNParseError> {
-        let mut board = board::Board::new();
-        for notation in &self.moves {
-            let mv = notation.to_move_with_context(&board.get_current_state())?;
-            match board.make_move(&mv) {
-                Ok(_) => {}
-                Err(e) => log_and_return_error!(PGNParseError::NotationParseError(e.to_string())),
-            }
-        }
-        //TODO when board can store more info set it here
-        for tag in &self.tags {
-            if let Tag::Result(result) = tag {
-                match result.as_str() {
-                    // these will be ignored if game over state is already set in Board, priority is given to Forced(GameState) FIXME this needs to be clearer
-                    "1-0" => board.set_resign(PieceColour::Black),
-                    "0-1" => board.set_resign(PieceColour::White),
-                    "1/2-1/2" => board.set_draw(),
-                    _ => {}
-                }
-            }
-        }
-        Ok(board)
+    pub fn moves(&self) -> &Vec<Notation> {
+        &self.moves
+    }
+
+    fn from_file(file_path: &Path) -> Result<Self, PGNParseError> {
+        let pgn = match fs::read_to_string(file_path) {
+            Ok(pgn) => pgn,
+            Err(e) => log_and_return_error!(PGNParseError::FileError(e.to_string())),
+        };
+        Self::from_str(&pgn)
     }
 
     fn set_required_tags_defaults(&mut self, termination: Option<String>) {
@@ -243,10 +232,10 @@ mod tests {
         let pgn = PGN::from_file(Path::new("test_data/test.pgn")).unwrap();
         println!("{}", pgn.to_string());
 
-        let b1 = pgn.to_board().unwrap();
-        let pgn1 = PGN::from_board(&b1);
-        let b2 = pgn1.to_board().unwrap();
-        let pgn2 = PGN::from_board(&b2);
+        let b1 = board::Board::try_from(pgn.clone()).unwrap();
+        let pgn1 = PGN::from(&b1);
+        let b2 = board::Board::try_from(pgn1.clone()).unwrap();
+        let pgn2 = PGN::from(&b2);
         println!("{}", pgn1.to_string());
         println!("{}", pgn2.to_string());
         assert_eq!(pgn1.to_string(), pgn2.to_string());
