@@ -61,6 +61,11 @@ pub struct TT<T> {
     entry_count: usize,
     size_mb: usize,
 }
+impl<T: TTData + Copy + Clone> Default for TT<T> {
+    fn default() -> Self {
+        Self::new()
+    }
+}
 impl<T: TTData + Copy + Clone> TT<T> {
     pub fn new() -> Self {
         Self::with_size(DEFAULT_TABLE_SIZE_MB)
@@ -104,6 +109,10 @@ impl<T: TTData + Copy + Clone> TT<T> {
 
     pub fn len(&self) -> usize {
         self.entry_count
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.entry_count == 0
     }
 
     pub fn clear(&mut self) {

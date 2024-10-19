@@ -80,7 +80,7 @@ pub enum Square {
     Empty,
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, Default)]
 pub struct MovegenFlags {
     pub white_castle_short: bool,
     pub white_castle_long: bool,
@@ -88,18 +88,6 @@ pub struct MovegenFlags {
     pub black_castle_long: bool,
     pub en_passant: Option<usize>,
     pub polyglot_en_passant: Option<usize>,
-}
-impl Default for MovegenFlags {
-    fn default() -> Self {
-        Self {
-            white_castle_short: false,
-            white_castle_long: false,
-            black_castle_short: false,
-            black_castle_long: false,
-            en_passant: None,
-            polyglot_en_passant: None,
-        }
-    }
 }
 
 #[derive(Debug, PartialEq, Clone, Copy)]

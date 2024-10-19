@@ -138,7 +138,7 @@ impl Notation {
 
         // min length is 2 (e.g. 'e4'), max length is 8 if all disambiguating notation is used and position is a check (e.g. 'Qd5xRd1+')
         let str_len = notation_str.len();
-        if str_len < 2 || str_len > 8 {
+        if !(2..=8).contains(&str_len) {
             let err =
                 PGNParseError::NotationParseError(format!("Invalid notation length ({})", str_len));
             log_and_return_error!(err)
@@ -149,7 +149,7 @@ impl Notation {
 
         // Handle castling strings
         // trim check and checkmate chars so that the castle string can be checked in one if statement instead of 3 for each variant
-        let possible_castle_str = notation_str.trim_end_matches(&['+', '#']);
+        let possible_castle_str = notation_str.trim_end_matches(['+', '#']);
         if possible_castle_str == "O-O" || possible_castle_str == "O-O-O" {
             notation.castle_str = Some(possible_castle_str.to_string());
             notation.check = notation_str.ends_with('+');
@@ -429,10 +429,10 @@ impl Notation {
 
             let mut possible_dis_moves = Vec::new();
             for mv in &possible_moves {
-                if dis_file_possible_idxs.is_some() && dis_rank_possible_idxs.is_some() {
-                    if dis_file_possible_idxs.unwrap().contains(&mv.from)
-                        && dis_rank_possible_idxs.unwrap().contains(&mv.from)
-                    {
+                if let (Some(dis_file_idxs), Some(dis_rank_idxs)) =
+                    (dis_file_possible_idxs, dis_rank_possible_idxs)
+                {
+                    if dis_file_idxs.contains(&mv.from) && dis_rank_idxs.contains(&mv.from) {
                         possible_dis_moves.push(*mv);
                     }
                 } else if let Some(dis_file_idxs) = dis_file_possible_idxs {
@@ -514,11 +514,7 @@ impl Notation {
             .filter(|mv| {
                 if let Some(castle_side) = self.get_castle_side() {
                     if let MoveType::Castle(cm) = mv.move_type {
-                        return if cm.get_castle_side() == castle_side {
-                            true
-                        } else {
-                            false
-                        };
+                        return cm.get_castle_side() == castle_side;
                     }
                 }
 
@@ -600,12 +596,12 @@ fn mv_type_to_promotion_char(mv_type: &MoveType) -> Option<char> {
 
 #[inline]
 fn is_valid_file(file: char) -> bool {
-    file.is_ascii_lowercase() && file >= 'a' && file <= 'h'
+    file.is_ascii_lowercase() && ('a'..='h').contains(&file)
 }
 
 #[inline]
 fn is_valid_rank(rank: char) -> bool {
-    rank.is_ascii_digit() && rank >= '1' && rank <= '8'
+    rank.is_ascii_digit() && ('1'..='8').contains(&rank)
 }
 
 #[inline]

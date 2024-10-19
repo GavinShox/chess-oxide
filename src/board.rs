@@ -463,7 +463,7 @@ impl TryFrom<pgn::PGN> for Board {
     fn try_from(pgn: pgn::PGN) -> Result<Self, PGNParseError> {
         let mut board = Self::new();
         for notation in pgn.moves() {
-            let mv = notation.to_move_with_context(&board.get_current_state())?;
+            let mv = notation.to_move_with_context(board.get_current_state())?;
             match board.make_move(&mv) {
                 Ok(_) => {}
                 Err(e) => log_and_return_error!(PGNParseError::NotationParseError(e.to_string())),

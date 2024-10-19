@@ -23,9 +23,9 @@ pub fn is_eval_checkmate(eval: i32) -> bool {
 #[inline(always)]
 pub fn get_checkmate_ply(eval: i32) -> u8 {
     if eval > 0 {
-        (CHECKMATE_VALUE - eval).abs() as u8
+        (CHECKMATE_VALUE - eval).unsigned_abs() as u8
     } else {
-        (CHECKMATE_VALUE + eval).abs() as u8
+        (CHECKMATE_VALUE + eval).unsigned_abs() as u8
     }
 }
 
@@ -129,12 +129,12 @@ fn quiescence(
     }
     alpha = cmp::max(alpha, max_eval);
 
-    for i in sorted_move_indexes(&pseudo_legal_moves, true, &NULL_SHORT_MOVE, &bs.last_move) {
+    for i in sorted_move_indexes(pseudo_legal_moves, true, &NULL_SHORT_MOVE, &bs.last_move) {
         let mv = &pseudo_legal_moves[i];
         if !bs.is_move_legal_position(&mv) {
             continue; // skip illegal moves
         }
-        let child_bs = bs.lazy_next_state_unchecked(&mv);
+        let child_bs = bs.lazy_next_state_unchecked(mv);
         let eval = -quiescence(&child_bs, depth - 1, ply + 1, -beta, -alpha, nodes);
         max_eval = cmp::max(max_eval, eval);
         alpha = cmp::max(alpha, max_eval);
@@ -184,9 +184,9 @@ fn negamax_root<'a>(
     let beta = MAX;
     let mut best_move = &NULL_MOVE;
     let mut max_eval = MIN;
-    for i in sorted_move_indexes(&pseudo_legal_moves, false, &NULL_SHORT_MOVE, &bs.last_move) {
+    for i in sorted_move_indexes(pseudo_legal_moves, false, &NULL_SHORT_MOVE, &bs.last_move) {
         let mv = &pseudo_legal_moves[i];
-        if !bs.is_move_legal_position(&mv) {
+        if !bs.is_move_legal_position(mv) {
             continue; // skip illegal moves
         }
         let child_bs = bs.lazy_next_state_unchecked(mv);
@@ -279,10 +279,10 @@ fn negamax(
     }
 
     let mut max_eval = MIN;
-    let moves = sorted_move_indexes(&pseudo_legal_moves, false, &best_move, &bs.last_move); // sort pseudo legal moves instead of consuming the lazy iterator
+    let moves = sorted_move_indexes(pseudo_legal_moves, false, &best_move, &bs.last_move); // sort pseudo legal moves instead of consuming the lazy iterator
     for i in moves {
         let mv = &pseudo_legal_moves[i];
-        if !bs.is_move_legal_position(&mv) {
+        if !bs.is_move_legal_position(mv) {
             continue; // skip illegal moves
         }
 
@@ -464,9 +464,9 @@ fn evaluate(bs: &BoardState) -> i32 {
         }
     }
     let eval = w_eval - b_eval;
-    return if maxi_colour == PieceColour::White {
+    if maxi_colour == PieceColour::White {
         eval
     } else {
         -eval
-    };
+    }
 }

@@ -391,7 +391,6 @@ fn main() -> Result<(), slint::PlatformError> {
                         log::error!("Error creating board from PGN: {}", e);
                         import_pgn_dialog.set_error(true);
                         import_pgn_dialog.set_error_message(e.to_string().into());
-                        return;
                     }
                 }
             }

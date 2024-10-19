@@ -56,7 +56,7 @@ impl fmt::Display for Tag {
 
 impl Tag {
     pub fn from_str(tag: &str) -> Result<Tag, PGNParseError> {
-        let tag_str = tag.trim_matches(&['[', ']']).trim();
+        let tag_str = tag.trim_matches(['[', ']']).trim();
         let mut parts = tag_str.splitn(2, ' ').map(str::trim);
 
         let name = match parts.next() {

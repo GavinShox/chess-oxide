@@ -5,8 +5,8 @@ use crate::{log_and_return_error, BoardState};
 #[inline]
 pub fn notation_to_index(n: &str) -> Result<usize, FenParseError> {
     if n.len() != 2
-        || n.chars().nth(0).unwrap() < 'a'
-        || n.chars().nth(0).unwrap() > 'h'
+        || n.chars().next().unwrap() < 'a'
+        || n.chars().next().unwrap() > 'h'
         || n.chars().nth(1).unwrap() < '1'
         || n.chars().nth(1).unwrap() > '8'
     {

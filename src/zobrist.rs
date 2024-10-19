@@ -49,17 +49,18 @@ struct ZobristHashTable {
     occurrences: [PositionHash; 3],
 }
 impl ZobristHashTable {
+    #[allow(dead_code)]
     fn new() -> Self {
         let mut rng = rand::thread_rng();
         let mut pos_table: [[PositionHash; 12]; 64] = [[0; 12]; 64];
-        for i in 0..64 {
-            for j in 0..12 {
-                pos_table[i][j] = rng.gen();
+        for i in &mut pos_table {
+            for j in i {
+                *j = rng.gen();
             }
         }
         let mut en_passant_table: [PositionHash; 8] = [0; 8];
-        for i in 0..8 {
-            en_passant_table[i] = rng.gen();
+        for i in &mut en_passant_table {
+            *i = rng.gen();
         }
         let white_to_move = rng.gen();
         let white_castle_long = rng.gen();
@@ -67,12 +68,12 @@ impl ZobristHashTable {
         let white_castle_short = rng.gen();
         let black_castle_short = rng.gen();
         let mut halfmove_count: [PositionHash; 100] = [0; 100];
-        for i in 0..100 {
-            halfmove_count[i] = rng.gen();
+        for i in &mut halfmove_count {
+            *i = rng.gen();
         }
         let mut occurrences: [PositionHash; 3] = [0; 3];
-        for i in 0..3 {
-            occurrences[i] = rng.gen();
+        for i in &mut occurrences {
+            *i = rng.gen();
         }
         Self {
             pos_table,
@@ -242,6 +243,7 @@ impl ZobristHashTable {
         hash
     }
 
+    #[allow(dead_code)]
     fn next_hash(
         &self,
         last_movegen_flags: &MovegenFlags,
@@ -344,6 +346,7 @@ impl ZobristHashTable {
         hash
     }
 
+    #[allow(dead_code)]
     fn full_position_hash(&self, pos: &Position) -> PositionHash {
         let mut hash = 0;
         for (i, s) in pos.pos64.iter().enumerate() {

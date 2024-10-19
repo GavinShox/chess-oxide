@@ -4,14 +4,11 @@ pub mod tag;
 mod token;
 
 use std::fmt;
-use std::fs;
-use std::path::Path;
 use std::str::FromStr;
 
 use chrono::prelude::*;
 
 use crate::errors::PGNParseError;
-use crate::log_and_return_error;
 use crate::PieceColour;
 use crate::{board, GameOverState};
 use notation::*;
@@ -165,14 +162,6 @@ impl PGN {
         &self.moves
     }
 
-    fn from_file(file_path: &Path) -> Result<Self, PGNParseError> {
-        let pgn = match fs::read_to_string(file_path) {
-            Ok(pgn) => pgn,
-            Err(e) => log_and_return_error!(PGNParseError::FileError(e.to_string())),
-        };
-        Self::from_str(&pgn)
-    }
-
     fn set_required_tags_defaults(&mut self, termination: Option<String>) {
         let mut missing_event = true;
         let mut missing_site = true;
@@ -226,10 +215,22 @@ impl PGN {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::log_and_return_error;
+    use std::fs;
+    use std::path::Path;
+
+    // Moved in testing for now TODO see if this belongs in PGN struct or should user handle file parsing to str
+    fn from_file(file_path: &Path) -> Result<PGN, PGNParseError> {
+        let pgn = match fs::read_to_string(file_path) {
+            Ok(pgn) => pgn,
+            Err(e) => log_and_return_error!(PGNParseError::FileError(e.to_string())),
+        };
+        PGN::from_str(&pgn)
+    }
 
     #[test]
     fn test_pgn_from_file() {
-        let pgn = PGN::from_file(Path::new("test_data/test.pgn")).unwrap();
+        let pgn = from_file(Path::new("test_data/test.pgn")).unwrap();
         println!("{}", pgn.to_string());
 
         let b1 = board::Board::try_from(pgn.clone()).unwrap();
