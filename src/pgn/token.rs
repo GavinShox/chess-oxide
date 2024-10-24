@@ -91,7 +91,7 @@ impl Tokens {
         move_tokens.retain(|token| !token.value.chars().all(|c| c.is_ascii_digit()));
         let mut notations = Vec::new();
         for token in move_tokens {
-            let notation = Notation::from_str(&token.value)?;
+            let notation = token.value.parse()?;
             notations.push(notation);
         }
 
@@ -295,9 +295,9 @@ mod test {
         let notations = tokens.get_move_notations().unwrap();
 
         assert_eq!(notations.len(), 3);
-        assert_eq!(notations[0], Notation::from_str("e4").unwrap());
-        assert_eq!(notations[1], Notation::from_str("e5").unwrap());
-        assert_eq!(notations[2], Notation::from_str("Q1d7+").unwrap());
+        assert_eq!(notations[0], "e4".parse().unwrap());
+        assert_eq!(notations[1], "e5".parse().unwrap());
+        assert_eq!(notations[2], "Q1d7+".parse().unwrap());
         println!("{:?}", notations[2]);
     }
 }

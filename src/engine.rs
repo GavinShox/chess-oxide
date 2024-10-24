@@ -131,7 +131,7 @@ fn quiescence(
 
     for i in sorted_move_indexes(pseudo_legal_moves, true, &NULL_SHORT_MOVE, &bs.last_move) {
         let mv = &pseudo_legal_moves[i];
-        if !bs.is_move_legal_position(&mv) {
+        if !bs.is_move_legal_position(mv) {
             continue; // skip illegal moves
         }
         let child_bs = bs.lazy_next_state_unchecked(mv);

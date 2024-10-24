@@ -1,3 +1,6 @@
+use std::fmt;
+use std::str::FromStr;
+
 use crate::errors::PGNParseError;
 use crate::{board, movegen::*, util};
 use crate::{hash_to_string, log_and_return_error};
@@ -14,6 +17,73 @@ pub struct Notation {
     check: bool,
     checkmate: bool,
     castle_str: Option<String>,
+}
+
+impl fmt::Display for Notation {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let mut notation = String::new();
+
+        // return castling string if it exists
+        if let Some(cs) = &self.castle_str {
+            let mut castle_str = cs.clone();
+            if self.checkmate {
+                castle_str.push('#');
+            } else if self.check {
+                castle_str.push('+');
+            }
+            return write!(f, "{}", castle_str);
+        }
+
+        if let Some(piece) = self.piece {
+            notation.push(piece);
+        }
+        if let Some(dis_file) = self.dis_file {
+            notation.push(dis_file);
+        }
+        if let Some(dis_rank) = self.dis_rank {
+            notation.push(dis_rank);
+        }
+        if self.capture {
+            notation.push('x');
+        }
+        notation.push(self.to_file);
+        notation.push(self.to_rank);
+        if let Some(promotion) = self.promotion {
+            notation.push('=');
+            notation.push(promotion);
+        }
+        if self.checkmate {
+            notation.push('#');
+        } else if self.check {
+            notation.push('+');
+        }
+        write!(f, "{}", notation)
+    }
+}
+
+impl FromStr for Notation {
+    type Err = PGNParseError;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        // check that str is valid ascii
+        Self::validate_ascii(s)?;
+
+        // min length is 2 (e.g. 'e4'), max length is 8 if all disambiguating notation is used and position is a check (e.g. 'Qd5xRd1+')
+        Self::validate_length(s)?;
+
+        // create new uninitialised Notation struct
+        let mut notation = Self::new();
+
+        // Handle castling strings and return as it doesn't require further parsing
+        if notation.handle_castling_strings(s) {
+            return Ok(notation);
+        }
+
+        // Parse the notation string
+        notation.parse_notation_string(s)?;
+
+        Ok(notation)
+    }
 }
 
 // CONSTRUCTORS AND RELATED FUNCTIONS
@@ -126,37 +196,18 @@ impl Notation {
         Ok(notation)
     }
 
-    pub fn from_str(notation_str: &str) -> Result<Notation, PGNParseError> {
-        // check that str is valid ascii
-        if !notation_str.is_ascii() {
-            let err = PGNParseError::NotationParseError(format!(
-                "Invalid notation string: ({}) is not valid ascii",
-                notation_str
-            ));
-            log_and_return_error!(err)
-        }
-
-        // min length is 2 (e.g. 'e4'), max length is 8 if all disambiguating notation is used and position is a check (e.g. 'Qd5xRd1+')
-        let str_len = notation_str.len();
-        if !(2..=8).contains(&str_len) {
-            let err =
-                PGNParseError::NotationParseError(format!("Invalid notation length ({})", str_len));
-            log_and_return_error!(err)
-        }
-
-        // create new uninitialised Notation struct
-        let mut notation = Self::new();
-
-        // Handle castling strings
-        // trim check and checkmate chars so that the castle string can be checked in one if statement instead of 3 for each variant
+    fn handle_castling_strings(&mut self, notation_str: &str) -> bool {
         let possible_castle_str = notation_str.trim_end_matches(['+', '#']);
         if possible_castle_str == "O-O" || possible_castle_str == "O-O-O" {
-            notation.castle_str = Some(possible_castle_str.to_string());
-            notation.check = notation_str.ends_with('+');
-            notation.checkmate = notation_str.ends_with('#');
-            return Ok(notation);
+            self.castle_str = Some(possible_castle_str.to_string());
+            self.check = notation_str.ends_with('+');
+            self.checkmate = notation_str.ends_with('#');
+            return true;
         }
+        false
+    }
 
+    fn parse_notation_string(&mut self, notation_str: &str) -> Result<(), PGNParseError> {
         let mut chars = notation_str.char_indices();
         let mut rank_file_chars: Vec<char> = Vec::new();
         let mut piece_char: Option<char> = None;
@@ -166,122 +217,52 @@ impl Notation {
         let mut checkmate = false;
 
         while let Some((i, c)) = chars.next() {
-            if c.is_ascii_uppercase() {
-                // handle piece char
-                if piece_char.is_none() {
-                    piece_char = Some(c);
-                } else {
+            match c {
+                c if c.is_ascii_uppercase() => {
+                    Self::handle_piece_char(c, &mut piece_char, notation_str, i)?;
+                }
+                'x' => {
+                    Self::handle_capture_char(&mut capture, notation_str, i)?;
+                }
+                c if c.is_ascii_lowercase() || c.is_ascii_digit() => {
+                    rank_file_chars.push(c);
+                }
+                '=' => {
+                    promotion = Self::handle_promotion_char(&mut chars, notation_str, i)?;
+                }
+                '+' => {
+                    Self::handle_check_char(&mut check, notation_str, i)?;
+                }
+                '#' => {
+                    Self::handle_checkmate_char(&mut checkmate, notation_str, i)?;
+                }
+                _ => {
                     let err = PGNParseError::NotationParseError(format!(
-                        "Invalid notation, multiple uppercase piece chars (char: '{}' at index: {})",
-                        notation_str, i
+                        "Invalid character in notation (char: '{}' at index: {})",
+                        c, i
                     ));
                     log_and_return_error!(err)
                 }
-            } else if c == 'x' {
-                // Nxg7 len = 4, cap_idx = 1
-                // handle captures
-                // capture checked first before rank and file as 'x' is ascii lowercase
-                if !capture {
-                    // must be at least 2 more chars after 'x' for a valid capture
-                    if (notation_str.len() - i) < 3 {
-                        let err = PGNParseError::NotationParseError(format!(
-                            "Invalid notation, no rank or file after capture char (char: '{}' at index: {})",
-                            notation_str, i
-                        ));
-                        log_and_return_error!(err)
-                    } else {
-                        capture = true;
-                    }
-                } else {
-                    let err = PGNParseError::NotationParseError(format!(
-                        "Invalid notation, multiple capture chars (char: '{}' at index: {})",
-                        notation_str, i
-                    ));
-                    log_and_return_error!(err)
-                }
-            } else if c.is_ascii_lowercase() || c.is_ascii_digit() {
-                // handle rank and file chars
-                rank_file_chars.push(c);
-            } else if c == '=' {
-                // handle promotions
-                if promotion.is_none() {
-                    // make sure there is a next char when reading promotion piece and unwrapping, if not, return error
-                    let n = chars.next();
-                    match n {
-                        Some((_, c)) => match c {
-                            'Q' | 'R' | 'B' | 'N' => {
-                                promotion = Some(c);
-                            }
-                            _ => {
-                                let err = PGNParseError::NotationParseError(format!(
-                                    "Invalid promotion piece (char: '{}' at index: {})",
-                                    c, i
-                                ));
-                                log_and_return_error!(err)
-                            }
-                        },
-                        None => {
-                            let err = PGNParseError::NotationParseError(format!(
-                                "Invalid notation, no promotion piece after '=' (char: '{}' at index: {})",
-                                notation_str, i
-                            ));
-                            log_and_return_error!(err)
-                        }
-                    }
-                } else {
-                    let err = PGNParseError::NotationParseError(format!(
-                        "Invalid notation, multiple promotion chars (char: '{}' at index: {})",
-                        notation_str, i
-                    ));
-                    log_and_return_error!(err)
-                }
-            } else if c == '+' {
-                if !check {
-                    check = true;
-                } else {
-                    let err = PGNParseError::NotationParseError(format!(
-                        "Invalid notation, multiple check chars (char: '{}' at index: {})",
-                        notation_str, i
-                    ));
-                    log_and_return_error!(err)
-                }
-            } else if c == '#' {
-                if !checkmate {
-                    checkmate = true;
-                } else {
-                    let err = PGNParseError::NotationParseError(format!(
-                        "Invalid notation, multiple checkmate chars (char: '{}' at index: {})",
-                        notation_str, i
-                    ));
-                    log_and_return_error!(err)
-                }
-            } else {
-                let err = PGNParseError::NotationParseError(format!(
-                    "Invalid character in notation (char: '{}' at index: {})",
-                    c, i
-                ));
-                log_and_return_error!(err)
             }
         }
 
         // set piece char if it is valid
-        notation.set_piece_char(piece_char)?;
+        self.set_piece_char(piece_char)?;
 
         // set rank and file chars, checking if there are any disambiguating chars
-        notation.set_rank_file_chars(&rank_file_chars)?;
+        self.set_rank_file_chars(&rank_file_chars)?;
 
         // set promotion char if it is valid
-        notation.set_promotion_char(promotion)?;
+        self.set_promotion_char(promotion)?;
 
         // set boolean flags
-        notation.capture = capture;
-        notation.check = check;
-        notation.checkmate = checkmate;
+        self.capture = capture;
+        self.check = check;
+        self.checkmate = checkmate;
 
-        Ok(notation)
+        Ok(())
     }
 
-    #[inline]
     fn set_piece_char(&mut self, piece_char: Option<char>) -> Result<(), PGNParseError> {
         if let Some(piece) = piece_char {
             if is_valid_piece(piece) {
@@ -295,7 +276,6 @@ impl Notation {
         Ok(())
     }
 
-    #[inline]
     fn set_promotion_char(&mut self, promotion: Option<char>) -> Result<(), PGNParseError> {
         if let Some(promotion) = promotion {
             if is_valid_promotion(promotion) {
@@ -362,49 +342,135 @@ impl Notation {
         }
         Ok(())
     }
+
+    fn validate_ascii(notation_str: &str) -> Result<(), PGNParseError> {
+        if !notation_str.is_ascii() {
+            let err = PGNParseError::NotationParseError(format!(
+                "Invalid notation string: ({}) is not valid ascii",
+                notation_str
+            ));
+            log_and_return_error!(err)
+        }
+        Ok(())
+    }
+
+    fn validate_length(notation_str: &str) -> Result<(), PGNParseError> {
+        let str_len = notation_str.len();
+        if !(2..=8).contains(&str_len) {
+            let err =
+                PGNParseError::NotationParseError(format!("Invalid notation length ({})", str_len));
+            log_and_return_error!(err)
+        }
+        Ok(())
+    }
+
+    fn handle_piece_char(
+        c: char,
+        piece_char: &mut Option<char>,
+        notation_str: &str,
+        i: usize,
+    ) -> Result<(), PGNParseError> {
+        if piece_char.is_none() {
+            *piece_char = Some(c);
+        } else {
+            let err = PGNParseError::NotationParseError(format!(
+                "Invalid notation, multiple uppercase piece chars (char: '{}' at index: {})",
+                notation_str, i
+            ));
+            log_and_return_error!(err)
+        }
+        Ok(())
+    }
+
+    fn handle_capture_char(
+        capture: &mut bool,
+        notation_str: &str,
+        i: usize,
+    ) -> Result<(), PGNParseError> {
+        if !*capture {
+            // must be at least 2 more chars after 'x' for a valid capture
+            if (notation_str.len() - i) < 3 {
+                let err = PGNParseError::NotationParseError(format!(
+                    "Invalid notation, no rank or file after capture char (char: '{}' at index: {})",
+                    notation_str, i
+                ));
+                log_and_return_error!(err)
+            } else {
+                *capture = true;
+            }
+        } else {
+            let err = PGNParseError::NotationParseError(format!(
+                "Invalid notation, multiple capture chars (char: '{}' at index: {})",
+                notation_str, i
+            ));
+            log_and_return_error!(err)
+        }
+        Ok(())
+    }
+
+    fn handle_promotion_char(
+        chars: &mut std::str::CharIndices,
+        notation_str: &str,
+        i: usize,
+    ) -> Result<Option<char>, PGNParseError> {
+        let n = chars.next();
+        match n {
+            Some((_, c)) => match c {
+                'Q' | 'R' | 'B' | 'N' => Ok(Some(c)),
+                _ => {
+                    let err = PGNParseError::NotationParseError(format!(
+                        "Invalid promotion piece (char: '{}' at index: {})",
+                        c, i
+                    ));
+                    log_and_return_error!(err)
+                }
+            },
+            None => {
+                let err = PGNParseError::NotationParseError(format!(
+                    "Invalid notation, no promotion piece after '=' (char: '{}' at index: {})",
+                    notation_str, i
+                ));
+                log_and_return_error!(err)
+            }
+        }
+    }
+
+    fn handle_check_char(
+        check: &mut bool,
+        notation_str: &str,
+        i: usize,
+    ) -> Result<(), PGNParseError> {
+        if !*check {
+            *check = true;
+        } else {
+            let err = PGNParseError::NotationParseError(format!(
+                "Invalid notation, multiple check chars (char: '{}' at index: {})",
+                notation_str, i
+            ));
+            log_and_return_error!(err)
+        }
+        Ok(())
+    }
+
+    fn handle_checkmate_char(
+        checkmate: &mut bool,
+        notation_str: &str,
+        i: usize,
+    ) -> Result<(), PGNParseError> {
+        if !*checkmate {
+            *checkmate = true;
+        } else {
+            let err = PGNParseError::NotationParseError(format!(
+                "Invalid notation, multiple checkmate chars (char: '{}' at index: {})",
+                notation_str, i
+            ));
+            log_and_return_error!(err)
+        }
+        Ok(())
+    }
 }
 
 impl Notation {
-    pub fn to_string(&self) -> String {
-        let mut notation = String::new();
-
-        // return castling string if it exists
-        if let Some(cs) = &self.castle_str {
-            let mut castle_str = cs.clone();
-            if self.checkmate {
-                castle_str.push('#');
-            } else if self.check {
-                castle_str.push('+');
-            }
-            return castle_str;
-        }
-
-        if let Some(piece) = self.piece {
-            notation.push(piece);
-        }
-        if let Some(dis_file) = self.dis_file {
-            notation.push(dis_file);
-        }
-        if let Some(dis_rank) = self.dis_rank {
-            notation.push(dis_rank);
-        }
-        if self.capture {
-            notation.push('x');
-        }
-        notation.push(self.to_file);
-        notation.push(self.to_rank);
-        if let Some(promotion) = self.promotion {
-            notation.push('=');
-            notation.push(promotion);
-        }
-        if self.checkmate {
-            notation.push('#');
-        } else if self.check {
-            notation.push('+');
-        }
-        notation
-    }
-
     // tries to find a move, and disambiguates as best as possible, for use in PGN import format so if it is missing some disambiguating information but the move can still be identified, it is fine
     pub fn to_move_with_context(
         &self,
@@ -451,7 +517,7 @@ impl Notation {
             } else {
                 let err = PGNParseError::MoveNotFound(format!(
                     "No legal move found for notation ({}) in BoardState (hash: {}) => Could not use notation to disambiguate between multiple possible moves: {:?}",
-                    self.to_string(),
+                    self,
                     hash_to_string(bs_context.board_hash),
                     possible_moves
                 ));
@@ -460,7 +526,7 @@ impl Notation {
         } else {
             let err = PGNParseError::MoveNotFound(format!(
                 "No legal move found for notation ({}) in BoardState (hash: {})",
-                self.to_string(),
+                self,
                 hash_to_string(bs_context.board_hash)
             ));
             log_and_return_error!(err)
