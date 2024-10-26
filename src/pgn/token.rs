@@ -42,7 +42,7 @@ impl Tokens {
             } else if token.value == "]" {
                 in_tag = false;
                 tag_str += &token.value;
-                tags.push(Tag::from_str(&tag_str)?);
+                tags.push(tag_str.parse()?);
                 tag_str.clear();
             } else if in_tag {
                 tag_str += &token.value;

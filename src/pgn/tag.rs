@@ -1,4 +1,4 @@
-use std::fmt;
+use std::{fmt, str::FromStr};
 
 use crate::{errors::PGNParseError, log_and_return_error};
 
@@ -7,6 +7,7 @@ pub struct CustomTag {
     name: String,
     value: String,
 }
+
 impl CustomTag {
     pub fn new(name: &str, value: &str) -> Self {
         Self {
@@ -34,6 +35,7 @@ pub enum Tag {
     Annotator(String),
     CustomTag(CustomTag),
 }
+
 impl fmt::Display for Tag {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         match self {
@@ -54,8 +56,10 @@ impl fmt::Display for Tag {
     }
 }
 
-impl Tag {
-    pub fn from_str(tag: &str) -> Result<Tag, PGNParseError> {
+impl FromStr for Tag {
+    type Err = PGNParseError;
+
+    fn from_str(tag: &str) -> Result<Tag, PGNParseError> {
         let tag_str = tag.trim_matches(['[', ']']).trim();
         let mut parts = tag_str.splitn(2, ' ').map(str::trim);
 

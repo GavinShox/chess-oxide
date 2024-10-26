@@ -74,12 +74,12 @@ impl FromStr for Notation {
         // create new uninitialised Notation struct
         let mut notation = Self::new();
 
-        // Handle castling strings and return as it doesn't require further parsing
-        if notation.handle_castling_strings(s) {
+        // parse castling strings and return as it doesn't require further parsing
+        if notation.parse_castling_string(s) {
             return Ok(notation);
         }
 
-        // Parse the notation string
+        // parse the notation string
         notation.parse_notation_string(s)?;
 
         Ok(notation)
@@ -196,7 +196,7 @@ impl Notation {
         Ok(notation)
     }
 
-    fn handle_castling_strings(&mut self, notation_str: &str) -> bool {
+    fn parse_castling_string(&mut self, notation_str: &str) -> bool {
         let possible_castle_str = notation_str.trim_end_matches(['+', '#']);
         if possible_castle_str == "O-O" || possible_castle_str == "O-O-O" {
             self.castle_str = Some(possible_castle_str.to_string());
@@ -478,56 +478,60 @@ impl Notation {
     ) -> Result<Move, PGNParseError> {
         let legal_moves = extract_legal_moves(bs_context)?;
         let possible_moves = self.filter_possible_moves(legal_moves);
-        if possible_moves.len() == 1 {
-            Ok(*possible_moves[0])
-        } else if possible_moves.len() > 1 {
-            let mut dis_file_possible_idxs = None;
-            let mut dis_rank_possible_idxs = None;
+        match possible_moves.len() {
+            1 => Ok(*possible_moves[0]),
+            len if len > 1 => {
+                let mut dis_file_possible_idxs = None;
+                let mut dis_rank_possible_idxs = None;
 
-            if let Some(dis_file_char) = self.dis_file {
-                dis_file_possible_idxs = Some(file_notation_to_indexes_unchecked(dis_file_char));
-            }
-            if let Some(dis_rank_char) = self.dis_rank {
-                dis_rank_possible_idxs = Some(rank_notation_to_indexes_unchecked(dis_rank_char));
-            }
+                if let Some(dis_file_char) = self.dis_file {
+                    dis_file_possible_idxs =
+                        Some(file_notation_to_indexes_unchecked(dis_file_char));
+                }
+                if let Some(dis_rank_char) = self.dis_rank {
+                    dis_rank_possible_idxs =
+                        Some(rank_notation_to_indexes_unchecked(dis_rank_char));
+                }
 
-            let mut possible_dis_moves = Vec::new();
-            for mv in &possible_moves {
-                if let (Some(dis_file_idxs), Some(dis_rank_idxs)) =
-                    (dis_file_possible_idxs, dis_rank_possible_idxs)
-                {
-                    if dis_file_idxs.contains(&mv.from) && dis_rank_idxs.contains(&mv.from) {
-                        possible_dis_moves.push(*mv);
-                    }
-                } else if let Some(dis_file_idxs) = dis_file_possible_idxs {
-                    if dis_file_idxs.contains(&mv.from) {
-                        possible_dis_moves.push(*mv);
-                    }
-                } else if let Some(dis_rank_idxs) = dis_rank_possible_idxs {
-                    if dis_rank_idxs.contains(&mv.from) {
-                        possible_dis_moves.push(*mv);
+                let mut possible_dis_moves = Vec::new();
+                for mv in &possible_moves {
+                    if let (Some(dis_file_idxs), Some(dis_rank_idxs)) =
+                        (dis_file_possible_idxs, dis_rank_possible_idxs)
+                    {
+                        if dis_file_idxs.contains(&mv.from) && dis_rank_idxs.contains(&mv.from) {
+                            possible_dis_moves.push(*mv);
+                        }
+                    } else if let Some(dis_file_idxs) = dis_file_possible_idxs {
+                        if dis_file_idxs.contains(&mv.from) {
+                            possible_dis_moves.push(*mv);
+                        }
+                    } else if let Some(dis_rank_idxs) = dis_rank_possible_idxs {
+                        if dis_rank_idxs.contains(&mv.from) {
+                            possible_dis_moves.push(*mv);
+                        }
                     }
                 }
-            }
 
-            if possible_dis_moves.len() == 1 {
-                return Ok(*possible_dis_moves[0]);
-            } else {
+                if possible_dis_moves.len() == 1 {
+                    Ok(*possible_dis_moves[0])
+                } else {
+                    let err = PGNParseError::MoveNotFound(format!(
+                "No legal move found for notation ({}) in BoardState (hash: {}) => Could not use notation to disambiguate between multiple possible moves: {:?}",
+                self,
+                hash_to_string(bs_context.board_hash),
+                possible_moves
+                ));
+                    log_and_return_error!(err)
+                }
+            }
+            _ => {
                 let err = PGNParseError::MoveNotFound(format!(
-                    "No legal move found for notation ({}) in BoardState (hash: {}) => Could not use notation to disambiguate between multiple possible moves: {:?}",
+                    "No legal move found for notation ({}) in BoardState (hash: {})",
                     self,
-                    hash_to_string(bs_context.board_hash),
-                    possible_moves
+                    hash_to_string(bs_context.board_hash)
                 ));
                 log_and_return_error!(err)
             }
-        } else {
-            let err = PGNParseError::MoveNotFound(format!(
-                "No legal move found for notation ({}) in BoardState (hash: {})",
-                self,
-                hash_to_string(bs_context.board_hash)
-            ));
-            log_and_return_error!(err)
         }
     }
 
