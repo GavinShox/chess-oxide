@@ -2,7 +2,7 @@ use std::fmt;
 use std::str::FromStr;
 
 use crate::errors::PGNParseError;
-use crate::{board, movegen::*, util};
+use crate::{board, movegen::*};
 use crate::{hash_to_string, log_and_return_error};
 
 #[derive(Debug, PartialEq, Eq, Clone)]
@@ -142,8 +142,8 @@ impl Notation {
         notation.piece = ptype_to_piece_char(&mv.piece.ptype);
 
         // SET TO FILE AND TO RANK
-        notation.to_file = util::index_to_file_notation(mv.to);
-        notation.to_rank = util::index_to_rank_notation(mv.to);
+        notation.to_file = index_to_file_notation(mv.to);
+        notation.to_rank = index_to_rank_notation_unchecked(mv.to);
 
         // SET CAPTURE FLAG (Normal capture, en passant capture, or promotion capture)
         notation.capture = mv.move_type.is_capture();
@@ -155,7 +155,7 @@ impl Notation {
         // pawn moves that are captures or en passants only need dis_file, otherwise only to_file and to_rank are needed
         if matches!(mv.piece.ptype, PieceType::Pawn) && notation.capture {
             // notation.capture is set above in function
-            notation.dis_file = Some(util::index_to_file_notation(mv.from));
+            notation.dis_file = Some(index_to_file_notation(mv.from));
         } else {
             // check if there are any other pieces besides pawns that can move to the same square as the mv.piece
             let same_piece_moves: Vec<&Move> = legal_moves
@@ -165,15 +165,15 @@ impl Notation {
             // if there are other pieces that can move to same square
             if !same_piece_moves.is_empty() {
                 // store the current mv.from square file and rank
-                let mv_from_file = util::index_to_file_notation(mv.from);
-                let mv_from_rank = util::index_to_rank_notation(mv.from);
+                let mv_from_file = index_to_file_notation(mv.from);
+                let mv_from_rank = index_to_rank_notation_unchecked(mv.from);
                 // keep track of whether any of the other moves have the same file or rank as the current mv.from square
                 let mut same_file = false;
                 let mut same_rank = false;
                 // check if any of the other moves have the same file or rank as the current mv.from square
                 for other_mv in same_piece_moves {
-                    let other_mv_from_file = util::index_to_file_notation(other_mv.from);
-                    let other_mv_from_rank = util::index_to_rank_notation(other_mv.from);
+                    let other_mv_from_file = index_to_file_notation(other_mv.from);
+                    let other_mv_from_rank = index_to_rank_notation_unchecked(other_mv.from);
                     if other_mv_from_file == mv_from_file {
                         same_file = true;
                     }
@@ -485,12 +485,10 @@ impl Notation {
             let mut dis_rank_possible_idxs = None;
 
             if let Some(dis_file_char) = self.dis_file {
-                dis_file_possible_idxs =
-                    Some(util::file_notation_to_indexes_unchecked(dis_file_char));
+                dis_file_possible_idxs = Some(file_notation_to_indexes_unchecked(dis_file_char));
             }
             if let Some(dis_rank_char) = self.dis_rank {
-                dis_rank_possible_idxs =
-                    Some(util::rank_notation_to_indexes_unchecked(dis_rank_char));
+                dis_rank_possible_idxs = Some(rank_notation_to_indexes_unchecked(dis_rank_char));
             }
 
             let mut possible_dis_moves = Vec::new();
@@ -595,8 +593,8 @@ impl Notation {
                     }
                 }
 
-                if self.to_file != util::index_to_file_notation(mv.to)
-                    || self.to_rank != util::index_to_rank_notation(mv.to)
+                if self.to_file != index_to_file_notation(mv.to)
+                    || self.to_rank != index_to_rank_notation_unchecked(mv.to)
                 {
                     return false;
                 }
@@ -680,6 +678,56 @@ fn is_valid_piece(piece: char) -> bool {
 fn is_valid_promotion(promotion: char) -> bool {
     let valid_promotions = ['Q', 'R', 'B', 'N'];
     promotion.is_ascii_uppercase() && valid_promotions.contains(&promotion)
+}
+
+#[inline]
+fn index_to_file_notation(i: usize) -> char {
+    match i % 8 {
+        0 => 'a',
+        1 => 'b',
+        2 => 'c',
+        3 => 'd',
+        4 => 'e',
+        5 => 'f',
+        6 => 'g',
+        7 => 'h',
+        _ => ' ',
+    }
+}
+
+#[inline]
+fn index_to_rank_notation_unchecked(i: usize) -> char {
+    let rank_num = 8 - i / 8;
+    char::from_digit(rank_num.try_into().unwrap(), 10).unwrap()
+}
+
+fn rank_notation_to_indexes_unchecked(r: char) -> [usize; 8] {
+    let rank_num = r.to_digit(10).unwrap() as usize;
+    let rank_starts = [56, 48, 40, 32, 24, 16, 8, 0]; // 1st to 8th rank starting indexes
+    let mut indexes = [0; 8];
+    for (i, j) in indexes.iter_mut().enumerate() {
+        *j = rank_starts[rank_num - 1] + i;
+    }
+    indexes
+}
+
+fn file_notation_to_indexes_unchecked(f: char) -> [usize; 8] {
+    let file_offset = match f {
+        'a' => 0,
+        'b' => 1,
+        'c' => 2,
+        'd' => 3,
+        'e' => 4,
+        'f' => 5,
+        'g' => 6,
+        'h' => 7,
+        _ => unreachable!(),
+    };
+    let mut indexes = [0; 8];
+    for (i, j) in indexes.iter_mut().enumerate() {
+        *j = file_offset + i * 8;
+    }
+    indexes
 }
 
 #[cfg(test)]
@@ -853,5 +901,91 @@ mod test {
         assert_eq!(mv.piece.ptype, PieceType::Pawn);
         assert_eq!(mv.from, 52);
         assert_eq!(mv.to, 36);
+    }
+
+    #[test]
+    fn test_index_to_file_notation() {
+        assert_eq!(index_to_file_notation(0), 'a');
+        assert_eq!(index_to_file_notation(7), 'h');
+        assert_eq!(index_to_file_notation(35), 'd');
+    }
+
+    #[test]
+    fn test_index_to_rank_notation() {
+        assert_eq!(index_to_rank_notation_unchecked(0), '8');
+        assert_eq!(index_to_rank_notation_unchecked(7), '8');
+        assert_eq!(index_to_rank_notation_unchecked(35), '4');
+    }
+
+    #[test]
+    fn test_rank_notation_to_indexes_unchecked() {
+        assert_eq!(
+            rank_notation_to_indexes_unchecked('1'),
+            [56, 57, 58, 59, 60, 61, 62, 63]
+        );
+        assert_eq!(
+            rank_notation_to_indexes_unchecked('2'),
+            [48, 49, 50, 51, 52, 53, 54, 55]
+        );
+        assert_eq!(
+            rank_notation_to_indexes_unchecked('3'),
+            [40, 41, 42, 43, 44, 45, 46, 47]
+        );
+        assert_eq!(
+            rank_notation_to_indexes_unchecked('4'),
+            [32, 33, 34, 35, 36, 37, 38, 39]
+        );
+        assert_eq!(
+            rank_notation_to_indexes_unchecked('5'),
+            [24, 25, 26, 27, 28, 29, 30, 31]
+        );
+        assert_eq!(
+            rank_notation_to_indexes_unchecked('6'),
+            [16, 17, 18, 19, 20, 21, 22, 23]
+        );
+        assert_eq!(
+            rank_notation_to_indexes_unchecked('7'),
+            [8, 9, 10, 11, 12, 13, 14, 15]
+        );
+        assert_eq!(
+            rank_notation_to_indexes_unchecked('8'),
+            [0, 1, 2, 3, 4, 5, 6, 7]
+        );
+    }
+
+    #[test]
+    fn test_file_notation_to_indexes_unchecked() {
+        assert_eq!(
+            file_notation_to_indexes_unchecked('a'),
+            [0, 8, 16, 24, 32, 40, 48, 56]
+        );
+        assert_eq!(
+            file_notation_to_indexes_unchecked('b'),
+            [1, 9, 17, 25, 33, 41, 49, 57]
+        );
+        assert_eq!(
+            file_notation_to_indexes_unchecked('c'),
+            [2, 10, 18, 26, 34, 42, 50, 58]
+        );
+        assert_eq!(
+            file_notation_to_indexes_unchecked('d'),
+            [3, 11, 19, 27, 35, 43, 51, 59]
+        );
+        assert_eq!(
+            file_notation_to_indexes_unchecked('e'),
+            [4, 12, 20, 28, 36, 44, 52, 60]
+        );
+        assert_eq!(
+            file_notation_to_indexes_unchecked('f'),
+            [5, 13, 21, 29, 37, 45, 53, 61]
+        );
+        assert_eq!(
+            file_notation_to_indexes_unchecked('g'),
+            [6, 14, 22, 30, 38, 46, 54, 62]
+        );
+        assert_eq!(
+            file_notation_to_indexes_unchecked('h'),
+            [7, 15, 23, 31, 39, 47, 55, 63]
+        );
     }
 }

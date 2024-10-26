@@ -6,7 +6,6 @@ use crate::errors::FenParseError;
 use crate::log_and_return_error;
 use crate::movegen::{MovegenFlags, Piece, PieceColour, PieceType, Square};
 use crate::position::{Pos64, Position, ABOVE_BELOW};
-use crate::util;
 
 #[derive(Debug, Clone, Copy)]
 pub struct FEN {
@@ -133,9 +132,9 @@ impl fmt::Display for FEN {
         match self.movegen_flags.en_passant {
             Some(idx) => {
                 if self.side == PieceColour::White {
-                    fen_str.push_str(util::index_to_notation(idx - ABOVE_BELOW).as_str());
+                    fen_str.push_str(index_to_notation(idx - ABOVE_BELOW).as_str());
                 } else {
-                    fen_str.push_str(util::index_to_notation(idx + ABOVE_BELOW).as_str());
+                    fen_str.push_str(index_to_notation(idx + ABOVE_BELOW).as_str());
                 }
             }
             None => {
@@ -360,7 +359,7 @@ impl FEN {
 
     fn parse_en_passant_flag(&mut self, field: &str) -> Result<(), FenParseError> {
         if field != "-" {
-            let ep_mv_idx = util::notation_to_index(field)?;
+            let ep_mv_idx = notation_to_index(field)?;
 
             // error if index is out of bounds. FEN defines the index behind the pawn that moved, so valid indexes are only 16->47 (excluded top and bottom two ranks)
             if !(16..=47).contains(&ep_mv_idx) {
@@ -411,6 +410,55 @@ impl FEN {
         }
         Ok(())
     }
+}
+
+#[inline]
+fn notation_to_index(n: &str) -> Result<usize, FenParseError> {
+    if n.len() != 2
+        || n.chars().next().unwrap() < 'a'
+        || n.chars().next().unwrap() > 'h'
+        || n.chars().nth(1).unwrap() < '1'
+        || n.chars().nth(1).unwrap() > '8'
+    {
+        log_and_return_error!(FenParseError(format!(
+            "Invalid notation ({}) when converting to index:",
+            n
+        )))
+    }
+    let file: char = n.chars().next().unwrap();
+    let rank: char = n.chars().nth(1).unwrap();
+    let rank_starts = [56, 48, 40, 32, 24, 16, 8, 0]; // 1st to 8th rank starting indexes
+    let file_offset = match file {
+        'a' => 0,
+        'b' => 1,
+        'c' => 2,
+        'd' => 3,
+        'e' => 4,
+        'f' => 5,
+        'g' => 6,
+        'h' => 7,
+        _ => unreachable!(), // see error checking at start of function
+    };
+    let rank_digit = rank.to_digit(10).unwrap();
+    Ok(file_offset + rank_starts[(rank_digit - 1) as usize])
+}
+
+#[inline]
+fn index_to_notation(i: usize) -> String {
+    let file = match i % 8 {
+        0 => 'a',
+        1 => 'b',
+        2 => 'c',
+        3 => 'd',
+        4 => 'e',
+        5 => 'f',
+        6 => 'g',
+        7 => 'h',
+        _ => ' ',
+    };
+    let rank_num = 8 - i / 8;
+    let rank = char::from_digit(rank_num.try_into().unwrap(), 10).unwrap();
+    format!("{}{}", file, rank)
 }
 
 #[cfg(test)]
@@ -488,5 +536,22 @@ mod tests {
         let board_state: BoardState = fen.into();
         let fen_from_board = FEN::from(&board_state);
         assert_eq!(fen_from_board.to_string(), fen_str);
+    }
+
+    #[test]
+    fn test_notation_to_index() {
+        assert_eq!(notation_to_index("a1").unwrap(), 56);
+        assert_eq!(notation_to_index("h8").unwrap(), 7);
+        assert_eq!(notation_to_index("d4").unwrap(), 35);
+        assert!(notation_to_index("i9").is_err());
+        assert!(notation_to_index("a9").is_err());
+        assert!(notation_to_index("z1").is_err());
+    }
+
+    #[test]
+    fn test_index_to_notation() {
+        assert_eq!(index_to_notation(56), "a1");
+        assert_eq!(index_to_notation(7), "h8");
+        assert_eq!(index_to_notation(35), "d4");
     }
 }
