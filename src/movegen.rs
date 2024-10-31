@@ -203,7 +203,7 @@ fn pawn_promotion(
     for ptype in PROMOTION_PIECE_TYPES {
         mv_map.add_move(
             &(Move {
-                piece: piece,
+                piece,
                 from: i,
                 to: mv as usize,
                 move_type: MoveType::Promotion(ptype, capture),
@@ -301,7 +301,7 @@ pub(crate) fn movegen(
                         } else {
                             mv_map.add_move(
                                 &(Move {
-                                    piece: piece,
+                                    piece,
                                     from: i,
                                     to: mv as usize,
                                     move_type: mvtype,
@@ -348,7 +348,7 @@ pub(crate) fn movegen(
                             } else {
                                 mv_map.add_move(
                                     &(Move {
-                                        piece: piece,
+                                        piece,
                                         from: i,
                                         to: mv as usize,
                                         move_type: MoveType::Capture(mv_square_piece.ptype),
@@ -362,7 +362,7 @@ pub(crate) fn movegen(
                         if defending {
                             mv_map.add_move(
                                 &(Move {
-                                    piece: piece,
+                                    piece,
                                     from: i,
                                     to: mv as usize,
                                     move_type: MoveType::None, // not a real move, only a defensive one
@@ -386,7 +386,7 @@ pub(crate) fn movegen(
                     if mv_above >= 0 && is_square_empty(pos, mv_above as usize) {
                         mv_map.add_move(
                             &(Move {
-                                piece: piece,
+                                piece,
                                 from: i,
                                 to: mv_above as usize,
                                 move_type: MoveType::EnPassant(mv as usize),
@@ -416,7 +416,7 @@ pub(crate) fn movegen(
                         if piece.pcolour != mv_square_piece.pcolour || defending {
                             mv_map.add_move(
                                 &(Move {
-                                    piece: piece,
+                                    piece,
                                     from: i,
                                     to: mv as usize,
                                     move_type: MoveType::Capture(mv_square_piece.ptype),
@@ -428,7 +428,7 @@ pub(crate) fn movegen(
                     Square::Empty => {
                         mv_map.add_move(
                             &(Move {
-                                piece: piece,
+                                piece,
                                 from: i,
                                 to: mv as usize,
                                 move_type: MoveType::Normal,
@@ -470,7 +470,7 @@ pub(crate) fn movegen(
             {
                 mv_map.add_move(
                     &(Move {
-                        piece: piece,
+                        piece,
                         from: i,
                         to: short_mv_to_idx,
                         move_type: MoveType::Castle(CastleMove {
@@ -496,7 +496,7 @@ pub(crate) fn movegen(
             {
                 mv_map.add_move(
                     &(Move {
-                        piece: piece,
+                        piece,
                         from: i,
                         to: long_mv_to_idx,
                         move_type: MoveType::Castle(CastleMove {

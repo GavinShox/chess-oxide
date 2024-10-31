@@ -565,9 +565,9 @@ impl Notation {
     fn get_castle_side(&self) -> Option<CastleSide> {
         self.castle_str
             .as_ref()
-            .map_or(None, |castle_str| match castle_str.as_str() {
-                "O-O" => Some(CastleSide::Short),
-                "O-O-O" => Some(CastleSide::Long),
+            .map(|castle_str| match castle_str.as_str() {
+                "O-O" => CastleSide::Short,
+                "O-O-O" => CastleSide::Long,
                 _ => {
                     unreachable!("Invalid castle string in get_castle_side function");
                 }
@@ -788,10 +788,10 @@ mod test {
                 assert_eq!(notation.piece, Some('Q'));
                 assert_eq!(notation.to_file, 'f');
                 assert_eq!(notation.to_rank, '5');
-                assert_eq!(notation.capture, true);
-                assert_eq!(notation.check, true);
-                assert_eq!(notation.dis_file.is_some(), true);
-                assert_eq!(notation.dis_rank.is_some(), true);
+                assert!(notation.capture);
+                assert!(notation.check);
+                assert!(notation.dis_file.is_some());
+                assert!(notation.dis_rank.is_some());
                 assert_eq!(notation.dis_file.unwrap(), 'f');
                 assert_eq!(notation.dis_rank.unwrap(), '3');
                 Ok(())

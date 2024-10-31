@@ -227,14 +227,14 @@ mod tests {
     #[test]
     fn test_pgn_from_file() {
         let pgn = from_file(Path::new("test_data/test.pgn")).unwrap();
-        println!("{}", pgn.to_string());
+        println!("{}", pgn);
 
         let b1 = board::Board::try_from(pgn.clone()).unwrap();
         let pgn1 = PGN::from(&b1);
         let b2 = board::Board::try_from(pgn1.clone()).unwrap();
         let pgn2 = PGN::from(&b2);
-        println!("{}", pgn1.to_string());
-        println!("{}", pgn2.to_string());
+        println!("{}", pgn1);
+        println!("{}", pgn2);
         assert_eq!(pgn1.to_string(), pgn2.to_string());
         assert_eq!(
             b1.get_current_state().board_hash,
