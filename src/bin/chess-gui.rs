@@ -54,9 +54,8 @@ fn main() -> Result<(), slint::PlatformError> {
     let board = Arc::new(Mutex::new(chess::Board::new()));
 
     let ui = Board_UI::new()?;
-    let import_fen_dialog = ImportFen_UI::new()?;
     let settings_dialog = SettingsDialog_UI::new()?;
-    let import_pgn_dialog = ImportPGN_UI::new()?;
+    let import_dialog = Import_UI::new()?;
 
     let ui_weak_get_gamestate = ui.as_weak();
     let board_get_gamestate = board.clone();
@@ -249,46 +248,46 @@ fn main() -> Result<(), slint::PlatformError> {
         });
     });
 
-    let import_fen_dialog_weak_run = import_fen_dialog.as_weak();
-    ui.on_import_fen_dialog(move || {
-        let import_fen_dialog = import_fen_dialog_weak_run.upgrade().unwrap();
-        import_fen_dialog.show().unwrap();
+    let import_dialog_weak_run = import_dialog.as_weak();
+    ui.on_import_dialog(move || {
+        let import_dialog = import_dialog_weak_run.upgrade().unwrap();
+        import_dialog.show().unwrap();
     });
 
     // close all child dialogs/windows on main window close
-    let import_fen_dialog_weak_close = import_fen_dialog.as_weak();
+    let import_dialog_weak_close = import_dialog.as_weak();
     let settings_dialog_weak_close = settings_dialog.as_weak();
     ui.window()
         .on_close_requested(move || -> slint::CloseRequestResponse {
-            let import_fen_dialog = import_fen_dialog_weak_close.upgrade().unwrap();
+            let import_dialog = import_dialog_weak_close.upgrade().unwrap();
             let settings_dialog = settings_dialog_weak_close.upgrade().unwrap();
-            import_fen_dialog.hide().unwrap();
+            import_dialog.hide().unwrap();
             settings_dialog.hide().unwrap();
             slint::CloseRequestResponse::HideWindow
         });
 
     let ui_weak_import_fen = ui.as_weak();
-    let import_fen_dialog_weak_import = import_fen_dialog.as_weak();
+    let import_dialog_weak_import_fen = import_dialog.as_weak();
     let board_import_fen = board.clone();
-    import_fen_dialog.on_import_fen(move |fen: SharedString| {
-        let import_fen_dialog = import_fen_dialog_weak_import.upgrade().unwrap();
+    import_dialog.on_import_fen(move |fen: SharedString| {
+        let import_dialog = import_dialog_weak_import_fen.upgrade().unwrap();
         let ui = ui_weak_import_fen.upgrade().unwrap();
 
         let new_board = chess::board::Board::from(match fen.parse::<FEN>() {
             Ok(f) => {
-                import_fen_dialog.set_error(false);
-                import_fen_dialog.set_fen_str("".into());
+                import_dialog.set_fen_error(false);
+                import_dialog.set_fen_str("".into());
                 f
             }
             Err(e) => {
-                import_fen_dialog.set_error(true);
-                import_fen_dialog.set_error_message(e.to_string().into());
+                import_dialog.set_fen_error(true);
+                import_dialog.set_fen_error_message(e.to_string().into());
                 return;
             }
         });
 
         let side_to_move = ui_convert_piece_colour(new_board.get_current_state().side_to_move);
-        let player_side = if import_fen_dialog.get_as_white() {
+        let player_side = if import_dialog.get_as_white() {
             PieceColour_UI::White
         } else {
             PieceColour_UI::Black
@@ -298,27 +297,116 @@ fn main() -> Result<(), slint::PlatformError> {
 
         ui.invoke_reset_properties(player_side, side_to_move);
         ui.invoke_refresh_position();
-        import_fen_dialog.hide().unwrap();
+        import_dialog.hide().unwrap();
     });
 
-    let import_fen_dialog_weak_close = import_fen_dialog.as_weak();
-    import_fen_dialog.on_close(move || {
-        let import_fen_dialog = import_fen_dialog_weak_close.upgrade().unwrap();
-        import_fen_dialog.set_error(false);
-        import_fen_dialog.set_error_message("".into());
-        import_fen_dialog.set_fen_str("".into());
-        import_fen_dialog.hide().unwrap();
+    let import_dialog_weak_close = import_dialog.as_weak();
+    import_dialog.on_close(move || {
+        let import_dialog = import_dialog_weak_close.upgrade().unwrap();
+        import_dialog.set_fen_error(false);
+        import_dialog.set_fen_error_message("".into());
+        import_dialog.set_fen_str("".into());
+        import_dialog.set_pgn_error(false);
+        import_dialog.set_pgn_error_message("".into());
+        import_dialog.set_pgn_str("".into());
+        import_dialog.hide().unwrap();
     });
 
     // on close window, invoke on_close to reset state
-    let import_fen_dialog_weak_close_requested = import_fen_dialog.as_weak();
-    import_fen_dialog
+    let import_dialog_weak_close_requested = import_dialog.as_weak();
+    import_dialog
         .window()
         .on_close_requested(move || -> slint::CloseRequestResponse {
-            let import_fen_dialog = import_fen_dialog_weak_close_requested.upgrade().unwrap();
-            import_fen_dialog.invoke_close();
+            let import_dialog = import_dialog_weak_close_requested.upgrade().unwrap();
+            import_dialog.invoke_close();
             slint::CloseRequestResponse::HideWindow
         });
+
+    let ui_weak_import_pgn = ui.as_weak();
+    let import_dialog_weak_import_pgn = import_dialog.as_weak();
+    let board_import_pgn = board.clone();
+    import_dialog.on_import_pgn(move |pgn: SharedString| {
+        let import_dialog = import_dialog_weak_import_pgn.upgrade().unwrap();
+        let ui = ui_weak_import_pgn.upgrade().unwrap();
+
+        log::debug!("Importing PGN: \n{}", pgn);
+
+        let pgn_import = pgn.as_str().parse::<PGN>();
+        match pgn_import {
+            Ok(p) => {
+                log::debug!("Successfully parsed PGN: {:#?}", p);
+                let new_board = chess::Board::try_from(p);
+                match new_board {
+                    Ok(b) => {
+                        log::debug!("Successfully created board from PGN");
+                        import_dialog.set_pgn_error(false);
+                        import_dialog.set_pgn_error_message("".into());
+                        log::debug!("Resetting UI properties and refreshing position");
+                        let side = b.get_side_to_move();
+                        *board_import_pgn.lock().unwrap() = b;
+                        // TODO for now set both to sidetomove so engine doesnt make move
+                        ui.invoke_reset_properties(
+                            ui_convert_piece_colour(side),
+                            ui_convert_piece_colour(side),
+                        );
+                        ui.invoke_refresh_position();
+                        import_dialog.set_pgn_str("".into());
+                        import_dialog.hide().unwrap();
+                    }
+                    Err(e) => {
+                        log::error!("Error creating board from PGN: {}", e);
+                        import_dialog.set_pgn_error(true);
+                        import_dialog.set_pgn_error_message(e.to_string().into());
+                    }
+                }
+            }
+            Err(e) => {
+                log::error!("Error parsing PGN: {}", e);
+                import_dialog.set_pgn_error(true);
+                import_dialog.set_pgn_error_message(e.to_string().into());
+                // return
+            }
+        }
+    });
+
+    let import_dialog_weak_file = import_dialog.as_weak();
+    import_dialog.on_get_file(move || -> SharedString {
+        let import_dialog = import_dialog_weak_file.upgrade().unwrap();
+        let path = match native_dialog::FileDialog::new()
+            .set_location("~/Desktop")
+            .add_filter("PGN File", &["pgn"])
+            .show_open_single_file()
+        {
+            Ok(p) => match p {
+                Some(path) => path,
+                None => {
+                    log::warn!("No file selected");
+                    return "".into();
+                }
+            },
+            Err(e) => {
+                log::error!("Error opening file dialog: {}", e);
+                import_dialog.set_pgn_error(true);
+                import_dialog.set_pgn_error_message(e.to_string().into());
+                return "".into();
+            }
+        };
+
+        match std::fs::read_to_string(&path) {
+            Ok(p) => {
+                // clear error state on successful file read
+                import_dialog.set_pgn_error(false);
+                import_dialog.set_pgn_error_message("".into());
+                p.into()
+            }
+            Err(e) => {
+                log::error!("Error reading file: {}", e);
+                import_dialog.set_pgn_error(true);
+                import_dialog.set_pgn_error_message(e.to_string().into());
+                "".into()
+            }
+        }
+    });
 
     let settings_dialog_weak_run = settings_dialog.as_weak();
     ui.on_settings_dialog(move || {
@@ -349,117 +437,6 @@ fn main() -> Result<(), slint::PlatformError> {
         let settings_dialog = settings_dialog_weak_close.upgrade().unwrap();
         settings_dialog.hide().unwrap();
     });
-
-    let import_pgn_dialog_weak_run = import_pgn_dialog.as_weak();
-    ui.on_import_pgn_dialog(move || {
-        let import_pgn_dialog = import_pgn_dialog_weak_run.upgrade().unwrap();
-        import_pgn_dialog.show().unwrap();
-    });
-
-    let ui_weak_import_pgn = ui.as_weak();
-    let import_pgn_dialog_weak_import_pgn = import_pgn_dialog.as_weak();
-    let board_import_pgn = board.clone();
-    import_pgn_dialog.on_import_pgn(move |pgn: SharedString| {
-        let import_pgn_dialog = import_pgn_dialog_weak_import_pgn.upgrade().unwrap();
-        let ui = ui_weak_import_pgn.upgrade().unwrap();
-
-        log::debug!("Importing PGN: \n{}", pgn);
-
-        let pgn_import = pgn.as_str().parse::<PGN>();
-        match pgn_import {
-            Ok(p) => {
-                log::debug!("Successfully parsed PGN: {:#?}", p);
-                let new_board = chess::Board::try_from(p);
-                match new_board {
-                    Ok(b) => {
-                        log::debug!("Successfully created board from PGN");
-                        import_pgn_dialog.set_error(false);
-                        import_pgn_dialog.set_error_message("".into());
-                        log::debug!("Resetting UI properties and refreshing position");
-                        let side = b.get_side_to_move();
-                        *board_import_pgn.lock().unwrap() = b;
-                        // TODO for now set both to sidetomove so engine doesnt make move
-                        ui.invoke_reset_properties(
-                            ui_convert_piece_colour(side),
-                            ui_convert_piece_colour(side),
-                        );
-                        ui.invoke_refresh_position();
-                        import_pgn_dialog.set_pgn_str("".into());
-                        import_pgn_dialog.hide().unwrap();
-                    }
-                    Err(e) => {
-                        log::error!("Error creating board from PGN: {}", e);
-                        import_pgn_dialog.set_error(true);
-                        import_pgn_dialog.set_error_message(e.to_string().into());
-                    }
-                }
-            }
-            Err(e) => {
-                log::error!("Error parsing PGN: {}", e);
-                import_pgn_dialog.set_error(true);
-                import_pgn_dialog.set_error_message(e.to_string().into());
-                // return
-            }
-        }
-    });
-
-    let import_pgn_dialog_weak_file = import_pgn_dialog.as_weak();
-    import_pgn_dialog.on_get_file(move || -> SharedString {
-        let import_pgn_dialog = import_pgn_dialog_weak_file.upgrade().unwrap();
-        let path = match native_dialog::FileDialog::new()
-            .set_location("~/Desktop")
-            .add_filter("PGN File", &["pgn"])
-            .show_open_single_file()
-        {
-            Ok(p) => match p {
-                Some(path) => path,
-                None => {
-                    log::warn!("No file selected");
-                    return "".into();
-                }
-            },
-            Err(e) => {
-                log::error!("Error opening file dialog: {}", e);
-                import_pgn_dialog.set_error(true);
-                import_pgn_dialog.set_error_message(e.to_string().into());
-                return "".into();
-            }
-        };
-
-        match std::fs::read_to_string(&path) {
-            Ok(p) => {
-                // clear error state on successful file read
-                import_pgn_dialog.set_error(false);
-                import_pgn_dialog.set_error_message("".into());
-                p.into()
-            }
-            Err(e) => {
-                log::error!("Error reading file: {}", e);
-                import_pgn_dialog.set_error(true);
-                import_pgn_dialog.set_error_message(e.to_string().into());
-                "".into()
-            }
-        }
-    });
-
-    let import_pgn_dialog_weak_close = import_pgn_dialog.as_weak();
-    import_pgn_dialog.on_close(move || {
-        let import_pgn_dialog = import_pgn_dialog_weak_close.upgrade().unwrap();
-        import_pgn_dialog.set_error(false);
-        import_pgn_dialog.set_error_message("".into());
-        import_pgn_dialog.set_pgn_str("".into());
-        import_pgn_dialog.hide().unwrap();
-    });
-
-    // on close window, invoke on_close to reset state
-    let import_pgn_dialog_weak_close_requested = import_pgn_dialog.as_weak();
-    import_pgn_dialog
-        .window()
-        .on_close_requested(move || -> slint::CloseRequestResponse {
-            let import_pgn_dialog = import_pgn_dialog_weak_close_requested.upgrade().unwrap();
-            import_pgn_dialog.invoke_close();
-            slint::CloseRequestResponse::HideWindow
-        });
 
     ui.invoke_refresh_position();
     ui.run()

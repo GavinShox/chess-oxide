@@ -1,15 +1,14 @@
 import { Button, VerticalBox, GridBox, ScrollView, ListView, LineEdit, ComboBox, SpinBox, StandardButton, CheckBox } from "std-widgets.slint";
 import { BoardTheme, PieceTheme, BoardThemes, PieceThemes } from "./theme.slint";
-import { ImportFen_UI } from "import_fen.slint";
 import { SettingsDialog_UI } from "settings.slint";
-import { ImportPGN_UI } from "import_pgn.slint";
 import { MoveHistory } from "move_history.slint";
 import { Piece_UI, Move_UI, MoveNotation_UI, PieceType_UI, PieceColour_UI, Square, PieceImg } from "defs.slint";
+import { Import_UI } from "import.slint";
 
 import "resources/font/CaskaydiaCoveNerdFont-Regular.ttf";
 
 // re-export for use in rust, this file is what is compiled in build.rs
-export { ImportFen_UI, SettingsDialog_UI, ImportPGN_UI }
+export { SettingsDialog_UI, Import_UI }
 
 export component Board_UI inherits Window {
     title: "Chess";
@@ -38,9 +37,8 @@ export component Board_UI inherits Window {
     callback engine-make-move();
     callback refresh-position();
     callback get-gamestate();
-    callback import-fen-dialog();
     callback settings-dialog();
-    callback import-pgn-dialog();
+    callback import-dialog();
 
     public function reset-properties(player-colour: PieceColour-UI, side-to-move-colour: PieceColour-UI) {
         self.selected-from-square = -1;
@@ -237,17 +235,9 @@ export component Board_UI inherits Window {
 
                     Button {
                         width: 30%;
-                        text: "Import FEN";
+                        text: "Import";
                         clicked => {
-                            import-fen-dialog();
-                        }
-                    }
-
-                    Button {
-                        width: 30%;
-                        text: "Import PGN";
-                        clicked => {
-                            import-pgn-dialog();
+                            import-dialog();
                         }
                     }
                 }

@@ -1,0 +1,143 @@
+import { TabWidget, TextEdit, Button, StandardButton, CheckBox, LineEdit } from "std-widgets.slint";
+
+export component Import_UI inherits Dialog {
+    title: "Import";
+    icon: @image-url("resources/chesslogo.png");
+    default-font-family: "CaskaydiaCove Nerd Font";
+    width: 500px;
+    height: 600px;
+    always-on-top: true;
+
+    callback close();
+
+    // PGN properties
+    in property <bool> pgn-error: false;
+    in property <string> pgn-error-message: "";
+    in-out property <string> pgn_str <=> pgn.text;
+
+    // PGN callbacks
+    callback import-pgn(string);
+    callback get-file() -> string;
+
+    // FEN properties
+    in property <bool> fen-error: false;
+    in property <string> fen-error-message: "";
+    in property <string> fen_str <=> fen.text;
+    in property <bool> as-white <=> side.checked;
+
+    // FEN callbacks
+    callback import-fen(string);
+
+    TabWidget {
+        padding: 10px;
+        Tab {
+            title: "FEN";
+            VerticalLayout {
+                alignment: center;
+                spacing: 10px;
+                fen := LineEdit {
+                    text: "";
+                    placeholder-text: "Enter FEN";
+                    read-only: false;
+                }
+
+                Text {
+                    text: "Error: " + fen-error-message;
+                    color: red;
+                    visible: fen-error;
+                    font-size: 10px;
+                    wrap: word-wrap;
+                    vertical-alignment: center;
+                }
+
+                HorizontalLayout {
+                    alignment: center;
+                    spacing: 10px;
+                    StandardButton {
+                        kind: ok;
+                        clicked => {
+                            import-fen(fen.text);
+                        }
+                    }
+
+                    StandardButton {
+                        kind: cancel;
+                        clicked => {
+                            close();
+                        }
+                    }
+                }
+
+                HorizontalLayout {
+                    alignment: center;
+                    Text {
+                        text: "Play as white ";
+                        vertical-alignment: center;
+                    }
+
+                    side := CheckBox {
+                        checked: true;
+                    }
+                }
+            }
+        }
+
+        Tab {
+            title: "PGN";
+            VerticalLayout {
+                alignment: LayoutAlignment.stretch;
+                spacing: 10px;
+                Text {
+                    text: "Import PGN:";
+                    font-size: 14px;
+                    vertical-alignment: center;
+                    horizontal-alignment: center;
+                }
+
+                pgn := TextEdit {
+                    wrap: word-wrap;
+                    max-width: root.width;
+                    height: 70%;
+                    text: "";
+                    placeholder-text: "Enter PGN";
+                    font-size: 12px;
+                    read-only: false;
+                }
+
+                Button {
+                    text: "Load PGN from file";
+                    clicked => {
+                        root.pgn_str = get-file();
+                    }
+                }
+
+                Text {
+                    text: "Error: " + pgn-error-message;
+                    color: red;
+                    visible: pgn-error;
+                    font-size: 10px;
+                    wrap: word-wrap;
+                    vertical-alignment: center;
+                }
+
+                HorizontalLayout {
+                    alignment: center;
+                    spacing: 10px;
+                    StandardButton {
+                        kind: ok;
+                        clicked => {
+                            import-pgn(pgn.text);
+                        }
+                    }
+
+                    StandardButton {
+                        kind: cancel;
+                        clicked => {
+                            close();
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
