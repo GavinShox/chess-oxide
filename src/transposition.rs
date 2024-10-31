@@ -25,7 +25,7 @@ pub trait TTData {
     fn is_empty(&self) -> bool;
 }
 
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum BoundType {
     Exact,
     Lower,
@@ -80,7 +80,7 @@ impl<T: TTData + Copy + Clone> TT<T> {
         }
     }
 
-    pub fn get(&self, hash: &PositionHash) -> Option<&T> {
+    pub fn get(&self, hash: PositionHash) -> Option<&T> {
         if self.size_mb != 0 {
             self.table[self.get_idx(hash)].get(self.get_bucket_hash(hash))
         } else {
@@ -88,7 +88,7 @@ impl<T: TTData + Copy + Clone> TT<T> {
         }
     }
 
-    pub fn insert(&mut self, hash: &PositionHash, data: T) {
+    pub fn insert(&mut self, hash: PositionHash, data: T) {
         if self.size_mb != 0 {
             let idx = self.get_idx(hash);
             let bucket_hash = self.get_bucket_hash(hash);
@@ -122,17 +122,17 @@ impl<T: TTData + Copy + Clone> TT<T> {
         });
     }
 
-    fn mb_to_len(mb_size: usize) -> usize {
+    const fn mb_to_len(mb_size: usize) -> usize {
         (mb_size * 1024 * 1024) / std::mem::size_of::<Entry<T>>()
     }
 
-    fn get_idx(&self, hash: &PositionHash) -> usize {
-        let idx_hash = util::high_bits(*hash); // use high bits for index, and low bits for bucket collision handling
+    fn get_idx(&self, hash: PositionHash) -> usize {
+        let idx_hash = util::high_bits(hash); // use high bits for index, and low bits for bucket collision handling
         (idx_hash as usize) % self.table.len()
     }
 
-    fn get_bucket_hash(&self, hash: &PositionHash) -> u32 {
-        util::low_bits(*hash)
+    const fn get_bucket_hash(&self, hash: PositionHash) -> u32 {
+        util::low_bits(hash)
     }
 }
 

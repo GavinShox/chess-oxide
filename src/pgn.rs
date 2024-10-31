@@ -24,10 +24,10 @@ enum PGNResult {
 impl fmt::Display for PGNResult {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         match self {
-            PGNResult::WhiteWin => write!(f, "1-0"),
-            PGNResult::BlackWin => write!(f, "0-1"),
-            PGNResult::Draw => write!(f, "1/2-1/2"),
-            PGNResult::Undecided => write!(f, "*"),
+            Self::WhiteWin => write!(f, "1-0"),
+            Self::BlackWin => write!(f, "0-1"),
+            Self::Draw => write!(f, "1/2-1/2"),
+            Self::Undecided => write!(f, "*"),
         }
     }
 }
@@ -76,30 +76,28 @@ impl From<&board::Board> for PGN {
 
         // set result tag based on Board GameOverState
         new.tags
-            .push(Tag::Result(match board.get_game_over_state() {
-                None => PGNResult::Undecided.to_string(),
-                Some(gos) => {
-                    match gos {
-                        GameOverState::WhiteResign => PGNResult::BlackWin.to_string(),
-                        GameOverState::BlackResign => PGNResult::WhiteWin.to_string(),
-                        GameOverState::AgreedDraw => PGNResult::Draw.to_string(),
-                        GameOverState::Forced(gs) => {
-                            if gs.is_win() {
-                                // the side to move is the loser, the last move was the winning move
-                                if board.get_side_to_move() == PieceColour::White {
-                                    PGNResult::BlackWin.to_string()
-                                } else {
-                                    PGNResult::WhiteWin.to_string()
-                                }
-                            } else if gs.is_draw() {
-                                PGNResult::Draw.to_string()
+            .push(Tag::Result(board.get_game_over_state().map_or_else(
+                || PGNResult::Undecided.to_string(),
+                |gos| match gos {
+                    GameOverState::WhiteResign => PGNResult::BlackWin.to_string(),
+                    GameOverState::BlackResign => PGNResult::WhiteWin.to_string(),
+                    GameOverState::AgreedDraw => PGNResult::Draw.to_string(),
+                    GameOverState::Forced(gs) => {
+                        if gs.is_win() {
+                            // the side to move is the loser, the last move was the winning move
+                            if board.get_side_to_move() == PieceColour::White {
+                                PGNResult::BlackWin.to_string()
                             } else {
-                                PGNResult::Undecided.to_string()
+                                PGNResult::WhiteWin.to_string()
                             }
+                        } else if gs.is_draw() {
+                            PGNResult::Draw.to_string()
+                        } else {
+                            PGNResult::Undecided.to_string()
                         }
                     }
-                }
-            }));
+                },
+            )));
         new.tags.push(Tag::SetUp("0".to_string()));
         //new.tags.push(Tag::FEN(board.get_starting_state().to_fen().to_string()));
         new.tags.push(Tag::Termination("UNIMPLEMENTED".to_string()));
@@ -137,14 +135,12 @@ impl fmt::Display for PGN {
             chars_since_newline += mv_str.len() + 1;
         }
         // unwrap is safe, the Result tag is required and set in all constructors
-        let termination_indicator = if let Tag::Result(term) = self
+        let Tag::Result(termination_indicator) = self
             .tags
             .iter()
             .find(|tag| matches!(tag, Tag::Result(_)))
             .unwrap()
-        {
-            term
-        } else {
+        else {
             unreachable!("Result tag is required and set in all constructors, it will be found");
         };
         pgn.push_str(&format!(" {}\n", termination_indicator));

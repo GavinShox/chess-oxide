@@ -15,18 +15,14 @@ const QUIECENCE_DEPTH: u8 = 4;
 
 // TODO for tt, to make sure checkmate eval is relative to the ply it was found at, maybe have a checkmate flag in the tt entry or an enum here for evals i dont know
 #[inline(always)]
-pub fn is_eval_checkmate(eval: i32) -> bool {
+pub const fn is_eval_checkmate(eval: i32) -> bool {
     eval.abs() >= CHECKMATE_VALUE
 }
 
 // amount of plys until checkmate
 #[inline(always)]
-pub fn get_checkmate_ply(eval: i32) -> u8 {
-    if eval > 0 {
-        (CHECKMATE_VALUE - eval).unsigned_abs() as u8
-    } else {
-        (CHECKMATE_VALUE + eval).unsigned_abs() as u8
-    }
+pub const fn get_checkmate_ply(eval: i32) -> u8 {
+    (CHECKMATE_VALUE - eval.abs()).unsigned_abs() as u8
 }
 
 struct Nodes {
@@ -129,7 +125,7 @@ fn quiescence(
     }
     alpha = cmp::max(alpha, max_eval);
 
-    for i in sorted_move_indexes(pseudo_legal_moves, true, &NULL_SHORT_MOVE, &bs.last_move) {
+    for i in sorted_move_indexes(pseudo_legal_moves, true, NULL_SHORT_MOVE, &bs.last_move) {
         let mv = &pseudo_legal_moves[i];
         if !bs.is_move_legal_position(mv) {
             continue; // skip illegal moves
@@ -184,7 +180,7 @@ fn negamax_root<'a>(
     let beta = MAX;
     let mut best_move = &NULL_MOVE;
     let mut max_eval = MIN;
-    for i in sorted_move_indexes(pseudo_legal_moves, false, &NULL_SHORT_MOVE, &bs.last_move) {
+    for i in sorted_move_indexes(pseudo_legal_moves, false, NULL_SHORT_MOVE, &bs.last_move) {
         let mv = &pseudo_legal_moves[i];
         if !bs.is_move_legal_position(mv) {
             continue; // skip illegal moves
@@ -224,7 +220,7 @@ fn negamax(
     // transposition table lookup
     let alpha_orig = alpha;
     let mut best_move = NULL_SHORT_MOVE; // will be set on tt hit
-    if let Some(entry) = tt.get(&bs.board_hash) {
+    if let Some(entry) = tt.get(bs.board_hash) {
         //TODO does adding halfmove count to the hash make sense? test performance
         if cfg!(feature = "debug_engine_logging") {
             nodes.transposition_table_hits += 1;
@@ -240,7 +236,7 @@ fn negamax(
                 BoundType::Upper => {
                     beta = cmp::min(beta, entry.eval);
                 }
-                _ => {
+                BoundType::Invalid => {
                     unreachable!("Invalid bound type returned in transposition table entry");
                 }
             }
@@ -279,7 +275,7 @@ fn negamax(
     }
 
     let mut max_eval = MIN;
-    let moves = sorted_move_indexes(pseudo_legal_moves, false, &best_move, &bs.last_move); // sort pseudo legal moves instead of consuming the lazy iterator
+    let moves = sorted_move_indexes(pseudo_legal_moves, false, best_move, &bs.last_move); // sort pseudo legal moves instead of consuming the lazy iterator
     for i in moves {
         let mv = &pseudo_legal_moves[i];
         if !bs.is_move_legal_position(mv) {
@@ -318,7 +314,7 @@ fn negamax(
     } else if entry.eval >= beta {
         entry.bound_type = BoundType::Lower;
     }
-    tt.insert(&bs.board_hash, entry);
+    tt.insert(bs.board_hash, entry);
 
     max_eval
 }
@@ -326,7 +322,7 @@ fn negamax(
 fn sorted_move_indexes(
     moves: &[Move],
     captures_only: bool,
-    tt_mv: &ShortMove,
+    tt_mv: ShortMove,
     last_mv: &Move,
 ) -> Vec<usize> {
     let mut move_scores: Vec<(usize, i32)> = Vec::with_capacity(moves.len());
@@ -335,7 +331,7 @@ fn sorted_move_indexes(
         if captures_only && !matches!(mv.move_type, MoveType::Capture(_)) {
             continue;
         }
-        if mv == tt_mv {
+        if mv == &tt_mv {
             move_scores.push((index, MAX)); // tt move should be searched first
             continue;
         }
@@ -370,7 +366,7 @@ fn sorted_move_indexes(
 
 // values in centipawns
 #[inline(always)]
-fn get_piece_value(ptype: &PieceType) -> i32 {
+const fn get_piece_value(ptype: &PieceType) -> i32 {
     match ptype {
         PieceType::Pawn => 100,
         PieceType::Knight => 320,
@@ -382,7 +378,7 @@ fn get_piece_value(ptype: &PieceType) -> i32 {
 }
 
 #[inline(always)]
-fn get_piece_pos_value(i: usize, piece: &Piece, is_endgame: bool) -> i32 {
+const fn get_piece_pos_value(i: usize, piece: &Piece, is_endgame: bool) -> i32 {
     // all pos values are from whites perspective (a8 = index 0, h1 = index 63)
     const PAWN_POS_VALUES: [i32; 64] = [
         0, 0, 0, 0, 0, 0, 0, 0, 50, 50, 50, 50, 50, 50, 50, 50, 10, 10, 20, 30, 30, 20, 10, 10, 5,
@@ -422,11 +418,11 @@ fn get_piece_pos_value(i: usize, piece: &Piece, is_endgame: bool) -> i32 {
         -30, -30, -30, -30, -50,
     ];
 
-    let side_adjusted_idx = if piece.pcolour == PieceColour::White {
-        i
-    } else {
-        63 - i
+    let side_adjusted_idx = match piece.pcolour {
+        PieceColour::White => i,
+        PieceColour::Black => 63 - i,
     };
+
     match piece.ptype {
         PieceType::Pawn => PAWN_POS_VALUES[side_adjusted_idx],
         PieceType::Knight => KNIGHT_POS_VALUES[side_adjusted_idx],

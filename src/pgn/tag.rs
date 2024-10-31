@@ -39,19 +39,19 @@ pub enum Tag {
 impl fmt::Display for Tag {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         match self {
-            Tag::Event(value) => write!(f, "[Event \"{}\"]", value),
-            Tag::Site(value) => write!(f, "[Site \"{}\"]", value),
-            Tag::Date(value) => write!(f, "[Date \"{}\"]", value),
-            Tag::Round(value) => write!(f, "[Round \"{}\"]", value),
-            Tag::White(value) => write!(f, "[White \"{}\"]", value),
-            Tag::Black(value) => write!(f, "[Black \"{}\"]", value),
-            Tag::Result(value) => write!(f, "[Result \"{}\"]", value),
-            Tag::Eco(value) => write!(f, "[ECO \"{}\"]", value),
-            Tag::SetUp(value) => write!(f, "[SetUp \"{}\"]", value),
-            Tag::FEN(value) => write!(f, "[FEN \"{}\"]", value),
-            Tag::Termination(value) => write!(f, "[Termination \"{}\"]", value),
-            Tag::Annotator(value) => write!(f, "[Annotator \"{}\"]", value),
-            Tag::CustomTag(ct) => write!(f, "[{} \"{}\"]", ct.name, ct.value),
+            Self::Event(value) => write!(f, "[Event \"{}\"]", value),
+            Self::Site(value) => write!(f, "[Site \"{}\"]", value),
+            Self::Date(value) => write!(f, "[Date \"{}\"]", value),
+            Self::Round(value) => write!(f, "[Round \"{}\"]", value),
+            Self::White(value) => write!(f, "[White \"{}\"]", value),
+            Self::Black(value) => write!(f, "[Black \"{}\"]", value),
+            Self::Result(value) => write!(f, "[Result \"{}\"]", value),
+            Self::Eco(value) => write!(f, "[ECO \"{}\"]", value),
+            Self::SetUp(value) => write!(f, "[SetUp \"{}\"]", value),
+            Self::FEN(value) => write!(f, "[FEN \"{}\"]", value),
+            Self::Termination(value) => write!(f, "[Termination \"{}\"]", value),
+            Self::Annotator(value) => write!(f, "[Annotator \"{}\"]", value),
+            Self::CustomTag(ct) => write!(f, "[{} \"{}\"]", ct.name, ct.value),
         }
     }
 }
@@ -63,34 +63,34 @@ impl FromStr for Tag {
         let tag_str = tag.trim_matches(['[', ']']).trim();
         let mut parts = tag_str.splitn(2, ' ').map(str::trim);
 
-        let name = match parts.next() {
-            Some(name) => name,
-            None => {
-                let err = PGNParseError::InvalidTag(format!("Tag {} has invalid name", tag));
-                log_and_return_error!(err)
-            }
+        let name = if let Some(name) = parts.next() {
+            name
+        } else {
+            let err = PGNParseError::InvalidTag(format!("Tag {} has invalid name", tag));
+            log_and_return_error!(err)
         };
-        let value = match parts.next() {
-            Some(value) => value.trim_matches('"'),
-            None => {
-                let err = PGNParseError::InvalidTag(format!("Tag {} has invalid value", tag));
-                log_and_return_error!(err)
-            }
+
+        let value = if let Some(value) = parts.next() {
+            value.trim_matches('"')
+        } else {
+            let err = PGNParseError::InvalidTag(format!("Tag {} has invalid value", tag));
+            log_and_return_error!(err)
         };
+
         match name {
-            "Event" => Ok(Tag::Event(value.to_string())),
-            "Site" => Ok(Tag::Site(value.to_string())),
-            "Date" => Ok(Tag::Date(value.to_string())),
-            "Round" => Ok(Tag::Round(value.to_string())),
-            "White" => Ok(Tag::White(value.to_string())),
-            "Black" => Ok(Tag::Black(value.to_string())),
-            "Result" => Ok(Tag::Result(value.to_string())),
-            "ECO" => Ok(Tag::Eco(value.to_string())),
-            "SetUp" => Ok(Tag::SetUp(value.to_string())),
-            "FEN" => Ok(Tag::FEN(value.to_string())),
-            "Termination" => Ok(Tag::Termination(value.to_string())),
-            "Annotator" => Ok(Tag::Annotator(value.to_string())),
-            c => Ok(Tag::CustomTag(CustomTag::new(c, value))),
+            "Event" => Ok(Self::Event(value.to_string())),
+            "Site" => Ok(Self::Site(value.to_string())),
+            "Date" => Ok(Self::Date(value.to_string())),
+            "Round" => Ok(Self::Round(value.to_string())),
+            "White" => Ok(Self::White(value.to_string())),
+            "Black" => Ok(Self::Black(value.to_string())),
+            "Result" => Ok(Self::Result(value.to_string())),
+            "ECO" => Ok(Self::Eco(value.to_string())),
+            "SetUp" => Ok(Self::SetUp(value.to_string())),
+            "FEN" => Ok(Self::FEN(value.to_string())),
+            "Termination" => Ok(Self::Termination(value.to_string())),
+            "Annotator" => Ok(Self::Annotator(value.to_string())),
+            c => Ok(Self::CustomTag(CustomTag::new(c, value))),
         }
     }
 }

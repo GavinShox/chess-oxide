@@ -563,17 +563,15 @@ impl Notation {
     }
 
     fn get_castle_side(&self) -> Option<CastleSide> {
-        if let Some(castle_str) = &self.castle_str {
-            match castle_str.as_str() {
+        self.castle_str
+            .as_ref()
+            .map_or(None, |castle_str| match castle_str.as_str() {
                 "O-O" => Some(CastleSide::Short),
                 "O-O-O" => Some(CastleSide::Long),
                 _ => {
                     unreachable!("Invalid castle string in get_castle_side function");
                 }
-            }
-        } else {
-            None
-        }
+            })
     }
 
     fn filter_possible_moves<'a>(&self, moves: &'a [Move]) -> Vec<&'a Move> {

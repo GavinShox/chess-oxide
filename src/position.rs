@@ -69,7 +69,7 @@ impl Pos64 {
 #[derive(Debug, PartialEq, Clone)]
 pub struct AttackMap(Vec<Move>);
 impl AttackMap {
-    fn new() -> Self {
+    const fn new() -> Self {
         Self(Vec::new())
     }
 
@@ -85,7 +85,7 @@ impl AttackMap {
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
 pub struct DefendMap([bool; 64]);
 impl DefendMap {
-    fn new() -> Self {
+    const fn new() -> Self {
         Self([false; 64])
     }
 
@@ -364,7 +364,7 @@ impl Position {
     }
 
     #[inline(always)]
-    fn is_defended(&self, i: usize) -> bool {
+    const fn is_defended(&self, i: usize) -> bool {
         self.defend_map.0[i]
     }
 
@@ -471,7 +471,7 @@ impl Position {
                 } else {
                     &mut self.attack_map
                 };
-                movegen(pos64, movegen_flags, p, i, is_defending, map);
+                movegen(pos64, movegen_flags, *p, i, is_defending, map);
             }
         }
     }

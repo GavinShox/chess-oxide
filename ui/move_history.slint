@@ -1,0 +1,30 @@
+import { ListView } from "std-widgets.slint";
+import { MoveNotation_UI } from "defs.slint";
+
+export component MoveHistory inherits Rectangle {
+    in property <[MoveNotation-UI]> move-history;
+
+    VerticalLayout {
+        padding: 10px;
+        spacing: 10px;
+        Text {
+            horizontal-alignment: center;
+            text: "Move History:";
+            font-size: 18px;
+            font-weight: 500;
+        }
+
+        Rectangle {
+            border-color: black;
+            border-radius: 5px;
+            border-width: 1px;
+            width: 200px;
+            ListView {
+                for move in move-history: Text {
+                    text: " " + move.move-number + ". " + move.notation1 + " " + move.notation2;
+                    font-size: 16px;
+                }
+            }
+        }
+    }
+}

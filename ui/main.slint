@@ -3,95 +3,13 @@ import { BoardTheme, PieceTheme, BoardThemes, PieceThemes } from "./theme.slint"
 import { ImportFen_UI } from "import_fen.slint";
 import { SettingsDialog_UI } from "settings.slint";
 import { ImportPGN_UI } from "import_pgn.slint";
+import { MoveHistory } from "move_history.slint";
+import { Piece_UI, Move_UI, MoveNotation_UI, PieceType_UI, PieceColour_UI, Square, PieceImg } from "defs.slint";
+
 import "resources/font/CaskaydiaCoveNerdFont-Regular.ttf";
 
 // re-export for use in rust, this file is what is compiled in build.rs
 export { ImportFen_UI, SettingsDialog_UI, ImportPGN_UI }
-
-export enum PieceType_UI {
-    None, // default value
-    King,
-    Queen,
-    Rook,
-    Bishop,
-    Knight,
-    Pawn
-}
-
-export enum PieceColour_UI {
-    None, // default value
-    White,
-    Black
-}
-
-export struct Piece_UI {
-    piece-colour: PieceColour_UI,
-    piece-type: PieceType_UI,
-}
-
-export struct Move_UI {
-    from-square: int,
-    to-square: int,
-}
-
-export struct MoveNotation_UI {
-    move-number: int,
-    notation1: string,
-    notation2: string,
-}
-
-component PieceImg inherits Image {
-    in property <Piece_UI> piece;
-    in property <PieceTheme> piece-theme: PieceThemes.staunty;
-    source: get-piece-img(piece);
-
-    pure function get-piece-img(piece: Piece_UI) -> image {
-        if piece.piece-type == PieceType_UI.King {
-            return piece.piece-colour == PieceColour_UI.White ? piece-theme.wK : piece-theme.bK;
-        }
-        if piece.piece-type == PieceType_UI.Queen {
-            return piece.piece-colour == PieceColour_UI.White ? piece-theme.wQ : piece-theme.bQ;
-        }
-        if piece.piece-type == PieceType_UI.Rook {
-            return piece.piece-colour == PieceColour_UI.White ? piece-theme.wR : piece-theme.bR;
-        }
-        if piece.piece-type == PieceType_UI.Bishop {
-            return piece.piece-colour == PieceColour_UI.White ? piece-theme.wB : piece-theme.bB;
-        }
-        if piece.piece-type == PieceType_UI.Knight {
-            return piece.piece-colour == PieceColour_UI.White ? piece-theme.wN : piece-theme.bN;
-        }
-        if piece.piece-type == PieceType_UI.Pawn {
-            return piece.piece-colour == PieceColour_UI.White ? piece-theme.wP : piece-theme.bP;
-        }
-        return @image-url("");
-    }
-}
-
-component Square inherits Rectangle {
-    in property <int> index;
-    in property <BoardTheme> theme;
-    property <color> dark-square: theme.dark-square;
-    property <color> light-square: theme.light-square;
-
-    public pure function get-square-background() -> color {
-        if (Math.mod(Math.floor(index / 8), 2) == 0) {
-            return Math.mod(index, 2) == 0 ? light-square : dark-square;
-        } else {
-            return Math.mod(index, 2) == 0 ? dark-square : light-square;
-        }
-    }
-
-    background: get-square-background();
-
-    animate background { duration: 50ms; }
-    animate border-color {
-        duration: 500ms;
-        easing: ease-in-out-quad;
-        delay: 250ms;
-    }
-    //animate border-width { duration: 500ms; easing: ease-in-out-bounce; delay: 100ms;}
-}
 
 export component Board_UI inherits Window {
     title: "Chess";
@@ -122,7 +40,7 @@ export component Board_UI inherits Window {
     callback get-gamestate();
     callback import-fen-dialog();
     callback settings-dialog();
-    callback import-pgn-dialog();   
+    callback import-pgn-dialog();
 
     public function reset-properties(player-colour: PieceColour-UI, side-to-move-colour: PieceColour-UI) {
         self.selected-from-square = -1;
@@ -336,29 +254,8 @@ export component Board_UI inherits Window {
             }
         }
 
-        VerticalLayout {
-            padding: 10px;
-            spacing: 10px;
-            Text {
-                horizontal-alignment: center;
-                text: "Move History:";
-                font-size: 18px;
-                font-weight: 500;
-            }
-
-            Rectangle {
-                border-color: black;
-                border-radius: 5px;
-                border-width: 1px;
-                width: 200px;
-                ListView {
-                    for move in move-history: Text {
-                        text: " " + move.move-number + ". " + move.notation1 + " " + move.notation2;
-                        //Math.mod(i+1, 2) == 0 ? move-history[i - 1] + " " + move : ((i / 2) + 1) + ".";
-                        font-size: 16px;
-                    }
-                }
-            }
+        MoveHistory {
+            move-history: root.move-history;
         }
     }
 }

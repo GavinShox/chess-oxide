@@ -391,21 +391,20 @@ impl FEN {
         m_field: Option<&str>,
     ) -> Result<(), FenParseError> {
         if let Some(hm) = hm_field {
-            self.halfmove_count = match hm.parse::<u32>() {
-                Ok(halfmove_count) => halfmove_count,
-                Err(_) => {
-                    let err = FenParseError(format!("Error parsing halfmove count: {}", hm));
-                    log_and_return_error!(err)
-                }
+            self.halfmove_count = if let Ok(halfmove_count) = hm.parse::<u32>() {
+                halfmove_count
+            } else {
+                let err = FenParseError(format!("Error parsing halfmove count: {}", hm));
+                log_and_return_error!(err)
             };
-        }
+        };
+
         if let Some(m) = m_field {
-            self.move_count = match m.parse::<u32>() {
-                Ok(move_count) => move_count,
-                Err(_) => {
-                    let err = FenParseError(format!("Error parsing move count: {}", m));
-                    log_and_return_error!(err)
-                }
+            self.move_count = if let Ok(move_count) = m.parse::<u32>() {
+                move_count
+            } else {
+                let err = FenParseError(format!("Error parsing move count: {}", m));
+                log_and_return_error!(err)
             };
         }
         Ok(())

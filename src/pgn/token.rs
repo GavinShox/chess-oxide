@@ -35,7 +35,7 @@ impl Tokens {
         let mut tags = Vec::new();
         let mut tag_str = String::new();
         let mut in_tag = false;
-        for token in self.tokens.iter() {
+        for token in &self.tokens {
             if token.value == "[" {
                 in_tag = true;
                 tag_str += &token.value;
@@ -52,7 +52,7 @@ impl Tokens {
     }
 
     pub fn get_game_termination(&self) -> Option<String> {
-        for token in self.tokens.iter() {
+        for token in &self.tokens {
             if token.is_game_termination_marker() {
                 return Some(token.value.clone());
             }
@@ -81,7 +81,7 @@ impl Tokens {
         // truncate at game termination marker
         if let Some(pos) = move_tokens
             .iter()
-            .position(|token| token.is_game_termination_marker())
+            .position(Token::is_game_termination_marker)
         {
             move_tokens.truncate(pos);
         }
@@ -108,9 +108,9 @@ impl Deref for Tokens {
 }
 
 fn tokenize(pgn: &str) -> Vec<Token> {
-    if !pgn.is_ascii() {
-        panic!("PGN must be ASCII");
-    }
+    // input should already be checked at this point, in a public function
+    assert!(pgn.is_ascii(), "PGN must be ASCII");
+
     let mut split_vec = Vec::new();
     let mut last = 0;
     for (index, matched) in
@@ -128,7 +128,7 @@ fn tokenize(pgn: &str) -> Vec<Token> {
     split_vec
 }
 
-fn is_pgn_delimiter(prev_char: char, c: char) -> bool {
+const fn is_pgn_delimiter(prev_char: char, c: char) -> bool {
     c.is_ascii_whitespace()
         || c == '.'
         || c == ')'

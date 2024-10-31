@@ -1,0 +1,86 @@
+import { PieceTheme, BoardTheme, PieceThemes } from "theme.slint";
+
+export enum PieceType_UI {
+    None, // default value
+    King,
+    Queen,
+    Rook,
+    Bishop,
+    Knight,
+    Pawn
+}
+
+export enum PieceColour_UI {
+    None, // default value
+    White,
+    Black
+}
+
+export struct Piece_UI {
+    piece-colour: PieceColour_UI,
+    piece-type: PieceType_UI,
+}
+
+export struct Move_UI {
+    from-square: int,
+    to-square: int,
+}
+
+export struct MoveNotation_UI {
+    move-number: int,
+    notation1: string,
+    notation2: string,
+}
+
+export component PieceImg inherits Image {
+    in property <Piece_UI> piece;
+    in property <PieceTheme> piece-theme: PieceThemes.staunty;
+    source: get-piece-img(piece);
+
+    pure function get-piece-img(piece: Piece_UI) -> image {
+        if piece.piece-type == PieceType_UI.King {
+            return piece.piece-colour == PieceColour_UI.White ? piece-theme.wK : piece-theme.bK;
+        }
+        if piece.piece-type == PieceType_UI.Queen {
+            return piece.piece-colour == PieceColour_UI.White ? piece-theme.wQ : piece-theme.bQ;
+        }
+        if piece.piece-type == PieceType_UI.Rook {
+            return piece.piece-colour == PieceColour_UI.White ? piece-theme.wR : piece-theme.bR;
+        }
+        if piece.piece-type == PieceType_UI.Bishop {
+            return piece.piece-colour == PieceColour_UI.White ? piece-theme.wB : piece-theme.bB;
+        }
+        if piece.piece-type == PieceType_UI.Knight {
+            return piece.piece-colour == PieceColour_UI.White ? piece-theme.wN : piece-theme.bN;
+        }
+        if piece.piece-type == PieceType_UI.Pawn {
+            return piece.piece-colour == PieceColour_UI.White ? piece-theme.wP : piece-theme.bP;
+        }
+        return @image-url("");
+    }
+}
+
+export component Square inherits Rectangle {
+    in property <int> index;
+    in property <BoardTheme> theme;
+    property <color> dark-square: theme.dark-square;
+    property <color> light-square: theme.light-square;
+
+    public pure function get-square-background() -> color {
+        if (Math.mod(Math.floor(index / 8), 2) == 0) {
+            return Math.mod(index, 2) == 0 ? light-square : dark-square;
+        } else {
+            return Math.mod(index, 2) == 0 ? dark-square : light-square;
+        }
+    }
+
+    background: get-square-background();
+
+    animate background { duration: 50ms; }
+    animate border-color {
+        duration: 500ms;
+        easing: ease-in-out-quad;
+        delay: 250ms;
+    }
+    //animate border-width { duration: 500ms; easing: ease-in-out-bounce; delay: 100ms;}
+}

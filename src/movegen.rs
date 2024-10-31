@@ -62,8 +62,8 @@ impl core::ops::Not for PieceColour {
     type Output = Self;
     fn not(self) -> Self::Output {
         match self {
-            PieceColour::White => PieceColour::Black,
-            PieceColour::Black => PieceColour::White,
+            Self::White => Self::Black,
+            Self::Black => Self::White,
         }
     }
 }
@@ -74,7 +74,7 @@ pub struct Piece {
     pub ptype: PieceType,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Square {
     Piece(Piece),
     Empty,
@@ -90,7 +90,7 @@ pub struct MovegenFlags {
     pub polyglot_en_passant: Option<usize>,
 }
 
-#[derive(Debug, PartialEq, Clone, Copy)]
+#[derive(Debug, PartialEq, Eq, Clone, Copy)]
 pub struct Move {
     pub piece: Piece,
     pub from: usize,
@@ -98,7 +98,7 @@ pub struct Move {
     pub move_type: MoveType,
 }
 impl Move {
-    pub fn short_move(&self) -> ShortMove {
+    pub const fn short_move(&self) -> ShortMove {
         ShortMove {
             from: self.from as u8,
             to: self.to as u8,
@@ -111,7 +111,7 @@ impl Move {
 }
 
 // struct that stores enough information to identify any full sized move
-#[derive(Debug, PartialEq, Clone, Copy)]
+#[derive(Debug, PartialEq, Eq, Clone, Copy)]
 pub struct ShortMove {
     pub from: u8,
     pub to: u8,
@@ -157,7 +157,7 @@ pub struct CastleMove {
     pub king_squares: (usize, usize, usize),
 }
 impl CastleMove {
-    pub fn get_castle_side(&self) -> CastleSide {
+    pub const fn get_castle_side(&self) -> CastleSide {
         // simple test to differentiate between long and short castles by looking at the idx of the rook_from square
         if self.rook_from == LONG_BLACK_ROOK_START || self.rook_from == LONG_WHITE_ROOK_START {
             CastleSide::Long
@@ -180,10 +180,10 @@ pub enum MoveType {
 }
 impl MoveType {
     #[inline]
-    pub fn is_capture(&self) -> bool {
+    pub const fn is_capture(&self) -> bool {
         matches!(
             self,
-            MoveType::Capture(_) | MoveType::EnPassant(_) | MoveType::Promotion(_, Some(_))
+            Self::Capture(_) | Self::EnPassant(_) | Self::Promotion(_, Some(_))
         )
     }
 }
@@ -196,14 +196,14 @@ pub trait MoveMap {
 fn pawn_promotion(
     mv_map: &mut dyn MoveMap,
     i: usize,
-    piece: &Piece,
+    piece: Piece,
     mv: i32,
     capture: Option<PieceType>,
 ) {
     for ptype in PROMOTION_PIECE_TYPES {
         mv_map.add_move(
             &(Move {
-                piece: *piece,
+                piece: piece,
                 from: i,
                 to: mv as usize,
                 move_type: MoveType::Promotion(ptype, capture),
@@ -219,7 +219,7 @@ fn is_square_empty(pos: &position::Pos64, i: usize) -> bool {
 }
 
 #[inline(always)]
-fn mb_get_pawn_push_offset(piece: &Piece) -> i32 {
+const fn mb_get_pawn_push_offset(piece: Piece) -> i32 {
     match piece.pcolour {
         PieceColour::White => -10,
         PieceColour::Black => 10,
@@ -227,7 +227,7 @@ fn mb_get_pawn_push_offset(piece: &Piece) -> i32 {
 }
 
 #[inline(always)]
-fn mb_get_pawn_attack_offset(piece: &Piece) -> [i32; 2] {
+const fn mb_get_pawn_attack_offset(piece: Piece) -> [i32; 2] {
     const WHITE_ATTACK_OFFSET: [i32; 2] = [-9, -11];
     const BLACK_ATTACK_OFFSET: [i32; 2] = [9, 11];
     match piece.pcolour {
@@ -237,7 +237,7 @@ fn mb_get_pawn_attack_offset(piece: &Piece) -> [i32; 2] {
 }
 
 #[inline(always)]
-fn mb_get_offset(piece: &Piece) -> Offset {
+const fn mb_get_offset(piece: Piece) -> Offset {
     match piece.ptype {
         PieceType::Pawn => PAWN_OFFSET, // not used
         PieceType::Knight => KNIGHT_OFFSET,
@@ -249,19 +249,15 @@ fn mb_get_offset(piece: &Piece) -> Offset {
 }
 
 #[inline(always)]
-fn get_slide(piece: &Piece) -> bool {
+const fn get_slide(piece: Piece) -> bool {
     match piece.ptype {
-        PieceType::Pawn => false,
-        PieceType::Knight => false,
-        PieceType::Bishop => true,
-        PieceType::Rook => true,
-        PieceType::Queen => true,
-        PieceType::King => false,
+        PieceType::Pawn | PieceType::Knight | PieceType::King => false,
+        PieceType::Bishop | PieceType::Rook | PieceType::Queen => true,
     }
 }
 
 #[inline(always)]
-fn pawn_is_promotion_square(i: i32, piece: &Piece) -> bool {
+const fn pawn_is_promotion_square(i: i32, piece: Piece) -> bool {
     match piece.pcolour {
         PieceColour::White => i <= 7,
         PieceColour::Black => i >= 56,
@@ -269,7 +265,7 @@ fn pawn_is_promotion_square(i: i32, piece: &Piece) -> bool {
 }
 
 #[inline(always)]
-fn pawn_is_starting_rank(i: usize, piece: &Piece) -> bool {
+const fn pawn_is_starting_rank(i: usize, piece: Piece) -> bool {
     match piece.pcolour {
         PieceColour::White => i < 56 && i > 47,
         PieceColour::Black => i < 16 && i > 7,
@@ -281,7 +277,7 @@ fn pawn_is_starting_rank(i: usize, piece: &Piece) -> bool {
 pub(crate) fn movegen(
     pos: &position::Pos64,
     movegen_flags: &MovegenFlags,
-    piece: &Piece,
+    piece: Piece,
     i: usize,
     defending: bool,
     mv_map: &mut dyn MoveMap,
@@ -305,7 +301,7 @@ pub(crate) fn movegen(
                         } else {
                             mv_map.add_move(
                                 &(Move {
-                                    piece: *piece,
+                                    piece: piece,
                                     from: i,
                                     to: mv as usize,
                                     move_type: mvtype,
@@ -352,7 +348,7 @@ pub(crate) fn movegen(
                             } else {
                                 mv_map.add_move(
                                     &(Move {
-                                        piece: *piece,
+                                        piece: piece,
                                         from: i,
                                         to: mv as usize,
                                         move_type: MoveType::Capture(mv_square_piece.ptype),
@@ -366,7 +362,7 @@ pub(crate) fn movegen(
                         if defending {
                             mv_map.add_move(
                                 &(Move {
-                                    piece: *piece,
+                                    piece: piece,
                                     from: i,
                                     to: mv as usize,
                                     move_type: MoveType::None, // not a real move, only a defensive one
@@ -390,7 +386,7 @@ pub(crate) fn movegen(
                     if mv_above >= 0 && is_square_empty(pos, mv_above as usize) {
                         mv_map.add_move(
                             &(Move {
-                                piece: *piece,
+                                piece: piece,
                                 from: i,
                                 to: mv_above as usize,
                                 move_type: MoveType::EnPassant(mv as usize),
@@ -420,7 +416,7 @@ pub(crate) fn movegen(
                         if piece.pcolour != mv_square_piece.pcolour || defending {
                             mv_map.add_move(
                                 &(Move {
-                                    piece: *piece,
+                                    piece: piece,
                                     from: i,
                                     to: mv as usize,
                                     move_type: MoveType::Capture(mv_square_piece.ptype),
@@ -432,7 +428,7 @@ pub(crate) fn movegen(
                     Square::Empty => {
                         mv_map.add_move(
                             &(Move {
-                                piece: *piece,
+                                piece: piece,
                                 from: i,
                                 to: mv as usize,
                                 move_type: MoveType::Normal,
@@ -474,7 +470,7 @@ pub(crate) fn movegen(
             {
                 mv_map.add_move(
                     &(Move {
-                        piece: *piece,
+                        piece: piece,
                         from: i,
                         to: short_mv_to_idx,
                         move_type: MoveType::Castle(CastleMove {
@@ -500,7 +496,7 @@ pub(crate) fn movegen(
             {
                 mv_map.add_move(
                     &(Move {
-                        piece: *piece,
+                        piece: piece,
                         from: i,
                         to: long_mv_to_idx,
                         move_type: MoveType::Castle(CastleMove {
@@ -515,7 +511,7 @@ pub(crate) fn movegen(
     }
 }
 
-pub(crate) fn movegen_in_check(pos: &position::Pos64, king_idx: usize) -> bool {
+pub fn movegen_in_check(pos: &position::Pos64, king_idx: usize) -> bool {
     let king_colour = if let Square::Piece(p) = pos[king_idx] {
         p.pcolour
     } else {
@@ -528,7 +524,7 @@ pub(crate) fn movegen_in_check(pos: &position::Pos64, king_idx: usize) -> bool {
                     // Move gen for pawns
                     if piece.ptype == PieceType::Pawn {
                         // Defending moves for pawns
-                        let attack_offset = mb_get_pawn_attack_offset(piece);
+                        let attack_offset = mb_get_pawn_attack_offset(*piece);
 
                         for j in attack_offset {
                             let mv = mailbox::next_mailbox_number(i, j);
@@ -542,7 +538,7 @@ pub(crate) fn movegen_in_check(pos: &position::Pos64, king_idx: usize) -> bool {
                         }
                     } else {
                         // move gen for other pieces
-                        for j in mb_get_offset(piece) {
+                        for j in mb_get_offset(*piece) {
                             // end of offsets
                             if j == 0 {
                                 break;
@@ -568,7 +564,7 @@ pub(crate) fn movegen_in_check(pos: &position::Pos64, king_idx: usize) -> bool {
                                     }
                                 }
                                 // is piece a sliding type
-                                if get_slide(piece) {
+                                if get_slide(*piece) {
                                     slide_idx += j;
                                     mv = mailbox::next_mailbox_number(i, slide_idx);
 

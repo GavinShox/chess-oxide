@@ -15,13 +15,13 @@ pub enum BoardStateError {
 impl fmt::Display for BoardStateError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
-            BoardStateError::IllegalMove(s) => write!(f, "Illegal move: {}", s),
-            BoardStateError::NullMove(s) => write!(f, "Null move: {}", s),
-            BoardStateError::NoLegalMoves(gs) => write!(f, "No legal moves in GameState: {}", gs),
-            BoardStateError::LazyIncompatiblity(s) => {
+            Self::IllegalMove(s) => write!(f, "Illegal move: {}", s),
+            Self::NullMove(s) => write!(f, "Null move: {}", s),
+            Self::NoLegalMoves(gs) => write!(f, "No legal moves in GameState: {}", gs),
+            Self::LazyIncompatiblity(s) => {
                 write!(f, "Lazy legal move generation incompatibility: {}", s)
             }
-            BoardStateError::GameOver(gos) => write!(f, "Game over: {:?}", gos),
+            Self::GameOver(gos) => write!(f, "Game over: {:?}", gos),
         }
     }
 }
@@ -50,10 +50,10 @@ pub enum PGNParseError {
 impl fmt::Display for PGNParseError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
-            PGNParseError::InvalidTag(s) => write!(f, "Invalid tag: {}", s),
-            PGNParseError::NotationParseError(s) => write!(f, "Error parsing notation: {}", s),
-            PGNParseError::FileError(s) => write!(f, "Error reading file: {}", s),
-            PGNParseError::MoveNotFound(s) => write!(f, "Move not found: {}", s),
+            Self::InvalidTag(s) => write!(f, "Invalid tag: {}", s),
+            Self::NotationParseError(s) => write!(f, "Error parsing notation: {}", s),
+            Self::FileError(s) => write!(f, "Error reading file: {}", s),
+            Self::MoveNotFound(s) => write!(f, "Move not found: {}", s),
         }
     }
 }

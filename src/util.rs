@@ -87,14 +87,14 @@ pub fn bytes_to_str(size: usize) -> String {
 
 // returns the high bits of u64 returning a u32
 #[inline(always)]
-pub fn high_bits(x: u64) -> u32 {
+pub const fn high_bits(x: u64) -> u32 {
     // type casting to u32 truncates the high bits, so shift right by 32 bits and cast to u32
     (x >> 32) as u32
 }
 
 // returns the low bits of u64 returning a u32
 #[inline(always)]
-pub fn low_bits(x: u64) -> u32 {
+pub const fn low_bits(x: u64) -> u32 {
     // type casting to u32 truncates the high bits
     x as u32
 }

@@ -88,7 +88,7 @@ impl ZobristHashTable {
         }
     }
 
-    pub fn with_polyglot_magic() -> Self {
+    pub const fn with_polyglot_magic() -> Self {
         Self {
             pos_table: magic::POLYGLOT_MAGIC_POS_TABLE,
             en_passant_table: magic::POLYGLOT_MAGIC_EN_PASSANT_TABLE,
@@ -112,7 +112,7 @@ impl ZobristHashTable {
         let mut hash = last_hash;
         let side = mv.piece.pcolour;
         let mut piece = mv.piece;
-        hash ^= self.get_piece_hash(&mv.piece, mv.from); // remove the moving piece from position
+        hash ^= self.get_piece_hash(mv.piece, mv.from); // remove the moving piece from position
         if let Some(idx) = last_movegen_flags.polyglot_en_passant {
             hash ^= self.en_passant_table[idx % 8] // remove existing en passant index if it exists
         }
@@ -121,7 +121,7 @@ impl ZobristHashTable {
                 // remove piece to be captured
                 if let Some(c) = capture {
                     hash ^= self.get_piece_hash(
-                        &Piece {
+                        Piece {
                             ptype: c,
                             pcolour: !side,
                         },
@@ -135,7 +135,7 @@ impl ZobristHashTable {
             } // set piece to promoted type
             MoveType::Capture(p) => {
                 hash ^= self.get_piece_hash(
-                    &Piece {
+                    Piece {
                         ptype: p,
                         pcolour: !side,
                     },
@@ -148,15 +148,15 @@ impl ZobristHashTable {
                     ptype: PieceType::Pawn,
                     pcolour: !side,
                 };
-                hash ^= self.get_piece_hash(&pawn, idx);
+                hash ^= self.get_piece_hash(pawn, idx);
             }
             MoveType::Castle(c) => {
                 let rook = Piece {
                     ptype: PieceType::Rook,
                     pcolour: side,
                 };
-                hash ^= self.get_piece_hash(&rook, c.rook_from); // remove rook from its starting position
-                hash ^= self.get_piece_hash(&rook, c.rook_to); // set rook to new position
+                hash ^= self.get_piece_hash(rook, c.rook_from); // remove rook from its starting position
+                hash ^= self.get_piece_hash(rook, c.rook_to); // set rook to new position
             }
             _ => {}
         }
@@ -204,7 +204,7 @@ impl ZobristHashTable {
                 }
             }
         }
-        hash ^= self.get_piece_hash(&piece, mv.to); // set moving piece in new position
+        hash ^= self.get_piece_hash(piece, mv.to); // set moving piece in new position
         hash ^= self.white_to_move; // switch sides
         hash
     }
@@ -214,7 +214,7 @@ impl ZobristHashTable {
         for (i, s) in pos.pos64.iter().enumerate() {
             match s {
                 Square::Piece(p) => {
-                    hash ^= self.get_piece_hash(p, i);
+                    hash ^= self.get_piece_hash(*p, i);
                 }
                 Square::Empty => {
                     continue;
@@ -253,7 +253,7 @@ impl ZobristHashTable {
         let mut hash = last_hash;
         let side = mv.piece.pcolour;
         let mut piece = mv.piece;
-        hash ^= self.get_piece_hash(&mv.piece, mv.from); // remove the moving piece from position
+        hash ^= self.get_piece_hash(mv.piece, mv.from); // remove the moving piece from position
         if let Some(idx) = last_movegen_flags.en_passant {
             hash ^= self.en_passant_table[idx % 8] // remove existing en passant index
         }
@@ -262,7 +262,7 @@ impl ZobristHashTable {
                 // remove piece to be captured
                 if let Some(c) = capture {
                     hash ^= self.get_piece_hash(
-                        &Piece {
+                        Piece {
                             ptype: c,
                             pcolour: !side,
                         },
@@ -277,7 +277,7 @@ impl ZobristHashTable {
             MoveType::DoublePawnPush => hash ^= self.en_passant_table[mv.to % 8], // set en passant index
             MoveType::Capture(p) => {
                 hash ^= self.get_piece_hash(
-                    &Piece {
+                    Piece {
                         ptype: p,
                         pcolour: !side,
                     },
@@ -290,15 +290,15 @@ impl ZobristHashTable {
                     ptype: PieceType::Pawn,
                     pcolour: !side,
                 };
-                hash ^= self.get_piece_hash(&pawn, idx);
+                hash ^= self.get_piece_hash(pawn, idx);
             }
             MoveType::Castle(c) => {
                 let rook = Piece {
                     ptype: PieceType::Rook,
                     pcolour: side,
                 };
-                hash ^= self.get_piece_hash(&rook, c.rook_from); // remove rook from its starting position
-                hash ^= self.get_piece_hash(&rook, c.rook_to); // set rook to new position
+                hash ^= self.get_piece_hash(rook, c.rook_from); // remove rook from its starting position
+                hash ^= self.get_piece_hash(rook, c.rook_to); // set rook to new position
             }
             _ => {}
         }
@@ -341,7 +341,7 @@ impl ZobristHashTable {
                 }
             }
         }
-        hash ^= self.get_piece_hash(&piece, mv.to); // set moving piece in new position
+        hash ^= self.get_piece_hash(piece, mv.to); // set moving piece in new position
         hash ^= self.white_to_move; // switch sides
         hash
     }
@@ -352,7 +352,7 @@ impl ZobristHashTable {
         for (i, s) in pos.pos64.iter().enumerate() {
             match s {
                 Square::Piece(p) => {
-                    hash ^= self.get_piece_hash(p, i);
+                    hash ^= self.get_piece_hash(*p, i);
                 }
                 Square::Empty => {
                     continue;
@@ -393,12 +393,12 @@ impl ZobristHashTable {
     }
 
     #[inline(always)]
-    fn get_halfmove_count_hash(&self, halfmove_count: u32) -> PositionHash {
+    const fn get_halfmove_count_hash(&self, halfmove_count: u32) -> PositionHash {
         self.halfmove_count[halfmove_count as usize]
     }
 
     #[inline(always)]
-    fn get_occurrences_hash(&self, occurrences: u8) -> PositionHash {
+    const fn get_occurrences_hash(&self, occurrences: u8) -> PositionHash {
         match occurrences {
             1 => self.occurrences[0],
             2 => self.occurrences[1],
@@ -408,7 +408,7 @@ impl ZobristHashTable {
     }
 
     #[inline(always)]
-    fn get_piece_hash(&self, piece: &Piece, square_idx: usize) -> PositionHash {
+    const fn get_piece_hash(&self, piece: Piece, square_idx: usize) -> PositionHash {
         // unsafe {
         //     *self.pos_table.get_unchecked(square_idx).get_unchecked(Self::get_piece_idx(piece))
         // }
@@ -416,7 +416,7 @@ impl ZobristHashTable {
     }
 
     #[inline(always)]
-    fn get_piece_idx(piece: &Piece) -> usize {
+    const fn get_piece_idx(piece: Piece) -> usize {
         match piece.pcolour {
             PieceColour::White => match piece.ptype {
                 PieceType::Pawn => 0,
