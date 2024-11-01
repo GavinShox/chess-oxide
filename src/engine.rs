@@ -1,4 +1,8 @@
 use std::cmp;
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::Arc;
+use std::thread;
+use std::time::{Duration, Instant};
 
 use crate::board::*;
 use crate::movegen::*;
@@ -12,17 +16,22 @@ const CHECKMATE_VALUE: i32 = 100_000_000;
 const DRAW_VALUE: i32 = 0;
 // max depth for quiescence search, best case it should be unlimited (only stopping when there are no more captures), but in practice it takes too long
 const QUIECENCE_DEPTH: u8 = 4;
+const NULL_MOVE_REDUCTION: u8 = 2;
 
 // TODO for tt, to make sure checkmate eval is relative to the ply it was found at, maybe have a checkmate flag in the tt entry or an enum here for evals i dont know
 #[inline(always)]
-pub const fn is_eval_checkmate(eval: i32) -> bool {
+pub fn is_eval_checkmate(eval: i32) -> bool {
     eval.abs() >= CHECKMATE_VALUE
 }
 
 // amount of plys until checkmate
 #[inline(always)]
-pub const fn get_checkmate_ply(eval: i32) -> u8 {
-    (CHECKMATE_VALUE - eval.abs()).unsigned_abs() as u8
+pub fn get_checkmate_ply(eval: i32) -> u8 {
+    if eval > 0 {
+        (CHECKMATE_VALUE - eval).abs() as u8
+    } else {
+        (CHECKMATE_VALUE + eval).abs() as u8
+    }
 }
 
 struct Nodes {
@@ -54,25 +63,54 @@ impl Nodes {
 
 pub fn choose_move<'a>(
     bs: &'a BoardState,
-    depth: u8,
+    max_depth: u8,
     tt: &mut TranspositionTable,
 ) -> (i32, &'a Move) {
     let mut nodes = Nodes::new();
-    // TODO add check if position is in endgame, for different evaluation
-    let (eval, mv) = negamax_root(bs, depth, tt, &mut nodes);
+    let mut best_move = &NULL_MOVE;
+    let mut best_eval = MIN;
 
-    if cfg!(feature = "debug_engine_logging") {
-        log::info!("Nodes searched: {}", nodes.total_nodes());
-        log::info!("Branches pruned: {}", nodes.total_prunes());
-        log::info!("Negamax nodes: {}", nodes.negamax_nodes);
-        log::info!("Negamax prunes: {}", nodes.negamax_prunes);
-        log::info!("Quiescence nodes: {}", nodes.quiescence_nodes);
-        log::info!("Quiescence prunes: {}", nodes.quiescence_prunes);
-        log::info!(
-            "Transposition table hits: {}",
-            nodes.transposition_table_hits
-        );
+    // Set a time limit for the search
+    let time_limit = Duration::from_secs(5);
+    let stop_flag = Arc::new(AtomicBool::new(false));
+
+    // Spawn a thread to monitor the time limit
+    let stop_flag_clone = Arc::clone(&stop_flag);
+    thread::spawn(move || {
+        thread::sleep(time_limit);
+        stop_flag_clone.store(true, Ordering::SeqCst);
+    });
+
+    let mut highest_depth = 0;
+    for depth in 1..=100 {
+        let (eval, mv) = negamax_root(bs, depth, tt, &mut nodes, &stop_flag, best_move);
+        highest_depth = depth;
+
+        if cfg!(feature = "debug_engine_logging") {
+            log::info!("Depth: {}, Eval: {}, Move: {:?}", depth, eval, mv);
+            log::info!("Nodes searched: {}", nodes.total_nodes());
+            log::info!("Branches pruned: {}", nodes.total_prunes());
+            log::info!("Negamax nodes: {}", nodes.negamax_nodes);
+            log::info!("Negamax prunes: {}", nodes.negamax_prunes);
+            log::info!("Quiescence nodes: {}", nodes.quiescence_nodes);
+            log::info!("Quiescence prunes: {}", nodes.quiescence_prunes);
+            log::info!(
+                "Transposition table hits: {}",
+                nodes.transposition_table_hits
+            );
+        }
+
+        // Check if the time limit has been reached before updating the best move and eval
+        if stop_flag.load(Ordering::SeqCst) {
+            break;
+        }
+
+        if eval > best_eval {
+            best_eval = eval;
+            best_move = mv;
+        }
     }
+
     log::debug!(
         "Transposition table: Entries -> {}/{}, Size on heap -> {}",
         tt.len(),
@@ -81,72 +119,11 @@ pub fn choose_move<'a>(
     );
     log::info!(
         "Engine chose move: {:?} with eval: {} @ depth {}",
-        mv,
-        eval,
-        depth
+        best_move,
+        best_eval,
+        highest_depth
     );
-    (eval, mv)
-}
-
-// TODO add checks (and maybe promotions) to quiescence search
-fn quiescence(
-    bs: &BoardState,
-    depth: u8,
-    ply: u8,
-    mut alpha: i32,
-    beta: i32,
-    nodes: &mut Nodes,
-) -> i32 {
-    let pseudo_legal_moves = bs.get_pseudo_legal_moves();
-    // check game over conditions returning immediately, or begin quiescence search
-    match bs.get_gamestate() {
-        GameState::Checkmate => {
-            if cfg!(feature = "debug_engine_logging") {
-                nodes.quiescence_nodes += 1;
-            }
-            return -CHECKMATE_VALUE + ply as i32;
-        }
-        // draw states
-        GameState::Stalemate
-        | GameState::Repetition
-        | GameState::FiftyMove
-        | GameState::InsufficientMaterial => {
-            if cfg!(feature = "debug_engine_logging") {
-                nodes.quiescence_nodes += 1;
-            }
-            return DRAW_VALUE;
-        }
-        _ => {}
-    }
-
-    let mut max_eval = evaluate(bs);
-    if max_eval >= beta || depth == 0 {
-        return max_eval;
-    }
-    alpha = cmp::max(alpha, max_eval);
-
-    for i in sorted_move_indexes(pseudo_legal_moves, true, NULL_SHORT_MOVE, &bs.last_move) {
-        let mv = &pseudo_legal_moves[i];
-        if !bs.is_move_legal_position(mv) {
-            continue; // skip illegal moves
-        }
-        let child_bs = bs.lazy_next_state_unchecked(mv);
-        let eval = -quiescence(&child_bs, depth - 1, ply + 1, -beta, -alpha, nodes);
-        max_eval = cmp::max(max_eval, eval);
-        alpha = cmp::max(alpha, max_eval);
-
-        if cfg!(feature = "debug_engine_logging") {
-            nodes.quiescence_nodes += 1;
-        }
-
-        if beta <= alpha {
-            if cfg!(feature = "debug_engine_logging") {
-                nodes.quiescence_prunes += 1;
-            }
-            break;
-        }
-    }
-    max_eval
+    (best_eval, best_move)
 }
 
 fn negamax_root<'a>(
@@ -154,6 +131,8 @@ fn negamax_root<'a>(
     depth: u8,
     tt: &mut TranspositionTable,
     nodes: &mut Nodes,
+    stop_flag: &Arc<AtomicBool>,
+    best_move: &'a Move,
 ) -> (i32, &'a Move) {
     let pseudo_legal_moves = bs.get_pseudo_legal_moves();
     // check game over conditions returning immediately, or begin quiescence search
@@ -178,15 +157,20 @@ fn negamax_root<'a>(
     }
     let mut alpha = MIN;
     let beta = MAX;
-    let mut best_move = &NULL_MOVE;
+    let mut best_move = best_move;
     let mut max_eval = MIN;
-    for i in sorted_move_indexes(pseudo_legal_moves, false, NULL_SHORT_MOVE, &bs.last_move) {
+    for i in sorted_move_indexes(
+        &pseudo_legal_moves,
+        false,
+        best_move.short_move(),
+        &bs.last_move,
+    ) {
         let mv = &pseudo_legal_moves[i];
-        if !bs.is_move_legal_position(mv) {
+        if !bs.is_move_legal_position(&mv) {
             continue; // skip illegal moves
         }
         let child_bs = bs.lazy_next_state_unchecked(mv);
-        let eval = -negamax(&child_bs, depth - 1, 1, -beta, -alpha, tt, nodes);
+        let eval = -negamax(&child_bs, depth - 1, 1, -beta, -alpha, tt, nodes, stop_flag);
 
         if eval > max_eval {
             max_eval = eval;
@@ -203,6 +187,11 @@ fn negamax_root<'a>(
             }
             break;
         }
+
+        // Check if the time limit has been reached
+        if stop_flag.load(Ordering::SeqCst) {
+            break;
+        }
     }
 
     (max_eval, best_move)
@@ -216,7 +205,13 @@ fn negamax(
     mut beta: i32,
     tt: &mut TranspositionTable,
     nodes: &mut Nodes,
+    stop_flag: &Arc<AtomicBool>,
 ) -> i32 {
+    // Check if the time limit has been reached
+    if stop_flag.load(Ordering::SeqCst) {
+        return 0;
+    }
+
     // transposition table lookup
     let alpha_orig = alpha;
     let mut best_move = NULL_SHORT_MOVE; // will be set on tt hit
@@ -236,7 +231,7 @@ fn negamax(
                 BoundType::Upper => {
                     beta = cmp::min(beta, entry.eval);
                 }
-                BoundType::Invalid => {
+                _ => {
                     unreachable!("Invalid bound type returned in transposition table entry");
                 }
             }
@@ -271,19 +266,28 @@ fn negamax(
     }
 
     if depth == 0 {
-        return quiescence(bs, QUIECENCE_DEPTH, ply + 1, alpha, beta, nodes);
+        return quiescence(bs, QUIECENCE_DEPTH, ply + 1, alpha, beta, nodes, stop_flag);
     }
 
     let mut max_eval = MIN;
-    let moves = sorted_move_indexes(pseudo_legal_moves, false, best_move, &bs.last_move); // sort pseudo legal moves instead of consuming the lazy iterator
+    let moves = sorted_move_indexes(&pseudo_legal_moves, false, best_move, &bs.last_move); // sort pseudo legal moves instead of consuming the lazy iterator
     for i in moves {
         let mv = &pseudo_legal_moves[i];
-        if !bs.is_move_legal_position(mv) {
+        if !bs.is_move_legal_position(&mv) {
             continue; // skip illegal moves
         }
 
         let child_bs = bs.lazy_next_state_unchecked(mv);
-        let eval = -negamax(&child_bs, depth - 1, ply + 1, -beta, -alpha, tt, nodes);
+        let eval = -negamax(
+            &child_bs,
+            depth - 1,
+            ply + 1,
+            -beta,
+            -alpha,
+            tt,
+            nodes,
+            stop_flag,
+        );
         if eval > max_eval {
             max_eval = eval;
             best_move = mv.short_move();
@@ -297,6 +301,11 @@ fn negamax(
             if cfg!(feature = "debug_engine_logging") {
                 nodes.negamax_prunes += 1;
             }
+            break;
+        }
+
+        // Check if the time limit has been reached
+        if stop_flag.load(Ordering::SeqCst) {
             break;
         }
     }
@@ -316,6 +325,85 @@ fn negamax(
     }
     tt.insert(bs.board_hash, entry);
 
+    max_eval
+}
+
+fn quiescence(
+    bs: &BoardState,
+    depth: u8,
+    ply: u8,
+    mut alpha: i32,
+    beta: i32,
+    nodes: &mut Nodes,
+    stop_flag: &Arc<AtomicBool>,
+) -> i32 {
+    // Check if the time limit has been reached
+    if stop_flag.load(Ordering::SeqCst) {
+        return 0;
+    }
+
+    let pseudo_legal_moves = bs.get_pseudo_legal_moves();
+    // check game over conditions returning immediately, or begin quiescence search
+    match bs.get_gamestate() {
+        GameState::Checkmate => {
+            if cfg!(feature = "debug_engine_logging") {
+                nodes.quiescence_nodes += 1;
+            }
+            return -CHECKMATE_VALUE + ply as i32;
+        }
+        // draw states
+        GameState::Stalemate
+        | GameState::Repetition
+        | GameState::FiftyMove
+        | GameState::InsufficientMaterial => {
+            if cfg!(feature = "debug_engine_logging") {
+                nodes.quiescence_nodes += 1;
+            }
+            return DRAW_VALUE;
+        }
+        _ => {}
+    }
+
+    let mut max_eval = evaluate(bs);
+    if max_eval >= beta || depth == 0 {
+        return max_eval;
+    }
+    alpha = cmp::max(alpha, max_eval);
+
+    for i in sorted_move_indexes(&pseudo_legal_moves, true, NULL_SHORT_MOVE, &bs.last_move) {
+        let mv = &pseudo_legal_moves[i];
+        if !bs.is_move_legal_position(&mv) {
+            continue; // skip illegal moves
+        }
+        let child_bs = bs.lazy_next_state_unchecked(&mv);
+        let eval = -quiescence(
+            &child_bs,
+            depth - 1,
+            ply + 1,
+            -beta,
+            -alpha,
+            nodes,
+            stop_flag,
+        );
+        max_eval = cmp::max(max_eval, eval);
+        alpha = cmp::max(alpha, max_eval);
+
+        if cfg!(feature = "debug_engine_logging") {
+            nodes.quiescence_nodes += 1;
+        }
+
+        if beta <= alpha {
+            if cfg!(feature = "debug_engine_logging") {
+                nodes.quiescence_prunes += 1;
+            }
+            break;
+        }
+
+        // Check if the time limit has been reached
+        if stop_flag.load(Ordering::SeqCst) {
+            break;
+        }
+    }
     max_eval
 }
 
