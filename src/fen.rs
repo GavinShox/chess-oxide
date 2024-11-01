@@ -300,9 +300,9 @@ impl FEN {
             rank_start_idx += 8; // next rank
         }
 
-        if wking_num > 1 || bking_num > 1 {
+        if wking_num != 1 || bking_num != 1 {
             let err = FenParseError(format!(
-                "Multiple kings (white: {}, black: {}) in FEN field: {}",
+                "Incorrect number of kings (white: {}, black: {}) in FEN field: {}",
                 wking_num, bking_num, field
             ));
             log_and_return_error!(err)
