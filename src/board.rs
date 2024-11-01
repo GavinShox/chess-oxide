@@ -56,13 +56,13 @@ impl GameState {
 impl fmt::Display for GameState {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let state_str = match self {
-            GameState::Check => "Check",
-            GameState::Checkmate => "Checkmate",
-            GameState::Stalemate => "Stalemate",
-            GameState::Repetition => "Repetition",
-            GameState::FiftyMove => "Fifty Move Draw",
-            GameState::InsufficientMaterial => "Insufficient Material",
-            GameState::Active => "",
+            Self::Check => "Check",
+            Self::Checkmate => "Checkmate",
+            Self::Stalemate => "Stalemate",
+            Self::Repetition => "Repetition",
+            Self::FiftyMove => "Fifty Move Draw",
+            Self::InsufficientMaterial => "Insufficient Material",
+            Self::Active => "",
         };
         write!(f, "{}", state_str)
     }
