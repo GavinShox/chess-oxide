@@ -35,10 +35,7 @@ impl GameState {
     pub fn is_draw(&self) -> bool {
         matches!(
             self,
-            Self::Stalemate
-                | Self::FiftyMove
-                | Self::Repetition
-                | Self::InsufficientMaterial
+            Self::Stalemate | Self::FiftyMove | Self::Repetition | Self::InsufficientMaterial
         )
     }
     // gamestates that are wins
@@ -176,7 +173,7 @@ impl BoardState {
 
     // next state without legality and gamestate checks done (legal_moves is empty), may panic if unreachable code is hit e.g. in zobrist hash generation if position occurrences ever gets above 3
     // USERS MUST CHECK IF GAMESTATE IS VALID (E.G THREEFOLD REPETITION, 50 MOVE RULE) AS THIS FUNCTION DOES NOT
-    pub fn lazy_next_state_unchecked(&self, mv: &Move) -> Self {
+    pub fn next_state_unchecked(&self, mv: &Move) -> Self {
         let position = self.position.new_position(mv);
         log::trace!("New Position created from move: {:?}", mv);
         let position_hash = zobrist::pos_next_hash(
@@ -231,15 +228,6 @@ impl BoardState {
             position_occurences,
             lazy_legal_moves: true,
         }
-    }
-
-    pub fn lazy_next_state(&self, _mv: &Move) -> Result<Self, BoardStateError> {
-        // TODO maybe just gen_legal_moves and call next_state?
-        todo!()
-    }
-
-    pub fn next_state_unchecked(&self, _mv: &Move) -> Self {
-        todo!()
     }
 
     pub fn next_state(&self, mv: &Move) -> Result<Self, BoardStateError> {

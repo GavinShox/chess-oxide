@@ -130,7 +130,7 @@ fn quiescence(
         if !bs.is_move_legal_position(mv) {
             continue; // skip illegal moves
         }
-        let child_bs = bs.lazy_next_state_unchecked(mv);
+        let child_bs = bs.next_state_unchecked(mv);
         let eval = -quiescence(&child_bs, depth - 1, ply + 1, -beta, -alpha, nodes);
         max_eval = cmp::max(max_eval, eval);
         alpha = cmp::max(alpha, max_eval);
@@ -185,7 +185,7 @@ fn negamax_root<'a>(
         if !bs.is_move_legal_position(mv) {
             continue; // skip illegal moves
         }
-        let child_bs = bs.lazy_next_state_unchecked(mv);
+        let child_bs = bs.next_state_unchecked(mv);
         let eval = -negamax(&child_bs, depth - 1, 1, -beta, -alpha, tt, nodes);
 
         if eval > max_eval {
@@ -282,7 +282,7 @@ fn negamax(
             continue; // skip illegal moves
         }
 
-        let child_bs = bs.lazy_next_state_unchecked(mv);
+        let child_bs = bs.next_state_unchecked(mv);
         let eval = -negamax(&child_bs, depth - 1, ply + 1, -beta, -alpha, tt, nodes);
         if eval > max_eval {
             max_eval = eval;
