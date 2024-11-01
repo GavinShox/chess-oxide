@@ -1,5 +1,5 @@
 [package]
-authors = ["Gavin Shaughnessy <gavinshaug>"]
+authors = ["Gavin Shaughnessy <gavinshaughnessy@gmail.com>"]
 name = "chess-oxide"
 version = "0.3.1"
 edition = "2021"

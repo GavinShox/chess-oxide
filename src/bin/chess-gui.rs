@@ -1,7 +1,7 @@
 use std::env;
 use std::sync::{Arc, Mutex};
 
-use env_logger::{Builder, Target};
+use env_logger::{Builder, Env, Target};
 use slint::{ComponentHandle, SharedString};
 
 use chess::fen::FEN;
@@ -45,9 +45,12 @@ fn ui_convert_piece(piece: chess::Piece) -> PieceUI {
 }
 
 fn main() -> Result<(), slint::PlatformError> {
-    // board::Board::from_fen("8/8/8/5R2/8/P1P3PP/P2QPP2/k5K1 b - - 0 1"
-
-    let mut builder = Builder::from_default_env();
+    // initialise logger
+    let mut builder = if cfg!(debug_assertions) {
+        Builder::from_env(Env::default().default_filter_or("debug"))
+    } else {
+        Builder::from_env(Env::default().default_filter_or("off"))
+    };
     builder.target(Target::Stdout);
     builder.init();
 

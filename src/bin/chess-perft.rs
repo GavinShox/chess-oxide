@@ -1,10 +1,10 @@
 use std::time::{Duration, Instant};
 
-use env_logger::{Builder, Target};
+use env_logger::{Builder, Env, Target};
 
 fn main() {
     // initialise logger
-    let mut builder = Builder::from_default_env();
+    let mut builder = Builder::from_env(Env::default().default_filter_or("info"));
     builder.target(Target::Stdout);
     builder.init();
 
