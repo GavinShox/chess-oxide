@@ -35,16 +35,16 @@ impl GameState {
     pub fn is_draw(&self) -> bool {
         matches!(
             self,
-            GameState::Stalemate
-                | GameState::FiftyMove
-                | GameState::Repetition
-                | GameState::InsufficientMaterial
+            Self::Stalemate
+                | Self::FiftyMove
+                | Self::Repetition
+                | Self::InsufficientMaterial
         )
     }
     // gamestates that are wins
     #[inline]
     pub fn is_win(&self) -> bool {
-        matches!(self, GameState::Checkmate)
+        matches!(self, Self::Checkmate)
     }
     // gamestates that end game
     #[inline]
