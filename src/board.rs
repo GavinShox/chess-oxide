@@ -413,7 +413,7 @@ pub enum GameOverState {
     Forced(GameState),
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Board {
     current_state: BoardState,
     state_history: Vec<BoardState>,
@@ -558,7 +558,6 @@ impl Board {
         let (eval, engine_move) =
             engine::choose_move(&self.current_state, depth, &mut self.transposition_table);
         let mv = *engine_move;
-        log::info!("Engine move chosen: {:?} @ eval: {}", engine_move, eval);
 
         self.make_move(&mv)
     }

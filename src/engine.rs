@@ -9,6 +9,7 @@ use crate::util;
 const MIN: i32 = i32::MIN + 1000;
 const MAX: i32 = i32::MAX - 1000;
 const CHECKMATE_VALUE: i32 = 100_000_000;
+const CHECKMATE_THRESHOLD: i32 = CHECKMATE_VALUE - 1000;
 const DRAW_VALUE: i32 = 0;
 // max depth for quiescence search, best case it should be unlimited (only stopping when there are no more captures), but in practice it takes too long
 const QUIECENCE_DEPTH: u8 = 4;
@@ -16,13 +17,21 @@ const QUIECENCE_DEPTH: u8 = 4;
 // TODO for tt, to make sure checkmate eval is relative to the ply it was found at, maybe have a checkmate flag in the tt entry or an enum here for evals i dont know
 #[inline(always)]
 pub const fn is_eval_checkmate(eval: i32) -> bool {
-    eval.abs() >= CHECKMATE_VALUE
+    eval.abs() >= CHECKMATE_THRESHOLD
 }
 
 // amount of plys until checkmate
 #[inline(always)]
 pub const fn get_checkmate_ply(eval: i32) -> u8 {
     (CHECKMATE_VALUE - eval.abs()).unsigned_abs() as u8
+}
+
+pub fn eval_to_string(eval: i32) -> String {
+    if is_eval_checkmate(eval) {
+        format!("Mate in {} ply", get_checkmate_ply(eval))
+    } else {
+        format!("{}", eval)
+    }
 }
 
 struct Nodes {
@@ -79,12 +88,21 @@ pub fn choose_move<'a>(
         tt.size(),
         util::bytes_to_str(tt.heap_alloc_size())
     );
-    log::info!(
-        "Engine chose move: {:?} with eval: {} @ depth {}",
-        mv,
-        eval,
-        depth
-    );
+    if is_eval_checkmate(eval) {
+        log::info!(
+            "Engine chose move: {:?} with eval: Mate in {} ply @ depth {}",
+            mv,
+            get_checkmate_ply(eval),
+            depth
+        );
+    } else {
+        log::info!(
+            "Engine chose move: {:?} with eval: {} @ depth {}",
+            mv,
+            eval,
+            depth
+        );
+    }
     (eval, mv)
 }
 
@@ -305,6 +323,7 @@ fn negamax(
     let mut entry = TableEntry {
         bound_type: BoundType::Exact, // set to exact, and change to another bound below if needed
         depth,
+        ply,
         eval: max_eval,
         mv: best_move,
     };

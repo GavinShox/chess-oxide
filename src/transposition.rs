@@ -11,6 +11,7 @@ const NUM_BUCKETS: usize = 3;
 const UNINIT_ENTRY: TableEntry = TableEntry {
     bound_type: BoundType::Invalid,
     depth: 0,
+    ply: 0,
     eval: 0,
     mv: NULL_SHORT_MOVE,
 };
@@ -38,6 +39,7 @@ pub enum BoundType {
 pub struct TableEntry {
     pub bound_type: BoundType,
     pub depth: u8,
+    pub ply: u8,
     pub eval: i32,
     pub mv: ShortMove,
 }
@@ -55,7 +57,7 @@ impl TTData for TableEntry {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct TT<T> {
     table: Vec<Entry<T>>,
     entry_count: usize,
