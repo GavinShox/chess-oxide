@@ -5,7 +5,9 @@ use crate::board::BoardState;
 use crate::errors::FenParseError;
 use crate::log_and_return_error;
 use crate::movegen::{MovegenFlags, Piece, PieceColour, PieceType, Square};
-use crate::position::{Pos64, Position, ABOVE_BELOW};
+use crate::position::{Pos64, Position};
+
+const ABOVE_BELOW: usize = 8; // 8 indexes from i is the square directly above/below in the pos64 array
 
 #[derive(Debug, Clone, Copy)]
 pub struct FEN {

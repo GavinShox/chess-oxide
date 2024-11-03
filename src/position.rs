@@ -8,8 +8,6 @@ use crate::movegen::*;
 use crate::zobrist;
 use crate::zobrist::PositionHash;
 
-pub(crate) const ABOVE_BELOW: usize = 8; // 8 indexes from i is the square directly above/below in the pos64 array
-
 #[derive(Debug, PartialEq, Clone, Copy)]
 pub struct Pos64([Square; 64]);
 impl Index<usize> for Pos64 {

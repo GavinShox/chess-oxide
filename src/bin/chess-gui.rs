@@ -8,8 +8,8 @@ use env_logger::{Builder, Env, Target};
 use slint::{ComponentHandle, SharedString};
 
 use chess::fen::FEN;
-use chess::hash_to_string;
 use chess::pgn::PGN;
+use chess::{eval_to_string, hash_to_string};
 
 slint::include_modules!();
 
@@ -241,17 +241,22 @@ fn main() -> Result<(), slint::PlatformError> {
             .to_string()
             .parse::<i32>()
             .unwrap();
-        std::thread::spawn(move || {
-            if let Err(e) = bmem.lock().unwrap().make_engine_move(depth as u8) {
-                log::error!("BoardStateError on making engine move: {e}");
-                return;
-            }
-            slint::invoke_from_event_loop(move || {
-                ui.upgrade().unwrap().invoke_refresh_position();
-                ui.upgrade().unwrap().set_engine_made_move(true);
-            })
-            .unwrap();
-        });
+        std::thread::spawn(
+            move || match bmem.lock().unwrap().make_engine_move(depth as u8) {
+                Ok((_, eval)) => {
+                    slint::invoke_from_event_loop(move || {
+                        ui.upgrade().unwrap().invoke_refresh_position();
+                        ui.upgrade().unwrap().set_engine_made_move(true);
+                        ui.upgrade().unwrap().set_eval(eval_to_string(eval).into())
+                    })
+                    .unwrap();
+                }
+                Err(e) => {
+                    log::error!("BoardStateError on making engine move: {e}");
+                    return;
+                }
+            },
+        );
     });
 
     let import_dialog_weak_run = import_dialog.as_weak();
@@ -442,6 +447,12 @@ fn main() -> Result<(), slint::PlatformError> {
     settings_dialog.on_close(move || {
         let settings_dialog = settings_dialog_weak_close.upgrade().unwrap();
         settings_dialog.hide().unwrap();
+    });
+
+    let ui_weak_set_show_eval = ui.as_weak();
+    settings_dialog.on_set_show_eval(move |show| {
+        let ui = ui_weak_set_show_eval.upgrade().unwrap();
+        ui.set_show_eval(show);
     });
 
     ui.invoke_refresh_position();

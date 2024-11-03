@@ -26,14 +26,6 @@ pub const fn get_checkmate_ply(eval: i32) -> u8 {
     (CHECKMATE_VALUE - eval.abs()).unsigned_abs() as u8
 }
 
-pub fn eval_to_string(eval: i32) -> String {
-    if is_eval_checkmate(eval) {
-        format!("Mate in {} ply", get_checkmate_ply(eval))
-    } else {
-        format!("{}", eval)
-    }
-}
-
 struct Nodes {
     negamax_nodes: u64,
     negamax_prunes: u64,

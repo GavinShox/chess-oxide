@@ -1,3 +1,4 @@
+use crate::engine::{get_checkmate_ply, is_eval_checkmate};
 use crate::movegen::{PieceColour, PieceType, Square};
 use crate::BoardState;
 
@@ -103,6 +104,19 @@ pub const fn low_bits(x: u64) -> u32 {
 #[inline(always)]
 pub fn hash_to_string(hash: u64) -> String {
     format!("{:016x}", hash)
+}
+
+// Display engine eval in pawn units or handle checkmate evals as Mate in x ply/Checkmate
+pub fn eval_to_string(eval: i32) -> String {
+    if is_eval_checkmate(eval) {
+        match get_checkmate_ply(eval) - 1 {
+            0 => "Checkmate".to_string(),
+            x => format!("Mate in {} ply", x),
+        }
+    } else {
+        let eval = eval as f64 / 100.0; // convert centipawns to pawns
+        format!("{:+.2}", eval)
+    }
 }
 
 #[cfg(test)]

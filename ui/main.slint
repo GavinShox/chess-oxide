@@ -27,9 +27,10 @@ export component Board_UI inherits Window {
     in-out property <PieceColour-UI> player-colour: PieceColour-UI.White;
     in-out property <[MoveNotation-UI]> move-history;
     in property <string> fen;
-    in-out property <string> depth: "5";
-    // default depth
+    in-out property <string> depth: "5"; // default depth 5
     in-out property <string> gamestate;
+    in-out property <bool> show-eval;
+    in-out property <string> eval;
     in property <BoardTheme> board-theme: BoardThemes.wood;
     in property <PieceTheme> piece-theme: PieceThemes.default;
     callback new-game();
@@ -46,6 +47,7 @@ export component Board_UI inherits Window {
         self.engine-made-move = true;
         self.last-move = { from-square: -1, to-square: -1 };
         root.player-colour = player-colour;
+        root.eval = "";
 
         refresh-position();
 
@@ -98,12 +100,18 @@ export component Board_UI inherits Window {
                 }
             }
 
-            Rectangle {
+            VerticalLayout {
                 //background: rgb(218, 235, 235);
                 game-info := Text {
                     text: gamestate;
                     horizontal-alignment: center;
                     font-size: 20px;
+                }
+
+                if root.show-eval: Text {
+                    text: "Engine eval (relative): " + eval;
+                    horizontal-alignment: center;
+                    font-size: 12px;
                 }
             }
 

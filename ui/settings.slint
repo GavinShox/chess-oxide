@@ -1,4 +1,4 @@
-import { StandardButton, ComboBox } from "std-widgets.slint";
+import { StandardButton, ComboBox, CheckBox } from "std-widgets.slint";
 import { BoardTheme, PieceTheme, BoardThemes, PieceThemes } from "theme.slint";
 
 export component SettingsDialog_UI inherits Dialog {
@@ -13,184 +13,215 @@ export component SettingsDialog_UI inherits Dialog {
     callback set-theme(BoardTheme);
     callback set-depth(string);
     callback set-piece-theme(PieceTheme);
+    callback set-show-eval(bool);
 
     VerticalLayout {
         alignment: start;
-        spacing: 10px;
-        HorizontalLayout {
-            alignment: center;
-            spacing: 10px;
-            Text {
-                text: "Engine Depth: ";
-                font-size: 12px;
-                vertical-alignment: center;
-            }
+        spacing: 25px;
 
-            ComboBox {
-                height: 25px;
-                model: [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
-                current-value: 5;
-                selected => {
-                    set-depth(self.current-value);
+        VerticalLayout {
+            spacing: 10px;
+            HorizontalLayout {
+                alignment: center;
+                spacing: 10px;
+                Text {
+                    text: "Engine Depth:  ";
+                    font-size: 12px;
+                    vertical-alignment: center;
+                }
+
+                ComboBox {
+                    height: 25px;
+                    model: [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
+                    current-value: 5;
+                    selected => {
+                        set-depth(self.current-value);
+                    }
                 }
             }
-        }
 
-        HorizontalLayout {
-            alignment: center;
-            spacing: 10px;
-            Text {
-                text: "Board Theme: ";
-                font-size: 12px;
-                vertical-alignment: center;
+            HorizontalLayout {
+                alignment: center;
+                spacing: 10px;
+                Text {
+                    text: "Board Theme:  ";
+                    font-size: 12px;
+                    vertical-alignment: center;
+                }
+
+                ComboBox {
+                    model: ["Wood", "Sky Blue", "Sea Green", "Purple", "Red"];
+                    current-value: "Wood";
+                    height: 25px;
+                    selected => {
+                        if (self.current-value == "Wood") {
+                            set-theme(BoardThemes.wood);
+                        } else if (self.current-value == "Sky Blue") {
+                            set-theme(BoardThemes.sky-blue);
+                        } else if (self.current-value == "Sea Green") {
+                            set-theme(BoardThemes.sea-green);
+                        } else if (self.current-value == "Purple") {
+                            set-theme(BoardThemes.purple);
+                        } else if (self.current-value == "Red") {
+                            set-theme(BoardThemes.red);
+                        }
+                    }
+                }
             }
 
-            ComboBox {
-                model: ["Wood", "Sky Blue", "Sea Green", "Purple", "Red"];
-                current-value: "Wood";
-                height: 25px;
-                selected => {
-                    if (self.current-value == "Wood") {
-                        set-theme(BoardThemes.wood);
-                    } else if (self.current-value == "Sky Blue") {
-                        set-theme(BoardThemes.sky-blue);
-                    } else if (self.current-value == "Sea Green") {
-                        set-theme(BoardThemes.sea-green);
-                    } else if (self.current-value == "Purple") {
-                        set-theme(BoardThemes.purple);
-                    } else if (self.current-value == "Red") {
-                        set-theme(BoardThemes.red);
+            HorizontalLayout {
+                alignment: center;
+                spacing: 10px;
+                Text {
+                    text: "Piece Theme:   ";
+                    font-size: 12px;
+                    vertical-alignment: center;
+                }
+
+                ComboBox {
+                    model: [
+                        "Default",
+                        "Alpha",
+                        "Anarcandy",
+                        "Caliente",
+                        "California",
+                        "Cardinal",
+                        "Cburnett",
+                        "Celtic",
+                        "Chess7",
+                        "Chessnut",
+                        "Companion",
+                        "Cooke",
+                        "Disguised",
+                        "Dubrovny",
+                        "Fantasy",
+                        "Fresca",
+                        "Gioco",
+                        "Governor",
+                        "Horsey",
+                        "Icpieces",
+                        "Kiwen-suwi",
+                        "Kosal",
+                        "Leipzig",
+                        "Letter",
+                        "Maestro",
+                        "Merida",
+                        "Monarchy",
+                        "Mono",
+                        "Mpchess",
+                        "Pirouetti",
+                        "Pixel",
+                        "Reillycraig",
+                        "Riohacha",
+                        "Shapes",
+                        "Spatial",
+                        "Staunty",
+                        "Tatiana"
+                    ];
+                    current-value: "Default";
+                    height: 25px;
+                    selected => {
+                        if (self.current-value == "Default") {
+                            set-piece-theme(PieceThemes.default);
+                        } else if (self.current-value == "Alpha") {
+                            set-piece-theme(PieceThemes.alpha);
+                        } else if (self.current-value == "Anarcandy") {
+                            set-piece-theme(PieceThemes.anarcandy);
+                        } else if (self.current-value == "Caliente") {
+                            set-piece-theme(PieceThemes.caliente);
+                        } else if (self.current-value == "California") {
+                            set-piece-theme(PieceThemes.california);
+                        } else if (self.current-value == "Cardinal") {
+                            set-piece-theme(PieceThemes.cardinal);
+                        } else if (self.current-value == "Cburnett") {
+                            set-piece-theme(PieceThemes.cburnett);
+                        } else if (self.current-value == "Celtic") {
+                            set-piece-theme(PieceThemes.celtic);
+                        } else if (self.current-value == "Chess7") {
+                            set-piece-theme(PieceThemes.chess7);
+                        } else if (self.current-value == "Chessnut") {
+                            set-piece-theme(PieceThemes.chessnut);
+                        } else if (self.current-value == "Companion") {
+                            set-piece-theme(PieceThemes.companion);
+                        } else if (self.current-value == "Cooke") {
+                            set-piece-theme(PieceThemes.cooke);
+                        } else if (self.current-value == "Disguised") {
+                            set-piece-theme(PieceThemes.disguised);
+                        } else if (self.current-value == "Dubrovny") {
+                            set-piece-theme(PieceThemes.dubrovny);
+                        } else if (self.current-value == "Fantasy") {
+                            set-piece-theme(PieceThemes.fantasy);
+                        } else if (self.current-value == "Fresca") {
+                            set-piece-theme(PieceThemes.fresca);
+                        } else if (self.current-value == "Gioco") {
+                            set-piece-theme(PieceThemes.gioco);
+                        } else if (self.current-value == "Governor") {
+                            set-piece-theme(PieceThemes.governor);
+                        } else if (self.current-value == "Horsey") {
+                            set-piece-theme(PieceThemes.horsey);
+                        } else if (self.current-value == "Icpieces") {
+                            set-piece-theme(PieceThemes.icpieces);
+                        } else if (self.current-value == "Kiwen-suwi") {
+                            set-piece-theme(PieceThemes.kiwen-suwi);
+                        } else if (self.current-value == "Kosal") {
+                            set-piece-theme(PieceThemes.kosal);
+                        } else if (self.current-value == "Leipzig") {
+                            set-piece-theme(PieceThemes.leipzig);
+                        } else if (self.current-value == "Letter") {
+                            set-piece-theme(PieceThemes.letter);
+                        } else if (self.current-value == "Maestro") {
+                            set-piece-theme(PieceThemes.maestro);
+                        } else if (self.current-value == "Merida") {
+                            set-piece-theme(PieceThemes.merida);
+                        } else if (self.current-value == "Monarchy") {
+                            set-piece-theme(PieceThemes.monarchy);
+                        } else if (self.current-value == "Mono") {
+                            set-piece-theme(PieceThemes.mono);
+                        } else if (self.current-value == "Mpchess") {
+                            set-piece-theme(PieceThemes.mpchess);
+                        } else if (self.current-value == "Pirouetti") {
+                            set-piece-theme(PieceThemes.pirouetti);
+                        } else if (self.current-value == "Pixel") {
+                            set-piece-theme(PieceThemes.pixel);
+                        } else if (self.current-value == "Reillycraig") {
+                            set-piece-theme(PieceThemes.reillycraig);
+                        } else if (self.current-value == "Riohacha") {
+                            set-piece-theme(PieceThemes.riohacha);
+                        } else if (self.current-value == "Shapes") {
+                            set-piece-theme(PieceThemes.shapes);
+                        } else if (self.current-value == "Spatial") {
+                            set-piece-theme(PieceThemes.spatial);
+                        } else if (self.current-value == "Staunty") {
+                            set-piece-theme(PieceThemes.staunty);
+                        } else if (self.current-value == "Tatiana") {
+                            set-piece-theme(PieceThemes.tatiana);
+                        }
                     }
                 }
             }
         }
 
-        HorizontalLayout {
-            alignment: center;
+        VerticalLayout {
             spacing: 10px;
             Text {
-                text: "Piece Theme: ";
-                font-size: 12px;
-                vertical-alignment: center;
+                text: "Debugging:";
+                font-weight: 1000;
+                horizontal-alignment: center;
             }
 
-            ComboBox {
-                model: [
-                    "Default",
-                    "Alpha",
-                    "Anarcandy",
-                    "Caliente",
-                    "California",
-                    "Cardinal",
-                    "Cburnett",
-                    "Celtic",
-                    "Chess7",
-                    "Chessnut",
-                    "Companion",
-                    "Cooke",
-                    "Disguised",
-                    "Dubrovny",
-                    "Fantasy",
-                    "Fresca",
-                    "Gioco",
-                    "Governor",
-                    "Horsey",
-                    "Icpieces",
-                    "Kiwen-suwi",
-                    "Kosal",
-                    "Leipzig",
-                    "Letter",
-                    "Maestro",
-                    "Merida",
-                    "Monarchy",
-                    "Mono",
-                    "Mpchess",
-                    "Pirouetti",
-                    "Pixel",
-                    "Reillycraig",
-                    "Riohacha",
-                    "Shapes",
-                    "Spatial",
-                    "Staunty",
-                    "Tatiana"
-                ];
-                current-value: "Default";
-                height: 25px;
-                selected => {
-                    if (self.current-value == "Default") {
-                        set-piece-theme(PieceThemes.default);
-                    } else if (self.current-value == "Alpha") {
-                        set-piece-theme(PieceThemes.alpha);
-                    } else if (self.current-value == "Anarcandy") {
-                        set-piece-theme(PieceThemes.anarcandy);
-                    } else if (self.current-value == "Caliente") {
-                        set-piece-theme(PieceThemes.caliente);
-                    } else if (self.current-value == "California") {
-                        set-piece-theme(PieceThemes.california);
-                    } else if (self.current-value == "Cardinal") {
-                        set-piece-theme(PieceThemes.cardinal);
-                    } else if (self.current-value == "Cburnett") {
-                        set-piece-theme(PieceThemes.cburnett);
-                    } else if (self.current-value == "Celtic") {
-                        set-piece-theme(PieceThemes.celtic);
-                    } else if (self.current-value == "Chess7") {
-                        set-piece-theme(PieceThemes.chess7);
-                    } else if (self.current-value == "Chessnut") {
-                        set-piece-theme(PieceThemes.chessnut);
-                    } else if (self.current-value == "Companion") {
-                        set-piece-theme(PieceThemes.companion);
-                    } else if (self.current-value == "Cooke") {
-                        set-piece-theme(PieceThemes.cooke);
-                    } else if (self.current-value == "Disguised") {
-                        set-piece-theme(PieceThemes.disguised);
-                    } else if (self.current-value == "Dubrovny") {
-                        set-piece-theme(PieceThemes.dubrovny);
-                    } else if (self.current-value == "Fantasy") {
-                        set-piece-theme(PieceThemes.fantasy);
-                    } else if (self.current-value == "Fresca") {
-                        set-piece-theme(PieceThemes.fresca);
-                    } else if (self.current-value == "Gioco") {
-                        set-piece-theme(PieceThemes.gioco);
-                    } else if (self.current-value == "Governor") {
-                        set-piece-theme(PieceThemes.governor);
-                    } else if (self.current-value == "Horsey") {
-                        set-piece-theme(PieceThemes.horsey);
-                    } else if (self.current-value == "Icpieces") {
-                        set-piece-theme(PieceThemes.icpieces);
-                    } else if (self.current-value == "Kiwen-suwi") {
-                        set-piece-theme(PieceThemes.kiwen-suwi);
-                    } else if (self.current-value == "Kosal") {
-                        set-piece-theme(PieceThemes.kosal);
-                    } else if (self.current-value == "Leipzig") {
-                        set-piece-theme(PieceThemes.leipzig);
-                    } else if (self.current-value == "Letter") {
-                        set-piece-theme(PieceThemes.letter);
-                    } else if (self.current-value == "Maestro") {
-                        set-piece-theme(PieceThemes.maestro);
-                    } else if (self.current-value == "Merida") {
-                        set-piece-theme(PieceThemes.merida);
-                    } else if (self.current-value == "Monarchy") {
-                        set-piece-theme(PieceThemes.monarchy);
-                    } else if (self.current-value == "Mono") {
-                        set-piece-theme(PieceThemes.mono);
-                    } else if (self.current-value == "Mpchess") {
-                        set-piece-theme(PieceThemes.mpchess);
-                    } else if (self.current-value == "Pirouetti") {
-                        set-piece-theme(PieceThemes.pirouetti);
-                    } else if (self.current-value == "Pixel") {
-                        set-piece-theme(PieceThemes.pixel);
-                    } else if (self.current-value == "Reillycraig") {
-                        set-piece-theme(PieceThemes.reillycraig);
-                    } else if (self.current-value == "Riohacha") {
-                        set-piece-theme(PieceThemes.riohacha);
-                    } else if (self.current-value == "Shapes") {
-                        set-piece-theme(PieceThemes.shapes);
-                    } else if (self.current-value == "Spatial") {
-                        set-piece-theme(PieceThemes.spatial);
-                    } else if (self.current-value == "Staunty") {
-                        set-piece-theme(PieceThemes.staunty);
-                    } else if (self.current-value == "Tatiana") {
-                        set-piece-theme(PieceThemes.tatiana);
+            HorizontalLayout {
+                alignment: center;
+                spacing: 5px;
+                Text {
+                    text: "Show Engine Eval:";
+                    font-size: 12px;
+                    vertical-alignment: center;
+                }
+
+                CheckBox {
+                    checked: false;
+                    toggled => {
+                        set-show-eval(self.checked);
                     }
                 }
             }

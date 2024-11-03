@@ -550,7 +550,7 @@ impl Board {
         Ok(game_state)
     }
 
-    pub fn make_engine_move(&mut self, depth: u8) -> Result<GameState, BoardStateError> {
+    pub fn make_engine_move(&mut self, depth: u8) -> Result<(GameState, i32), BoardStateError> {
         if let Some(gos) = self.game_over_state {
             let err = BoardStateError::GameOver(gos);
             log_and_return_error!(err)
@@ -558,8 +558,10 @@ impl Board {
         let (eval, engine_move) =
             engine::choose_move(&self.current_state, depth, &mut self.transposition_table);
         let mv = *engine_move;
-
-        self.make_move(&mv)
+        match self.make_move(&mv) {
+            Ok(gs) => Ok((gs, eval)),
+            Err(e) => Err(e),
+        }
     }
 
     pub fn move_history_string_notation(&self) -> Vec<String> {
