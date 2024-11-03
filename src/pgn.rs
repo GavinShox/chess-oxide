@@ -9,6 +9,7 @@ use std::str::FromStr;
 use chrono::prelude::*;
 
 use crate::errors::PGNParseError;
+use crate::fen::{FEN, STD_STARTING_FEN_STR};
 use crate::PieceColour;
 use crate::{board, GameOverState};
 use notation::*;
@@ -98,8 +99,14 @@ impl From<&board::Board> for PGN {
                     }
                 },
             )));
-        new.tags.push(Tag::SetUp("0".to_string()));
-        //new.tags.push(Tag::FEN(board.get_starting_state().to_fen().to_string()));
+        // set SetUp and FEN tags if starting position isn't standard
+        let fen = FEN::from(board.get_current_state());
+        if fen.to_string() != STD_STARTING_FEN_STR {
+            new.tags.push(Tag::SetUp("1".to_string()));
+            new.tags.push(Tag::FEN(fen.to_string()));
+        } else {
+            new.tags.push(Tag::SetUp("0".to_string()));
+        }
         new.tags.push(Tag::Termination("UNIMPLEMENTED".to_string()));
         new.tags.push(Tag::Annotator("chess-oxide".to_string()));
         new.moves = board.move_history_notation();

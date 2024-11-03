@@ -2,6 +2,8 @@ use std::ops::Deref;
 use std::ops::Index;
 use std::ops::IndexMut;
 
+use rand::seq::SliceRandom;
+
 use crate::fen::FEN;
 use crate::mailbox;
 use crate::movegen::*;
@@ -119,14 +121,7 @@ impl Position {
     pub fn new_starting() -> Self {
         let mut pos: Pos64 = Pos64::default();
 
-        let movegen_flags = MovegenFlags {
-            white_castle_short: true,
-            white_castle_long: true,
-            black_castle_short: true,
-            black_castle_long: true,
-            en_passant: None,
-            polyglot_en_passant: None,
-        };
+        let movegen_flags = MovegenFlags::default_starting();
 
         pos[0] = Square::Piece(Piece {
             pcolour: PieceColour::Black,
@@ -208,16 +203,110 @@ impl Position {
             ptype: PieceType::Rook,
         });
 
-        let side = PieceColour::White;
-
         let mut new = Self {
             pos64: pos,
-            side,
+            side: PieceColour::White,
             movegen_flags,
             defend_map: DefendMap::new(),
             attack_map: AttackMap::new(),
             wking_idx: 60,
             bking_idx: 4,
+        };
+        new.gen_maps();
+        new
+    }
+
+    pub fn new_fischer_random() -> Self {
+        let mut pos: Pos64 = Pos64::default();
+        let mut rng = rand::thread_rng();
+        let mut remaining_idxs: Vec<usize> = vec![0, 1, 2, 3, 4, 5, 6, 7];
+        let mut pieces = Vec::with_capacity(8);
+
+        // chose index for light square bishop
+        let light_sq_idxs = vec![0, 2, 4, 6];
+        let light_bishop_start = *light_sq_idxs.choose(&mut rng).unwrap();
+        remaining_idxs.remove(light_bishop_start);
+        pieces[light_bishop_start] = PieceType::Bishop;
+
+        // chose index for dark square bishop
+        let dark_sq_idxs = vec![1, 3, 5, 7];
+        let dark_bishop_start = *dark_sq_idxs.choose(&mut rng).unwrap();
+        remaining_idxs.remove(dark_bishop_start);
+        pieces[dark_bishop_start] = PieceType::Bishop;
+
+        // chose index for queen
+        let queen_start = *remaining_idxs.choose(&mut rng).unwrap();
+        remaining_idxs.remove(queen_start);
+        pieces[queen_start] = PieceType::Queen;
+
+        // choose index for knights
+        let knight1_start = *remaining_idxs.choose(&mut rng).unwrap();
+        remaining_idxs.remove(knight1_start);
+        pieces[knight1_start] = PieceType::Knight;
+
+        let knight2_start = *remaining_idxs.choose(&mut rng).unwrap();
+        remaining_idxs.remove(knight2_start);
+        pieces[knight2_start] = PieceType::Knight;
+
+        // remaining indexes are required to be rook-king-rook
+        let long_rook_start = remaining_idxs[0];
+        let king_start = remaining_idxs[1];
+        let short_rook_start = remaining_idxs[2];
+        pieces[long_rook_start] = PieceType::Rook;
+        pieces[king_start] = PieceType::King;
+        pieces[short_rook_start] = PieceType::Rook;
+
+        let movegen_flags = MovegenFlags {
+            white_castle_short: true,
+            white_castle_long: true,
+            black_castle_short: true,
+            black_castle_long: true,
+            en_passant: None,
+            polyglot_en_passant: None,
+            white_king_start: 56 + king_start,
+            black_king_start: king_start,
+            long_white_rook_start: 56 + long_rook_start,
+            short_white_rook_start: 56 + short_rook_start,
+            long_black_rook_start: long_rook_start,
+            short_black_rook_start: short_rook_start,
+        };
+
+        for i in 0..8 {
+            pos[i] = Square::Piece(Piece {
+                pcolour: PieceColour::Black,
+                ptype: pieces[i],
+            });
+        }
+        for i in 8..16 {
+            pos[i] = Square::Piece(Piece {
+                pcolour: PieceColour::Black,
+                ptype: PieceType::Pawn,
+            });
+        }
+        for i in 16..48 {
+            pos[i] = Square::Empty;
+        }
+        for i in 48..56 {
+            pos[i] = Square::Piece(Piece {
+                pcolour: PieceColour::White,
+                ptype: PieceType::Pawn,
+            });
+        }
+        for i in 56..64 {
+            pos[i] = Square::Piece(Piece {
+                pcolour: PieceColour::White,
+                ptype: pieces[i - 56],
+            });
+        }
+
+        let mut new = Self {
+            pos64: pos,
+            side: PieceColour::White,
+            movegen_flags,
+            defend_map: DefendMap::new(),
+            attack_map: AttackMap::new(),
+            wking_idx: 56 + king_start,
+            bking_idx: king_start,
         };
         new.gen_maps();
         new
@@ -421,36 +510,25 @@ impl Position {
                 self.movegen_flags.black_castle_short = false;
             }
         }
-        match mv.from {
-            LONG_BLACK_ROOK_START => {
-                self.movegen_flags.black_castle_long = false;
-            }
-            LONG_WHITE_ROOK_START => {
-                self.movegen_flags.white_castle_long = false;
-            }
-            SHORT_BLACK_ROOK_START => {
-                self.movegen_flags.black_castle_short = false;
-            }
-            SHORT_WHITE_ROOK_START => {
-                self.movegen_flags.white_castle_short = false;
-            }
-            _ => {}
+        if mv.from == self.movegen_flags.long_black_rook_start {
+            self.movegen_flags.black_castle_long = false;
+        } else if mv.from == self.movegen_flags.long_white_rook_start {
+            self.movegen_flags.white_castle_long = false;
+        } else if mv.from == self.movegen_flags.short_black_rook_start {
+            self.movegen_flags.black_castle_short = false;
+        } else if mv.from == self.movegen_flags.short_white_rook_start {
+            self.movegen_flags.white_castle_short = false;
         }
+
         // if a rook is captured
-        match mv.to {
-            LONG_BLACK_ROOK_START => {
-                self.movegen_flags.black_castle_long = false;
-            }
-            LONG_WHITE_ROOK_START => {
-                self.movegen_flags.white_castle_long = false;
-            }
-            SHORT_BLACK_ROOK_START => {
-                self.movegen_flags.black_castle_short = false;
-            }
-            SHORT_WHITE_ROOK_START => {
-                self.movegen_flags.white_castle_short = false;
-            }
-            _ => {}
+        if mv.to == self.movegen_flags.long_black_rook_start {
+            self.movegen_flags.black_castle_long = false;
+        } else if mv.to == self.movegen_flags.long_white_rook_start {
+            self.movegen_flags.white_castle_long = false;
+        } else if mv.to == self.movegen_flags.short_black_rook_start {
+            self.movegen_flags.black_castle_short = false;
+        } else if mv.to == self.movegen_flags.short_white_rook_start {
+            self.movegen_flags.white_castle_short = false;
         }
     }
 

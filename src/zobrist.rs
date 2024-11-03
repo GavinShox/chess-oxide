@@ -167,22 +167,26 @@ impl ZobristHashTable {
         }
 
         if last_movegen_flags.black_castle_long
-            && (mv.from == LONG_BLACK_ROOK_START || mv.to == LONG_BLACK_ROOK_START)
+            && (mv.from == last_movegen_flags.long_black_rook_start
+                || mv.to == last_movegen_flags.long_black_rook_start)
         {
             hash ^= self.black_castle_long;
         }
         if last_movegen_flags.black_castle_short
-            && (mv.from == SHORT_BLACK_ROOK_START || mv.to == SHORT_BLACK_ROOK_START)
+            && (mv.from == last_movegen_flags.short_black_rook_start
+                || mv.to == last_movegen_flags.short_black_rook_start)
         {
             hash ^= self.black_castle_short;
         }
         if last_movegen_flags.white_castle_long
-            && (mv.from == LONG_WHITE_ROOK_START || mv.to == LONG_WHITE_ROOK_START)
+            && (mv.from == last_movegen_flags.long_white_rook_start
+                || mv.to == last_movegen_flags.long_white_rook_start)
         {
             hash ^= self.white_castle_long;
         }
         if last_movegen_flags.white_castle_short
-            && (mv.from == SHORT_WHITE_ROOK_START || mv.to == SHORT_WHITE_ROOK_START)
+            && (mv.from == last_movegen_flags.short_white_rook_start
+                || mv.to == last_movegen_flags.short_white_rook_start)
         {
             hash ^= self.white_castle_short;
         }
@@ -304,22 +308,26 @@ impl ZobristHashTable {
         }
 
         if last_movegen_flags.black_castle_long
-            && (mv.from == LONG_BLACK_ROOK_START || mv.to == LONG_BLACK_ROOK_START)
+            && (mv.from == last_movegen_flags.long_black_rook_start
+                || mv.to == last_movegen_flags.long_black_rook_start)
         {
             hash ^= self.black_castle_long;
         }
         if last_movegen_flags.black_castle_short
-            && (mv.from == SHORT_BLACK_ROOK_START || mv.to == SHORT_BLACK_ROOK_START)
+            && (mv.from == last_movegen_flags.short_black_rook_start
+                || mv.to == last_movegen_flags.short_black_rook_start)
         {
             hash ^= self.black_castle_short;
         }
         if last_movegen_flags.white_castle_long
-            && (mv.from == LONG_WHITE_ROOK_START || mv.to == LONG_WHITE_ROOK_START)
+            && (mv.from == last_movegen_flags.long_white_rook_start
+                || mv.to == last_movegen_flags.long_white_rook_start)
         {
             hash ^= self.white_castle_long;
         }
         if last_movegen_flags.white_castle_short
-            && (mv.from == SHORT_WHITE_ROOK_START || mv.to == SHORT_WHITE_ROOK_START)
+            && (mv.from == last_movegen_flags.short_white_rook_start
+                || mv.to == last_movegen_flags.short_white_rook_start)
         {
             hash ^= self.white_castle_short;
         }

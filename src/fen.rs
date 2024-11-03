@@ -7,6 +7,7 @@ use crate::log_and_return_error;
 use crate::movegen::{MovegenFlags, Piece, PieceColour, PieceType, Square};
 use crate::position::{Pos64, Position};
 
+pub const STD_STARTING_FEN_STR: &str = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
 const ABOVE_BELOW: usize = 8; // 8 indexes from i is the square directly above/below in the pos64 array
 
 #[derive(Debug, Clone, Copy)]

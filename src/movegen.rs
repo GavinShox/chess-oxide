@@ -10,21 +10,20 @@ pub const BISHOP_OFFSET: Offset = [-11, -9, 9, 11, 0, 0, 0, 0];
 pub const ROOK_OFFSET: Offset = [-10, -1, 1, 10, 0, 0, 0, 0];
 pub const QUEEN_KING_OFFSET: Offset = [-11, -10, -9, -1, 1, 9, 10, 11];
 
+// indexes for *standard* starting position
+pub const STD_BLACK_KING_START: usize = 4;
+pub const STD_LONG_WHITE_ROOK_START: usize = 56;
+pub const STD_WHITE_KING_START: usize = 60;
+pub const STD_SHORT_WHITE_ROOK_START: usize = 63;
+pub const STD_LONG_BLACK_ROOK_START: usize = 0;
+pub const STD_SHORT_BLACK_ROOK_START: usize = 7;
+
 pub const PROMOTION_PIECE_TYPES: [PieceType; 4] = [
     PieceType::Knight,
     PieceType::Bishop,
     PieceType::Rook,
     PieceType::Queen,
 ];
-
-// starting indexes for castling logic
-// TODO refactor castling logic so its not hardcoded, to allow for fischer random positions
-pub const LONG_BLACK_ROOK_START: usize = 0;
-pub const SHORT_BLACK_ROOK_START: usize = 7;
-pub const LONG_WHITE_ROOK_START: usize = 56;
-pub const SHORT_WHITE_ROOK_START: usize = 63;
-pub const BLACK_KING_START: usize = 4;
-pub const WHITE_KING_START: usize = 60;
 
 // from and to are out of bounds
 pub const NULL_MOVE: Move = Move {
@@ -79,8 +78,8 @@ pub enum Square {
     Piece(Piece),
     Empty,
 }
-
-#[derive(Debug, Clone, Copy, Default)]
+// todo maybe have a separate struct for starting flags instead of using movegen flags
+#[derive(Debug, Clone, Copy)]
 pub struct MovegenFlags {
     pub white_castle_short: bool,
     pub white_castle_long: bool,
@@ -88,6 +87,43 @@ pub struct MovegenFlags {
     pub black_castle_long: bool,
     pub en_passant: Option<usize>,
     pub polyglot_en_passant: Option<usize>,
+    pub white_king_start: usize,
+    pub black_king_start: usize,
+    pub long_white_rook_start: usize,
+    pub short_white_rook_start: usize,
+    pub long_black_rook_start: usize,
+    pub short_black_rook_start: usize,
+}
+
+impl Default for MovegenFlags {
+    fn default() -> Self {
+        Self {
+            white_castle_short: false,
+            white_castle_long: false,
+            black_castle_short: false,
+            black_castle_long: false,
+            en_passant: None,
+            polyglot_en_passant: None,
+            white_king_start: STD_WHITE_KING_START,
+            black_king_start: STD_BLACK_KING_START,
+            long_white_rook_start: STD_LONG_WHITE_ROOK_START,
+            short_white_rook_start: STD_SHORT_WHITE_ROOK_START,
+            long_black_rook_start: STD_LONG_BLACK_ROOK_START,
+            short_black_rook_start: STD_SHORT_BLACK_ROOK_START,
+        }
+    }
+}
+
+impl MovegenFlags {
+    // default flags for a standard starting position
+    pub fn default_starting() -> Self {
+        let mut s = Self::default();
+        s.white_castle_short = true;
+        s.white_castle_long = true;
+        s.black_castle_short = true;
+        s.black_castle_long = true;
+        s
+    }
 }
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
@@ -155,15 +191,11 @@ pub struct CastleMove {
     pub rook_from: usize,
     pub rook_to: usize,
     pub king_squares: (usize, usize, usize),
+    pub side: CastleSide,
 }
 impl CastleMove {
     pub const fn get_castle_side(&self) -> CastleSide {
-        // simple test to differentiate between long and short castles by looking at the idx of the rook_from square
-        if self.rook_from == LONG_BLACK_ROOK_START || self.rook_from == LONG_WHITE_ROOK_START {
-            CastleSide::Long
-        } else {
-            CastleSide::Short
-        }
+        self.side
     }
 }
 
@@ -452,8 +484,8 @@ pub(crate) fn movegen(
     // finally, movegen for castling
     if piece.ptype == PieceType::King
         && !defending
-        && ((piece.pcolour == PieceColour::White && i == WHITE_KING_START)
-            || (piece.pcolour == PieceColour::Black && i == BLACK_KING_START))
+        && ((piece.pcolour == PieceColour::White && i == movegen_flags.white_king_start)
+            || (piece.pcolour == PieceColour::Black && i == movegen_flags.black_king_start))
     {
         // no need to check mailbox, or check if an index is out of bounds
         // as we check that the king is on its starting square
@@ -477,6 +509,7 @@ pub(crate) fn movegen(
                             rook_from: short_rook_start_idx,
                             rook_to: short_rook_end_idx,
                             king_squares: (i, short_mv_through_idx, short_mv_to_idx),
+                            side: CastleSide::Short,
                         }),
                     }),
                 );
@@ -503,6 +536,7 @@ pub(crate) fn movegen(
                             rook_from: long_rook_start_idx,
                             rook_to: long_rook_end_idx,
                             king_squares: (i, long_mv_through_idx, long_mv_to_idx),
+                            side: CastleSide::Long,
                         }),
                     }),
                 );
