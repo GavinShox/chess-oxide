@@ -26,7 +26,7 @@ impl FromStr for FEN {
         let fen_vec: Vec<&str> = s.split(' ').collect();
         // check if the FEN string has the correct number of fields, accept the last two as optional with default values given in BoardState
         if fen_vec.len() < 4 || fen_vec.len() > 6 {
-            return Err(FenParseError(format!(
+            return Err(FenParseError::InvalidFen(format!(
                 "Invalid number of fields in FEN string: {}. Expected at least 4, max 6",
                 fen_vec.len()
             )));
@@ -222,7 +222,7 @@ impl FEN {
                 }
             }
             if square_count != 8 {
-                return Err(FenParseError(format!(
+                return Err(FenParseError::InvalidFen(format!(
                     "Invalid number of squares in rank: {}. Expected 8, got {}",
                     rank, square_count
                 )));
@@ -293,7 +293,10 @@ impl FEN {
                         continue; // skip the below square assignment for pieces
                     }
                     other => {
-                        let err = FenParseError(format!("Invalid char in first field: {}", other));
+                        let err = FenParseError::InvalidFen(format!(
+                            "Invalid char in first field: {}",
+                            other
+                        ));
                         log_and_return_error!(err)
                     }
                 };
@@ -304,7 +307,7 @@ impl FEN {
         }
 
         if wking_num != 1 || bking_num != 1 {
-            let err = FenParseError(format!(
+            let err = FenParseError::InvalidFen(format!(
                 "Incorrect number of kings (white: {}, black: {}) in FEN field: {}",
                 wking_num, bking_num, field
             ));
@@ -324,7 +327,7 @@ impl FEN {
                 self.side = PieceColour::Black;
             }
             other => {
-                return Err(FenParseError(format!(
+                return Err(FenParseError::InvalidFen(format!(
                     "Invalid second field: {}. Expected 'w' or 'b'",
                     other
                 )));
@@ -350,7 +353,7 @@ impl FEN {
                 }
                 '-' => {}
                 other => {
-                    return Err(FenParseError(format!(
+                    return Err(FenParseError::InvalidFen(format!(
                         "Invalid char in third field: {}",
                         other
                     )));
@@ -366,7 +369,7 @@ impl FEN {
 
             // error if index is out of bounds. FEN defines the index behind the pawn that moved, so valid indexes are only 16->47 (excluded top and bottom two ranks)
             if !(16..=47).contains(&ep_mv_idx) {
-                return Err(FenParseError(format!(
+                return Err(FenParseError::InvalidFen(format!(
                     "Invalid en passant square: {}. Index is out of bounds",
                     field
                 )));
@@ -397,7 +400,8 @@ impl FEN {
             self.halfmove_count = if let Ok(halfmove_count) = hm.parse::<u32>() {
                 halfmove_count
             } else {
-                let err = FenParseError(format!("Error parsing halfmove count: {}", hm));
+                let err =
+                    FenParseError::InvalidFen(format!("Error parsing halfmove count: {}", hm));
                 log_and_return_error!(err)
             };
         };
@@ -406,7 +410,7 @@ impl FEN {
             self.move_count = if let Ok(move_count) = m.parse::<u32>() {
                 move_count
             } else {
-                let err = FenParseError(format!("Error parsing move count: {}", m));
+                let err = FenParseError::InvalidFen(format!("Error parsing move count: {}", m));
                 log_and_return_error!(err)
             };
         }
@@ -422,7 +426,7 @@ fn notation_to_index(n: &str) -> Result<usize, FenParseError> {
         || n.chars().nth(1).unwrap() < '1'
         || n.chars().nth(1).unwrap() > '8'
     {
-        log_and_return_error!(FenParseError(format!(
+        log_and_return_error!(FenParseError::InvalidFen(format!(
             "Invalid notation ({}) when converting to index:",
             n
         )))

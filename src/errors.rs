@@ -29,11 +29,17 @@ impl fmt::Display for BoardStateError {
 impl error::Error for BoardStateError {}
 
 #[derive(Debug)]
-pub struct FenParseError(pub String);
+pub enum FenParseError {
+    InvalidFen(String),
+    VariantIncompatible(String),
+}
 
 impl fmt::Display for FenParseError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "Error parsing FEN: {}", self.0)
+        match self {
+            Self::InvalidFen(s) => write!(f, "Invalid FEN: {}", s),
+            Self::VariantIncompatible(s) => write!(f, "Variant incompatibility: {}", s),
+        }
     }
 }
 

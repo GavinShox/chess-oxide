@@ -65,8 +65,22 @@ impl fmt::Display for GameState {
     }
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum Variant {
+    #[default]
+    Standard,
+    FischerRandom,
+}
+
+impl Variant {
+    pub fn is_standard(&self) -> bool {
+        matches!(self, Self::Standard)
+    }
+}
+
 #[derive(Debug, Clone)]
 pub struct BoardState {
+    pub variant: Variant,
     pub side_to_move: PieceColour,
     pub last_move: Move,
     legal_moves: Vec<Move>,
@@ -88,7 +102,13 @@ impl PartialEq for BoardState {
 impl From<FEN> for BoardState {
     fn from(fen: FEN) -> Self {
         let pos = Position::from(fen);
-        Self::from_parts(pos, fen.halfmove_count(), fen.move_count())
+        // FEN only compatible with standard variant
+        Self::from_parts(
+            Variant::Standard,
+            pos,
+            fen.halfmove_count(),
+            fen.move_count(),
+        )
     }
 }
 
@@ -106,6 +126,7 @@ impl BoardState {
         position_occurences.insert(position_hash, 1);
         log::info!("New starting BoardState created");
         BoardState {
+            variant: Variant::Standard,
             position,
             move_count: 1, // movecount starts at 1
             halfmove_count: 0,
@@ -119,7 +140,12 @@ impl BoardState {
         }
     }
 
-    pub(crate) fn from_parts(position: Position, halfmove_count: u32, move_count: u32) -> Self {
+    pub(crate) fn from_parts(
+        variant: Variant,
+        position: Position,
+        halfmove_count: u32,
+        move_count: u32,
+    ) -> Self {
         let position_hash: PositionHash = position.pos_hash();
         let board_hash = zobrist::board_state_hash(position_hash, 1, halfmove_count);
         let side_to_move = position.side;
@@ -129,6 +155,7 @@ impl BoardState {
         position_occurences.insert(position_hash, 1);
         log::info!("New BoardState created from parts");
         BoardState {
+            variant: Variant::Standard,
             position,
             move_count,
             halfmove_count,
@@ -144,6 +171,10 @@ impl BoardState {
 
     pub(crate) fn position(&self) -> &Position {
         &self.position
+    }
+
+    pub fn variant(&self) -> Variant {
+        self.variant
     }
 
     pub fn halfmove_count(&self) -> u32 {
@@ -217,6 +248,7 @@ impl BoardState {
 
         log::trace!("New BoardState created from move: {:?}", mv);
         Self {
+            variant: self.variant,
             side_to_move,
             last_move,
             legal_moves,
@@ -301,6 +333,7 @@ impl BoardState {
 
         log::trace!("New BoardState created from move: {:?}", mv);
         Ok(Self {
+            variant: self.variant,
             side_to_move,
             last_move,
             legal_moves,
