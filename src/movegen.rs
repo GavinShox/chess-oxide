@@ -316,7 +316,6 @@ pub(crate) fn movegen(
     movegen_flags: &MovegenFlags,
     piece: Piece,
     i: usize,
-    defending: bool,
     mv_map: &mut dyn MoveMap,
 ) {
     // Move gen for pawns
@@ -324,52 +323,49 @@ pub(crate) fn movegen(
         // mailbox offset for moving pawns straight up
         let push_offset = mb_get_pawn_push_offset(piece);
 
-        // pawn push logic, only when defending is false, as pawn pushes are non-controlling moves
-        if !defending {
-            // closure that pushes move to mv_map, if move is valid and the mv square is empty
-            // returns true if it pushes successfully
-            let mut push_if_empty = |mv: i32, mvtype: MoveType| -> bool {
-                // check mv is valid
-                if mv >= 0 {
-                    // push mv if the square is empty
-                    if is_square_empty(pos, mv as usize) {
-                        if pawn_is_promotion_square(mv, piece) {
-                            pawn_promotion(mv_map, i, piece, mv, None);
-                        } else {
-                            mv_map.add_move(
-                                &(Move {
-                                    piece,
-                                    from: i,
-                                    to: mv as usize,
-                                    move_type: mvtype,
-                                }),
-                            );
-                        }
-                        true
+        // closure that pushes move to mv_map, if move is valid and the mv square is empty
+        // returns true if it pushes successfully
+        let mut push_if_empty = |mv: i32, mvtype: MoveType| -> bool {
+            // check mv is valid
+            if mv >= 0 {
+                // push mv if the square is empty
+                if is_square_empty(pos, mv as usize) {
+                    if pawn_is_promotion_square(mv, piece) {
+                        pawn_promotion(mv_map, i, piece, mv, None);
                     } else {
-                        false
+                        mv_map.add_move(
+                            &(Move {
+                                piece,
+                                from: i,
+                                to: mv as usize,
+                                move_type: mvtype,
+                            }),
+                        );
                     }
+                    true
                 } else {
-                    false // also return false if mv is out of bounds
+                    false
                 }
-            };
-
-            let mv_single_push = mailbox::next_mailbox_number(i, push_offset);
-            let is_empty = push_if_empty(mv_single_push, MoveType::PawnPush);
-
-            // check if pawn is still on starting rank
-            let is_starting = pawn_is_starting_rank(i, piece);
-
-            // if pawn is on starting square and the first square above it was empty
-            // this is to prevent the pawn from jumping over a piece on it's first move
-            if is_starting && is_empty {
-                let mv_double_push = mailbox::next_mailbox_number(i, push_offset * 2);
-                // again, only pushing if the second square above is empty
-                push_if_empty(mv_double_push, MoveType::DoublePawnPush);
+            } else {
+                false // also return false if mv is out of bounds
             }
+        };
+
+        let mv_single_push = mailbox::next_mailbox_number(i, push_offset);
+        let is_empty = push_if_empty(mv_single_push, MoveType::PawnPush);
+
+        // check if pawn is still on starting rank
+        let is_starting = pawn_is_starting_rank(i, piece);
+
+        // if pawn is on starting square and the first square above it was empty
+        // this is to prevent the pawn from jumping over a piece on it's first move
+        if is_starting && is_empty {
+            let mv_double_push = mailbox::next_mailbox_number(i, push_offset * 2);
+            // again, only pushing if the second square above is empty
+            push_if_empty(mv_double_push, MoveType::DoublePawnPush);
         }
 
-        // Attacking/Defending moves for pawns
+        // Attacking moves for pawns
         let attack_offset = mb_get_pawn_attack_offset(piece);
 
         for j in attack_offset {
@@ -378,9 +374,8 @@ pub(crate) fn movegen(
                 let mv_square = &pos[mv as usize];
                 match mv_square {
                     Square::Piece(mv_square_piece) => {
-                        if piece.pcolour != mv_square_piece.pcolour || defending {
-                            if pawn_is_promotion_square(mv, piece) && !defending {
-                                // no need to do this if defending, we can just do it once below regardless
+                        if piece.pcolour != mv_square_piece.pcolour {
+                            if pawn_is_promotion_square(mv, piece) {
                                 pawn_promotion(mv_map, i, piece, mv, Some(mv_square_piece.ptype));
                             } else {
                                 mv_map.add_move(
@@ -394,25 +389,13 @@ pub(crate) fn movegen(
                             }
                         }
                     }
-                    Square::Empty => {
-                        // no pawn promotion logic, as you cant promote diagonally to an empty square. Only needed for defend map
-                        if defending {
-                            mv_map.add_move(
-                                &(Move {
-                                    piece,
-                                    from: i,
-                                    to: mv as usize,
-                                    move_type: MoveType::None, // not a real move, only a defensive one
-                                }),
-                            );
-                        }
-                    }
+                    Square::Empty => {}
                 }
             }
         }
         // en passant captures, checking pawns left and right
         // also dont check for promotion, as a pawn cannot en passant to the back rank
-        if !defending && movegen_flags.en_passant.is_some() {
+        if movegen_flags.en_passant.is_some() {
             let attack_en_passant_offset = [-1, 1];
             let en_passant_mv = movegen_flags.en_passant.unwrap();
             for j in attack_en_passant_offset {
@@ -450,7 +433,7 @@ pub(crate) fn movegen(
                 let mv_square = &pos[mv as usize];
                 match mv_square {
                     Square::Piece(mv_square_piece) => {
-                        if piece.pcolour != mv_square_piece.pcolour || defending {
+                        if piece.pcolour != mv_square_piece.pcolour {
                             mv_map.add_move(
                                 &(Move {
                                     piece,
@@ -488,7 +471,6 @@ pub(crate) fn movegen(
 
     // finally, movegen for castling
     if piece.ptype == PieceType::King
-        && !defending
         && ((piece.pcolour == PieceColour::White && i == movegen_flags.white_king_start)
             || (piece.pcolour == PieceColour::Black && i == movegen_flags.black_king_start))
     {

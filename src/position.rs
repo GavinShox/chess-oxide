@@ -416,7 +416,7 @@ impl Position {
                     pcolour: self.side,
                     ptype: PieceType::King,
                 });
-                
+
                 test_pos.pos64[mv_through_idx] = king_square;
                 test_pos.pos64[mv.from] = Square::Empty;
                 match self.side {
@@ -550,7 +550,7 @@ impl Position {
                 if p.pcolour != self.side {
                     continue;
                 }
-                movegen(pos64, movegen_flags, *p, i, false, &mut self.attack_map);
+                movegen(pos64, movegen_flags, *p, i, &mut self.attack_map);
             }
         }
         self.in_check = movegen_in_check(&self.pos64, self.get_king_idx());
