@@ -10,7 +10,7 @@ use chrono::prelude::*;
 
 use crate::errors::PGNParseError;
 use crate::fen::{FEN, STD_STARTING_FEN_STR};
-use crate::PieceColour;
+use crate::movegen::PieceColour;
 use crate::{board, GameOverState};
 use notation::*;
 use tag::*;

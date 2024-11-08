@@ -1,8 +1,93 @@
-use std::time::Instant;
+use std::time::{Duration, Instant};
 
-use crate::position::Position;
-use crate::{engine, movegen::*, transposition, BoardState};
+use crate::{board, engine, movegen::*, position::Position, transposition, BoardState};
 
+pub fn perft(pos_iterations: u32, engine_iterations: u32) {
+    let pos = Position::new_starting();
+    let board = board::Board::new();
+
+    let mut total_pos_perft_time = Duration::new(0, 0);
+    for i in 0..pos_iterations {
+        let start = Instant::now();
+        pos_perft(&pos, 5);
+        let duration = start.elapsed();
+        total_pos_perft_time += duration;
+        println!(
+            "Time elapsed in position perft iteration {}: {:?}",
+            i + 1,
+            duration
+        );
+    }
+
+    let mut total_engine_time = Duration::new(0, 0);
+    for i in 0..engine_iterations {
+        let mut tt = transposition::TT::new();
+        let start = Instant::now();
+        engine_perft(board.get_current_state(), 7, &mut tt);
+        let duration = start.elapsed();
+        total_engine_time += duration;
+        println!(
+            "Time elapsed in engine perft iteration {}: {:?}\n",
+            i + 1,
+            duration
+        );
+    }
+    println!("Total time elapsed in position perft: {:?} (after {} iterations)\nAverage time per iteration: {:?}", total_pos_perft_time, pos_iterations, total_pos_perft_time / pos_iterations);
+    println!();
+    println!("Total time elapsed in engine perft: {:?} (after {} iterations)\nAverage time per iteration: {:?}", total_engine_time, engine_iterations, total_engine_time / engine_iterations);
+}
+
+pub fn pos_perft(pos: &Position, depth: u8) -> u64 {
+    let mut nodes: u64 = 0;
+    let mut promotions: u64 = 0;
+    let mut castles: u64 = 0;
+    let mut en_passant: u64 = 0;
+    let mut captures: u64 = 0;
+
+    let start = Instant::now();
+
+    get_all_legal_positions(
+        pos,
+        depth,
+        &mut nodes,
+        &mut promotions,
+        &mut castles,
+        &mut en_passant,
+        &mut captures,
+    );
+
+    let duration = start.elapsed();
+
+    println!(
+        "Perft at depth {} (took {:?} to complete):",
+        depth, duration
+    );
+    println!(" - Nodes: {}", nodes);
+    println!(" - Move types breakdown: ");
+    println!(" - Promotions: {}", promotions);
+    println!(" - Castles: {}", castles);
+    println!(" - En Passant: {}", en_passant);
+    println!(" - Captures: {}", captures);
+    println!();
+
+    nodes
+}
+
+pub fn engine_perft(bs: &BoardState, depth: u8, tt: &mut transposition::TranspositionTable) {
+    // let mut tt = transposition::TranspositionTable::new(); // not included in duration
+    let start = Instant::now();
+    let (eval, mv) = engine::choose_move(bs, depth, tt);
+    let duration = start.elapsed();
+    println!(
+        "Engine perft at depth {} (took {:?} to complete):",
+        depth, duration
+    );
+    println!(" - Eval: {}", eval);
+    println!(" - Best move: {:?}", mv);
+    println!();
+}
+
+#[inline]
 fn get_all_legal_positions(
     pos: &Position,
     depth: u8,
@@ -53,56 +138,6 @@ fn get_all_legal_positions(
     }
 }
 
-pub fn perft(pos: &Position, depth: u8) -> u64 {
-    let mut nodes: u64 = 0;
-    let mut promotions: u64 = 0;
-    let mut castles: u64 = 0;
-    let mut en_passant: u64 = 0;
-    let mut captures: u64 = 0;
-
-    let start = Instant::now();
-
-    get_all_legal_positions(
-        pos,
-        depth,
-        &mut nodes,
-        &mut promotions,
-        &mut castles,
-        &mut en_passant,
-        &mut captures,
-    );
-
-    let duration = start.elapsed();
-
-    println!(
-        "Perft at depth {} (took {:?} to complete):",
-        depth, duration
-    );
-    println!(" - Nodes: {}", nodes);
-    println!(" - Move types breakdown: ");
-    println!(" - Promotions: {}", promotions);
-    println!(" - Castles: {}", castles);
-    println!(" - En Passant: {}", en_passant);
-    println!(" - Captures: {}", captures);
-    println!();
-
-    nodes
-}
-
-pub fn engine_perft(bs: &BoardState, depth: u8, tt: &mut transposition::TranspositionTable) {
-    // let mut tt = transposition::TranspositionTable::new(); // not included in duration
-    let start = Instant::now();
-    let (eval, mv) = engine::choose_move(bs, depth, tt);
-    let duration = start.elapsed();
-    println!(
-        "Engine perft at depth {} (took {:?} to complete):",
-        depth, duration
-    );
-    println!(" - Eval: {}", eval);
-    println!(" - Best move: {:?}", mv);
-    println!();
-}
-
 #[cfg(test)]
 mod test {
     use super::*;
@@ -144,25 +179,25 @@ mod test {
             .unwrap()
             .into();
 
-        let pos1_nodes = perft(&pos1, 5);
+        let pos1_nodes = pos_perft(&pos1, 5);
         assert_eq!(pos1_nodes, 4865609);
 
-        let pos2_nodes = perft(&pos2, 4);
+        let pos2_nodes = pos_perft(&pos2, 4);
         assert_eq!(pos2_nodes, 4085603);
 
-        let pos3_nodes = perft(&pos3, 5);
+        let pos3_nodes = pos_perft(&pos3, 5);
         assert_eq!(pos3_nodes, 674624);
 
-        let pos4_nodes = perft(&pos4, 5);
+        let pos4_nodes = pos_perft(&pos4, 5);
         assert_eq!(pos4_nodes, 15833292);
 
-        let pos4mirrored_nodes = perft(&pos4mirrored, 5);
+        let pos4mirrored_nodes = pos_perft(&pos4mirrored, 5);
         assert_eq!(pos4mirrored_nodes, 15833292);
 
-        let pos5_nodes = perft(&pos5, 4);
+        let pos5_nodes = pos_perft(&pos5, 4);
         assert_eq!(pos5_nodes, 2103487);
 
-        let pos6_nodes = perft(&pos6, 4);
+        let pos6_nodes = pos_perft(&pos6, 4);
         assert_eq!(pos6_nodes, 3894594);
     }
 }

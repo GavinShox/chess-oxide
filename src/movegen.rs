@@ -1,7 +1,7 @@
 use crate::mailbox;
 use crate::position;
 
-pub const MOVE_VEC_SIZE: usize = 27; // max number of squares a queen can possibly move to is 27
+//pub const MOVE_VEC_SIZE: usize = 27; // max number of squares a queen can possibly move to is 27
 pub type Offset = [i32; 8];
 
 pub const PAWN_OFFSET: Offset = [0, 0, 0, 0, 0, 0, 0, 0];

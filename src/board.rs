@@ -73,6 +73,7 @@ pub enum Variant {
 }
 
 impl Variant {
+    #[inline]
     pub fn is_standard(&self) -> bool {
         matches!(self, Self::Standard)
     }
@@ -155,7 +156,7 @@ impl BoardState {
         position_occurences.insert(position_hash, 1);
         log::info!("New BoardState created from parts");
         BoardState {
-            variant: Variant::Standard,
+            variant,
             position,
             move_count,
             halfmove_count,

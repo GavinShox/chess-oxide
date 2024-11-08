@@ -14,6 +14,11 @@ mod util;
 mod zobrist;
 
 pub use {
-    board::*, movegen::*, perft::*, position::*, transposition::*, util::eval_to_string,
-    util::hash_to_string, util::print_board,
+    board::*,
+    movegen::{
+        CastleMove, CastleSide, Move, MoveType, Piece, PieceColour, PieceType, ShortMove, Square,
+        NULL_MOVE, NULL_SHORT_MOVE,
+    },
+    perft::*,
+    util::*,
 };
