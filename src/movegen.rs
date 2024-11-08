@@ -35,6 +35,7 @@ pub const NULL_MOVE: Move = Move {
     to: usize::MAX,
     move_type: MoveType::None,
 };
+
 // from and to are out of bounds
 pub const NULL_SHORT_MOVE: ShortMove = ShortMove {
     from: u8::MAX,
@@ -57,6 +58,7 @@ pub enum PieceColour {
     White,
     Black,
 }
+
 impl core::ops::Not for PieceColour {
     type Output = Self;
     fn not(self) -> Self::Output {
@@ -133,6 +135,7 @@ pub struct Move {
     pub to: usize,
     pub move_type: MoveType,
 }
+
 impl Move {
     pub const fn short_move(&self) -> ShortMove {
         ShortMove {
@@ -193,6 +196,7 @@ pub struct CastleMove {
     pub king_squares: (usize, usize, usize),
     pub side: CastleSide,
 }
+
 impl CastleMove {
     pub const fn get_castle_side(&self) -> CastleSide {
         self.side
@@ -210,6 +214,7 @@ pub enum MoveType {
     Normal,
     None, // used to represent null move, or moves that are only used in generating defend map, and are not actually possible to play
 }
+
 impl MoveType {
     #[inline]
     pub const fn is_capture(&self) -> bool {
