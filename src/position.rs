@@ -12,6 +12,7 @@ use crate::zobrist::PositionHash;
 
 #[derive(Debug, PartialEq, Clone, Copy)]
 pub struct Pos64([Square; 64]);
+
 impl Index<usize> for Pos64 {
     type Output = Square;
 
@@ -19,11 +20,13 @@ impl Index<usize> for Pos64 {
         &self.0[index]
     }
 }
+
 impl IndexMut<usize> for Pos64 {
     fn index_mut(&mut self, index: usize) -> &mut Self::Output {
         &mut self.0[index]
     }
 }
+
 impl Deref for Pos64 {
     type Target = [Square; 64];
 
@@ -31,11 +34,13 @@ impl Deref for Pos64 {
         &self.0
     }
 }
+
 impl Default for Pos64 {
     fn default() -> Self {
         Self([Square::Empty; 64])
     }
 }
+
 impl Pos64 {
     // is a pawn of colour 'pawn_colour' is either side of square at index i, used for setting polyglot en passant flag
     #[inline(always)]
@@ -68,6 +73,7 @@ impl Pos64 {
 
 #[derive(Debug, PartialEq, Clone)]
 pub struct AttackMap(Vec<Move>);
+
 impl AttackMap {
     const fn new() -> Self {
         Self(Vec::new())
@@ -82,24 +88,6 @@ impl AttackMap {
     }
 }
 
-#[derive(Debug, PartialEq, Eq, Clone, Copy)]
-pub struct DefendMap([bool; 64]);
-impl DefendMap {
-    const fn new() -> Self {
-        Self([false; 64])
-    }
-
-    fn clear(&mut self) {
-        self.0 = [false; 64];
-    }
-}
-
-impl MoveMap for DefendMap {
-    fn add_move(&mut self, mv: &Move) {
-        self.0[mv.to] = true;
-    }
-}
-
 impl MoveMap for AttackMap {
     fn add_move(&mut self, mv: &Move) {
         self.0.push(*mv);
@@ -111,11 +99,12 @@ pub struct Position {
     pub pos64: Pos64,
     pub side: PieceColour,
     pub movegen_flags: MovegenFlags,
-    defend_map: DefendMap, // map of squares opposite colour is defending
+    in_check: bool,
     attack_map: AttackMap, // map of moves from attacking side
     wking_idx: usize,
     bking_idx: usize,
 }
+
 impl Position {
     // new board with starting Position
     pub fn new_starting() -> Self {
@@ -206,8 +195,8 @@ impl Position {
         let mut new = Self {
             pos64: pos,
             side: PieceColour::White,
+            in_check: false,
             movegen_flags,
-            defend_map: DefendMap::new(),
             attack_map: AttackMap::new(),
             wking_idx: 60,
             bking_idx: 4,
@@ -302,8 +291,8 @@ impl Position {
         let mut new = Self {
             pos64: pos,
             side: PieceColour::White,
+            in_check: false,
             movegen_flags,
-            defend_map: DefendMap::new(),
             attack_map: AttackMap::new(),
             wking_idx: 56 + king_start,
             bking_idx: king_start,
@@ -320,8 +309,8 @@ impl Position {
         let mut new = Self {
             pos64,
             side,
+            in_check: false,
             movegen_flags,
-            defend_map: DefendMap::new(),
             attack_map: AttackMap::new(),
             wking_idx: 0,
             bking_idx: 0,
@@ -403,8 +392,8 @@ impl Position {
         Self {
             pos64: self.pos64,
             side: self.side,
+            in_check: self.in_check,
             movegen_flags: self.movegen_flags,
-            defend_map: self.defend_map,
             // create new attack map with empty vec, because it's not needed for testing legality.
             attack_map: AttackMap::new_no_alloc(),
             wking_idx: self.wking_idx,
@@ -413,18 +402,42 @@ impl Position {
     }
 
     pub fn is_move_legal(&self, mv: &Move) -> bool {
-        // TODO defend map only used for castling, so maybe look at where defend map is necessary
-
-        // tests before cloning position
         if mv.piece.ptype == PieceType::King {
-            if self.is_defended(mv.to) {
-                return false;
-            }
             if let MoveType::Castle(castle_mv) = mv.move_type {
-                // if any square the king moves from, through or to are defended, move isnt legal
-                return !(self.is_defended(castle_mv.king_squares.0)
-                    || self.is_defended(castle_mv.king_squares.1)
-                    || self.is_defended(castle_mv.king_squares.2));
+                // can't castle out of check
+                if self.in_check {
+                    return false;
+                }
+
+                let mv_through_idx = castle_mv.king_squares[1];
+                let mv_to_idx = castle_mv.king_squares[2];
+                let mut test_pos = self.test_clone();
+                let king_square = Square::Piece(Piece {
+                    pcolour: self.side,
+                    ptype: PieceType::King,
+                });
+                
+                test_pos.pos64[mv_through_idx] = king_square;
+                test_pos.pos64[mv.from] = Square::Empty;
+                match self.side {
+                    PieceColour::White => test_pos.wking_idx = mv_through_idx,
+                    PieceColour::Black => test_pos.bking_idx = mv_through_idx,
+                }
+                if movegen_in_check(&test_pos.pos64, mv_through_idx) {
+                    return false;
+                }
+
+                test_pos.pos64[mv_to_idx] = king_square;
+                test_pos.pos64[mv_through_idx] = Square::Empty;
+                match self.side {
+                    PieceColour::White => test_pos.wking_idx = mv_to_idx,
+                    PieceColour::Black => test_pos.bking_idx = mv_to_idx,
+                }
+                if movegen_in_check(&test_pos.pos64, mv_to_idx) {
+                    return false;
+                }
+
+                return true;
             }
         }
 
@@ -451,11 +464,6 @@ impl Position {
     }
 
     #[inline(always)]
-    const fn is_defended(&self, i: usize) -> bool {
-        self.defend_map.0[i]
-    }
-
-    #[inline(always)]
     fn get_king_idx(&self) -> usize {
         if self.side == PieceColour::White {
             self.wking_idx
@@ -466,7 +474,7 @@ impl Position {
 
     #[inline(always)]
     pub fn is_in_check(&self) -> bool {
-        self.is_defended(self.get_king_idx())
+        self.in_check
     }
 
     pub fn get_pseudo_legal_moves(&self) -> &Vec<Move> {
@@ -533,23 +541,19 @@ impl Position {
     }
 
     pub(crate) fn gen_maps(&mut self) {
-        self.defend_map.clear();
         self.attack_map.clear();
 
         let pos64 = &self.pos64;
         let movegen_flags = &self.movegen_flags;
-        let side = self.side;
         for (i, s) in pos64.iter().enumerate() {
             if let Square::Piece(p) = s {
-                let is_defending = p.pcolour != side;
-                let map: &mut dyn MoveMap = if is_defending {
-                    &mut self.defend_map
-                } else {
-                    &mut self.attack_map
-                };
-                movegen(pos64, movegen_flags, *p, i, is_defending, map);
+                if p.pcolour != self.side {
+                    continue;
+                }
+                movegen(pos64, movegen_flags, *p, i, false, &mut self.attack_map);
             }
         }
+        self.in_check = movegen_in_check(&self.pos64, self.get_king_idx());
     }
 }
 

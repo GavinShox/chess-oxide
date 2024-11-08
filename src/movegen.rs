@@ -188,12 +188,12 @@ pub enum CastleSide {
     Short,
     Long,
 }
-
+// TODO king squares include to and from indexes, which are already in the move struct. Maybe change this
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
 pub struct CastleMove {
     pub rook_from: usize,
     pub rook_to: usize,
-    pub king_squares: (usize, usize, usize),
+    pub king_squares: [usize; 3],
     pub side: CastleSide,
 }
 
@@ -513,7 +513,7 @@ pub(crate) fn movegen(
                         move_type: MoveType::Castle(CastleMove {
                             rook_from: short_rook_start_idx,
                             rook_to: short_rook_end_idx,
-                            king_squares: (i, short_mv_through_idx, short_mv_to_idx),
+                            king_squares: [i, short_mv_through_idx, short_mv_to_idx],
                             side: CastleSide::Short,
                         }),
                     }),
@@ -540,7 +540,7 @@ pub(crate) fn movegen(
                         move_type: MoveType::Castle(CastleMove {
                             rook_from: long_rook_start_idx,
                             rook_to: long_rook_end_idx,
-                            king_squares: (i, long_mv_through_idx, long_mv_to_idx),
+                            king_squares: [i, long_mv_through_idx, long_mv_to_idx],
                             side: CastleSide::Long,
                         }),
                     }),
