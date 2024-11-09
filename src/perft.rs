@@ -2,6 +2,15 @@ use std::time::{Duration, Instant};
 
 use crate::{board, engine, movegen::*, position::Position, transposition, BoardState};
 
+#[derive(Debug, Default)]
+pub struct PerftNodes {
+    pub nodes: u64,
+    pub captures: u64,
+    pub en_passant: u64,
+    pub castles: u64,
+    pub promotions: u64,
+}
+
 pub fn perft(pos_iterations: u32, engine_iterations: u32) {
     let pos = Position::new_starting();
     let board = board::Board::new();
@@ -37,24 +46,12 @@ pub fn perft(pos_iterations: u32, engine_iterations: u32) {
     println!("Total time elapsed in engine perft: {:?} (after {} iterations)\nAverage time per iteration: {:?}", total_engine_time, engine_iterations, total_engine_time / engine_iterations);
 }
 
-pub fn pos_perft(pos: &Position, depth: u8) -> u64 {
-    let mut nodes: u64 = 0;
-    let mut promotions: u64 = 0;
-    let mut castles: u64 = 0;
-    let mut en_passant: u64 = 0;
-    let mut captures: u64 = 0;
+pub fn pos_perft(pos: &Position, depth: u8) -> PerftNodes {
+    let mut nodes = PerftNodes::default();
 
     let start = Instant::now();
 
-    get_all_legal_positions(
-        pos,
-        depth,
-        &mut nodes,
-        &mut promotions,
-        &mut castles,
-        &mut en_passant,
-        &mut captures,
-    );
+    get_all_legal_positions(pos, depth, &mut nodes);
 
     let duration = start.elapsed();
 
@@ -62,12 +59,12 @@ pub fn pos_perft(pos: &Position, depth: u8) -> u64 {
         "Perft at depth {} (took {:?} to complete):",
         depth, duration
     );
-    println!(" - Nodes: {}", nodes);
+    println!(" - Nodes: {}", nodes.nodes);
     println!(" - Move types breakdown: ");
-    println!(" - Promotions: {}", promotions);
-    println!(" - Castles: {}", castles);
-    println!(" - En Passant: {}", en_passant);
-    println!(" - Captures: {}", captures);
+    println!(" - Promotions: {}", nodes.promotions);
+    println!(" - Castles: {}", nodes.castles);
+    println!(" - En Passant: {}", nodes.en_passant);
+    println!(" - Captures: {}", nodes.captures);
     println!();
 
     nodes
@@ -88,52 +85,37 @@ pub fn engine_perft(bs: &BoardState, depth: u8, tt: &mut transposition::Transpos
 }
 
 #[inline]
-fn get_all_legal_positions(
-    pos: &Position,
-    depth: u8,
-    nodes: &mut u64,
-    promotions: &mut u64,
-    castles: &mut u64,
-    en_passant: &mut u64,
-    captures: &mut u64,
-) {
+fn get_all_legal_positions(pos: &Position, depth: u8, nodes: &mut PerftNodes) {
     let moves = pos.get_legal_moves();
     if depth == 0 || moves.is_empty() {
         return;
     }
     for mv in moves {
-        match mv.move_type {
-            MoveType::EnPassant(_) => {
-                *en_passant += 1;
-            }
-            MoveType::Promotion(_, capture) => {
-                *promotions += 1;
-                if capture.is_some() {
-                    *captures += 1;
-                }
-            }
-            MoveType::Castle(_) => {
-                *castles += 1;
-            }
-            MoveType::Capture(_) => {
-                *captures += 1;
-            }
-            _ => {}
-        }
         if depth == 1 {
-            *nodes += 1;
+            match mv.move_type {
+                MoveType::EnPassant(_) => {
+                    nodes.en_passant += 1;
+                    nodes.captures += 1;
+                }
+                MoveType::Promotion(_, capture) => {
+                    nodes.promotions += 1;
+                    if capture.is_some() {
+                        nodes.captures += 1;
+                    }
+                }
+                MoveType::Castle(_) => {
+                    nodes.castles += 1;
+                }
+                MoveType::Capture(_) => {
+                    nodes.captures += 1;
+                }
+                _ => {}
+            }
+            nodes.nodes += 1;
         } else {
             let p = pos.new_position(mv);
             //let unmake_move = pos.make_move(mv);
-            get_all_legal_positions(
-                &p,
-                depth - 1,
-                nodes,
-                promotions,
-                castles,
-                en_passant,
-                captures,
-            );
+            get_all_legal_positions(&p, depth - 1, nodes);
         }
     }
 }
@@ -180,24 +162,44 @@ mod test {
             .into();
 
         let pos1_nodes = pos_perft(&pos1, 5);
-        assert_eq!(pos1_nodes, 4865609);
+        assert_eq!(pos1_nodes.nodes, 4865609);
+        assert_eq!(pos1_nodes.captures, 82719);
+        assert_eq!(pos1_nodes.en_passant, 258);
+        assert_eq!(pos1_nodes.castles, 0);
+        assert_eq!(pos1_nodes.promotions, 0);
 
         let pos2_nodes = pos_perft(&pos2, 4);
-        assert_eq!(pos2_nodes, 4085603);
+        assert_eq!(pos2_nodes.nodes, 4085603);
+        assert_eq!(pos2_nodes.captures, 757163);
+        assert_eq!(pos2_nodes.en_passant, 1929);
+        assert_eq!(pos2_nodes.castles, 128013);
+        assert_eq!(pos2_nodes.promotions, 15172);
 
         let pos3_nodes = pos_perft(&pos3, 5);
-        assert_eq!(pos3_nodes, 674624);
+        assert_eq!(pos3_nodes.nodes, 674624);
+        assert_eq!(pos3_nodes.captures, 52051);
+        assert_eq!(pos3_nodes.en_passant, 1165);
+        assert_eq!(pos3_nodes.castles, 0);
+        assert_eq!(pos3_nodes.promotions, 0);
 
         let pos4_nodes = pos_perft(&pos4, 5);
-        assert_eq!(pos4_nodes, 15833292);
+        assert_eq!(pos4_nodes.nodes, 15833292);
+        assert_eq!(pos4_nodes.captures, 2046173);
+        assert_eq!(pos4_nodes.en_passant, 6512);
+        assert_eq!(pos4_nodes.castles, 0);
+        assert_eq!(pos4_nodes.promotions, 329464);
 
         let pos4mirrored_nodes = pos_perft(&pos4mirrored, 5);
-        assert_eq!(pos4mirrored_nodes, 15833292);
+        assert_eq!(pos4mirrored_nodes.nodes, 15833292);
+        assert_eq!(pos4mirrored_nodes.captures, 2046173);
+        assert_eq!(pos4mirrored_nodes.en_passant, 6512);
+        assert_eq!(pos4mirrored_nodes.castles, 0);
+        assert_eq!(pos4mirrored_nodes.promotions, 329464);
 
         let pos5_nodes = pos_perft(&pos5, 4);
-        assert_eq!(pos5_nodes, 2103487);
+        assert_eq!(pos5_nodes.nodes, 2103487);
 
         let pos6_nodes = pos_perft(&pos6, 4);
-        assert_eq!(pos6_nodes, 3894594);
+        assert_eq!(pos6_nodes.nodes, 3894594);
     }
 }
