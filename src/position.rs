@@ -205,7 +205,7 @@ impl Position {
         new
     }
 
-    pub fn new_fischer_random() -> Self {
+    pub fn new_chess960_random() -> Self {
         let mut pos: Pos64 = Pos64::default();
         let mut rng = rand::thread_rng();
         let mut remaining_idxs: Vec<usize> = vec![0, 1, 2, 3, 4, 5, 6, 7];

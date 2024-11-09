@@ -69,7 +69,7 @@ impl fmt::Display for GameState {
 pub enum Variant {
     #[default]
     Standard,
-    FischerRandom,
+    Chess960,
 }
 
 impl Variant {
@@ -483,6 +483,7 @@ impl TryFrom<pgn::PGN> for Board {
     type Error = PGNParseError;
 
     fn try_from(pgn: pgn::PGN) -> Result<Self, PGNParseError> {
+        // TODO use FEN if SetUp tag is set, also set variant if that tag is set
         let mut board = Self::new();
         for notation in pgn.moves() {
             let mv = notation.to_move_with_context(board.get_current_state())?;

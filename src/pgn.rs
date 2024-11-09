@@ -99,14 +99,25 @@ impl From<&board::Board> for PGN {
                     }
                 },
             )));
-        // set SetUp and FEN tags if starting position isn't standard
-        let fen = FEN::from(board.get_current_state());
-        if fen.to_string() != STD_STARTING_FEN_STR {
-            new.tags.push(Tag::SetUp("1".to_string()));
-            new.tags.push(Tag::FEN(fen.to_string()));
-        } else {
-            new.tags.push(Tag::SetUp("0".to_string()));
+        match board.get_current_state().variant() {
+            board::Variant::Standard => {
+                let fen = FEN::from(board.get_current_state());
+                if fen.to_string() != STD_STARTING_FEN_STR {
+                    new.tags.push(Tag::Variant("Standard".to_string()));
+                    new.tags.push(Tag::SetUp("1".to_string()));
+                    new.tags.push(Tag::FEN(fen.to_string()));
+                } else {
+                    new.tags.push(Tag::SetUp("0".to_string()));
+                }
+            },
+            board::Variant::Chess960 => {
+                let fen = FEN::from(board.get_current_state());
+                new.tags.push(Tag::Variant("Chess960".to_string()));
+                new.tags.push(Tag::SetUp("1".to_string()));
+                new.tags.push(Tag::FEN(fen.to_string()));
+            },
         }
+        
         new.tags.push(Tag::Termination("UNIMPLEMENTED".to_string()));
         new.tags.push(Tag::Annotator("chess-oxide".to_string()));
         new.moves = board.move_history_notation();
@@ -214,7 +225,7 @@ impl PGN {
         }
     }
 }
-
+// todo add better tests
 #[cfg(test)]
 mod tests {
     use super::*;
