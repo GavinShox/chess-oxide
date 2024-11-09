@@ -581,6 +581,7 @@ impl Board {
         if game_state.is_game_over() {
             self.game_over_state = Some(GameOverState::Forced(game_state));
         }
+        log::info!("Move made: {:?}", mv);
         Ok(game_state)
     }
 
