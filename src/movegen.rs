@@ -18,6 +18,16 @@ pub const STD_SHORT_WHITE_ROOK_START: usize = 63;
 pub const STD_LONG_BLACK_ROOK_START: usize = 0;
 pub const STD_SHORT_BLACK_ROOK_START: usize = 7;
 
+// in both fischer random and standard starting positions
+const BLACK_KING_SHORT_CASTLE_END: usize = 6;
+const BLACK_KING_LONG_CASTLE_END: usize = 2;
+const WHITE_KING_SHORT_CASTLE_END: usize = 62;
+const WHITE_KING_LONG_CASTLE_END: usize = 58;
+const BLACK_ROOK_SHORT_CASTLE_END: usize = 5;
+const BLACK_ROOK_LONG_CASTLE_END: usize = 3;
+const WHITE_ROOK_SHORT_CASTLE_END: usize = 61;
+const WHITE_ROOK_LONG_CASTLE_END: usize = 59;
+
 pub const PROMOTION_PIECE_TYPES: [PieceType; 4] = [
     PieceType::Knight,
     PieceType::Bishop,
@@ -193,7 +203,7 @@ pub enum CastleSide {
 pub struct CastleMove {
     pub rook_from: usize,
     pub rook_to: usize,
-    pub king_squares: [usize; 3],
+    pub king_squares: [usize; 6], // 6 is max number of squares a king can move in a castle I think (chess960)
     pub side: CastleSide,
 }
 
@@ -307,6 +317,43 @@ const fn pawn_is_starting_rank(i: usize, piece: Piece) -> bool {
         PieceColour::White => i < 56 && i > 47,
         PieceColour::Black => i < 16 && i > 7,
     }
+}
+
+#[inline(always)]
+fn is_castle_possible(
+    pos: &position::Pos64,
+    king_start: usize,
+    king_end: usize,
+    rook_start: usize,
+    rook_end: usize,
+    king_squares: &mut [usize; 6],
+) -> bool {
+    let king_direction = if king_start < king_end { 1 } else { -1 };
+    let rook_direction = if rook_start < rook_end { 1 } else { -1 };
+
+    // Check if squares between king's start and end(inclusive) are empty and populate king_squares
+    for j in 1..=(king_end as i32 - king_start as i32).abs() {
+        let idx = (king_start as i32 + j * king_direction) as usize;
+        king_squares[j as usize] = idx;
+
+        if let Square::Piece(p) = pos[idx] {
+            if !(p.ptype == PieceType::Rook && idx == rook_start) {
+                return false;
+            }
+        }
+    }
+
+    // Check if squares between rook's start and end are empty(inclusive)
+    for j in 1..=(rook_end as i32 - rook_start as i32).abs() {
+        let idx = (rook_start as i32 + j * rook_direction) as usize;
+        if let Square::Piece(p) = pos[idx] {
+            if !(p.ptype == PieceType::King && idx == king_start) {
+                return false;
+            }
+        }
+    }
+
+    true
 }
 
 // generates moves for the piece at index i, only checks legality regarding where pieces could possibly move to
@@ -469,64 +516,101 @@ pub(crate) fn movegen(
         }
     }
 
-    // finally, movegen for castling
-    if piece.ptype == PieceType::King
-        && ((piece.pcolour == PieceColour::White && i == movegen_flags.white_king_start)
-            || (piece.pcolour == PieceColour::Black && i == movegen_flags.black_king_start))
-    {
-        // no need to check mailbox, or check if an index is out of bounds
-        // as we check that the king is on its starting square
+    // Castling movegen
+    if piece.ptype == PieceType::King {
+        let (king_start, rook_short_start, rook_long_start, short_castle, long_castle) =
+            match piece.pcolour {
+                PieceColour::White => (
+                    movegen_flags.white_king_start,
+                    movegen_flags.short_white_rook_start,
+                    movegen_flags.long_white_rook_start,
+                    movegen_flags.white_castle_short,
+                    movegen_flags.white_castle_long,
+                ),
+                PieceColour::Black => (
+                    movegen_flags.black_king_start,
+                    movegen_flags.short_black_rook_start,
+                    movegen_flags.long_black_rook_start,
+                    movegen_flags.black_castle_short,
+                    movegen_flags.black_castle_long,
+                ),
+            };
 
-        if (piece.pcolour == PieceColour::White && movegen_flags.white_castle_short)
-            || (piece.pcolour == PieceColour::Black && movegen_flags.black_castle_short)
-        {
-            let short_mv_through_idx = i + 1;
-            let short_mv_to_idx = i + 2;
-            let short_rook_start_idx = i + 3;
-            let short_rook_end_idx = short_mv_through_idx;
-            if matches!(&pos[short_mv_through_idx], Square::Empty)
-                && matches!(&pos[short_mv_to_idx], Square::Empty)
-            {
-                mv_map.add_move(
-                    &(Move {
-                        piece,
-                        from: i,
-                        to: short_mv_to_idx,
-                        move_type: MoveType::Castle(CastleMove {
-                            rook_from: short_rook_start_idx,
-                            rook_to: short_rook_end_idx,
-                            king_squares: [i, short_mv_through_idx, short_mv_to_idx],
-                            side: CastleSide::Short,
+        if i == king_start {
+            let king_short_end = if piece.pcolour == PieceColour::White {
+                WHITE_KING_SHORT_CASTLE_END
+            } else {
+                BLACK_KING_SHORT_CASTLE_END
+            };
+
+            let king_long_end = if piece.pcolour == PieceColour::White {
+                WHITE_KING_LONG_CASTLE_END
+            } else {
+                BLACK_KING_LONG_CASTLE_END
+            };
+
+            let rook_short_end = if piece.pcolour == PieceColour::White {
+                WHITE_ROOK_SHORT_CASTLE_END
+            } else {
+                BLACK_ROOK_SHORT_CASTLE_END
+            };
+
+            let rook_long_end = if piece.pcolour == PieceColour::White {
+                WHITE_ROOK_LONG_CASTLE_END
+            } else {
+                BLACK_ROOK_LONG_CASTLE_END
+            };
+
+            if short_castle {
+                let mut king_squares = [i; 6];
+                if is_castle_possible(
+                    pos,
+                    i,
+                    king_short_end,
+                    rook_short_start,
+                    rook_short_end,
+                    &mut king_squares,
+                ) {
+                    mv_map.add_move(
+                        &(Move {
+                            piece,
+                            from: i,
+                            to: king_short_end,
+                            move_type: MoveType::Castle(CastleMove {
+                                rook_from: rook_short_start,
+                                rook_to: rook_short_end,
+                                king_squares,
+                                side: CastleSide::Short,
+                            }),
                         }),
-                    }),
-                );
+                    );
+                }
             }
-        }
-        if (piece.pcolour == PieceColour::White && movegen_flags.white_castle_long)
-            || (piece.pcolour == PieceColour::Black && movegen_flags.black_castle_long)
-        {
-            let long_mv_through_idx = i - 1;
-            let long_mv_to_idx = i - 2;
-            let long_mv_past_idx = i - 3; // sqaure not in kings path but still needs to be empty for rook
-            let long_rook_start_idx = i - 4;
-            let long_rook_end_idx = long_mv_through_idx;
-            if matches!(&pos[long_mv_through_idx], Square::Empty)
-                && matches!(&pos[long_mv_to_idx], Square::Empty)
-                && matches!(&pos[long_mv_past_idx], Square::Empty)
-            {
-                mv_map.add_move(
-                    &(Move {
-                        piece,
-                        from: i,
-                        to: long_mv_to_idx,
-                        move_type: MoveType::Castle(CastleMove {
-                            rook_from: long_rook_start_idx,
-                            rook_to: long_rook_end_idx,
-                            king_squares: [i, long_mv_through_idx, long_mv_to_idx],
-                            side: CastleSide::Long,
+
+            if long_castle {
+                let mut king_squares = [i; 6];
+                if is_castle_possible(
+                    pos,
+                    i,
+                    king_long_end,
+                    rook_long_start,
+                    rook_long_end,
+                    &mut king_squares,
+                ) {
+                    mv_map.add_move(
+                        &(Move {
+                            piece,
+                            from: i,
+                            to: king_long_end,
+                            move_type: MoveType::Castle(CastleMove {
+                                rook_from: rook_long_start,
+                                rook_to: rook_long_end,
+                                king_squares,
+                                side: CastleSide::Long,
+                            }),
                         }),
-                    }),
-                );
+                    );
+                }
             }
         }
     }

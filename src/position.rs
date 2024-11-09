@@ -408,7 +408,7 @@ impl Position {
                 if self.in_check {
                     return false;
                 }
-
+                // todo doesnt work for chess960 there can be more king squares
                 let mv_through_idx = castle_mv.king_squares[1];
                 let mv_to_idx = castle_mv.king_squares[2];
                 let mut test_pos = self.test_clone();
@@ -433,6 +433,14 @@ impl Position {
                     PieceColour::White => test_pos.wking_idx = mv_to_idx,
                     PieceColour::Black => test_pos.bking_idx = mv_to_idx,
                 }
+                if movegen_in_check(&test_pos.pos64, mv_to_idx) {
+                    return false;
+                }
+
+                // only needed for chess960 positions when moving the your rook will open a discovered check
+                // example position: (wKb1, wRb1, bKe8, bRa1) white castles a-side (long)
+                test_pos.pos64[castle_mv.rook_to] = test_pos.pos64[castle_mv.rook_from];
+                test_pos.pos64[castle_mv.rook_from] = Square::Empty;
                 if movegen_in_check(&test_pos.pos64, mv_to_idx) {
                     return false;
                 }
