@@ -102,7 +102,7 @@ impl From<&board::Board> for PGN {
             )));
         match board.variant() {
             board::Variant::Standard => {
-                let fen = FEN::from(board.get_current_state());
+                let fen = FEN::from(board.get_starting_state());
                 if fen.to_string() != STD_STARTING_FEN_STR {
                     new.tags.push(Tag::Variant("Standard".to_string()));
                     new.tags.push(Tag::SetUp("1".to_string()));
