@@ -1,5 +1,4 @@
 use core::fmt;
-use std::rc::Rc;
 
 use ahash;
 use log;
@@ -65,23 +64,8 @@ impl fmt::Display for GameState {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
-pub enum Variant {
-    #[default]
-    Standard,
-    Chess960,
-}
-
-impl Variant {
-    #[inline]
-    pub fn is_standard(&self) -> bool {
-        matches!(self, Self::Standard)
-    }
-}
-
 #[derive(Debug, Clone)]
 pub struct BoardState {
-    pub variant: Variant,
     pub side_to_move: PieceColour,
     pub last_move: Move,
     legal_moves: Vec<Move>,
@@ -104,12 +88,7 @@ impl From<FEN> for BoardState {
     fn from(fen: FEN) -> Self {
         let pos = Position::from(fen);
         // FEN only compatible with standard variant
-        Self::from_parts(
-            Variant::Standard,
-            pos,
-            fen.halfmove_count(),
-            fen.move_count(),
-        )
+        Self::from_parts(pos, fen.halfmove_count(), fen.move_count())
     }
 }
 
@@ -127,7 +106,6 @@ impl BoardState {
         position_occurences.insert(position_hash, 1);
         log::info!("New starting BoardState created");
         BoardState {
-            variant: Variant::Standard,
             position,
             move_count: 1, // movecount starts at 1
             halfmove_count: 0,
@@ -141,12 +119,33 @@ impl BoardState {
         }
     }
 
-    pub(crate) fn from_parts(
-        variant: Variant,
-        position: Position,
-        halfmove_count: u32,
-        move_count: u32,
-    ) -> Self {
+    pub fn new_chess960() -> Self {
+        let position = Position::new_chess960_random();
+        log::info!("New Chess960 Position created");
+        let position_hash: PositionHash = position.pos_hash();
+        let board_hash = zobrist::board_state_hash(position_hash, 1, 0);
+        let side_to_move = position.side;
+        // deref all legal moves, performance isn't as important here, so avoid lifetime specifiers to make things easier to look at
+        let legal_moves = position.get_legal_moves().into_iter().cloned().collect();
+        log::trace!("Legal moves generated: {legal_moves:?}");
+        let mut position_occurences = ahash::AHashMap::default();
+        position_occurences.insert(position_hash, 1);
+        log::info!("New Chess960 BoardState created");
+        BoardState {
+            position,
+            move_count: 1, // movecount starts at 1
+            halfmove_count: 0,
+            position_hash,
+            board_hash,
+            side_to_move,
+            last_move: NULL_MOVE,
+            legal_moves,
+            position_occurences,
+            lazy_legal_moves: false,
+        }
+    }
+
+    pub(crate) fn from_parts(position: Position, halfmove_count: u32, move_count: u32) -> Self {
         let position_hash: PositionHash = position.pos_hash();
         let board_hash = zobrist::board_state_hash(position_hash, 1, halfmove_count);
         let side_to_move = position.side;
@@ -156,7 +155,6 @@ impl BoardState {
         position_occurences.insert(position_hash, 1);
         log::info!("New BoardState created from parts");
         BoardState {
-            variant,
             position,
             move_count,
             halfmove_count,
@@ -172,10 +170,6 @@ impl BoardState {
 
     pub(crate) fn position(&self) -> &Position {
         &self.position
-    }
-
-    pub fn variant(&self) -> Variant {
-        self.variant
     }
 
     pub fn halfmove_count(&self) -> u32 {
@@ -249,7 +243,6 @@ impl BoardState {
 
         log::trace!("New BoardState created from move: {:?}", mv);
         Self {
-            variant: self.variant,
             side_to_move,
             last_move,
             legal_moves,
@@ -334,7 +327,6 @@ impl BoardState {
 
         log::trace!("New BoardState created from move: {:?}", mv);
         Ok(Self {
-            variant: self.variant,
             side_to_move,
             last_move,
             legal_moves,
@@ -447,8 +439,23 @@ pub enum GameOverState {
     Forced(GameState),
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum Variant {
+    #[default]
+    Standard,
+    Chess960,
+}
+
+impl Variant {
+    #[inline]
+    pub fn is_standard(&self) -> bool {
+        matches!(self, Self::Standard)
+    }
+}
+
 #[derive(Debug, Clone)]
 pub struct Board {
+    variant: Variant,
     current_state: BoardState,
     state_history: Vec<BoardState>,
     move_history: Vec<Move>,
@@ -470,6 +477,7 @@ impl From<FEN> for Board {
         // TODO gos
         log::info!("New Board created from FEN: {}", fen.to_string());
         Board {
+            variant: Variant::Standard,
             current_state,
             state_history,
             move_history: Vec::new(),
@@ -483,8 +491,24 @@ impl TryFrom<pgn::PGN> for Board {
     type Error = PGNParseError;
 
     fn try_from(pgn: pgn::PGN) -> Result<Self, PGNParseError> {
-        // TODO use FEN if SetUp tag is set, also set variant if that tag is set
-        let mut board = Self::new();
+        let fen_tag = pgn.tags().iter().find(|tag| match tag {
+            Tag::FEN(_) => true,
+            _ => false,
+        });
+
+        let mut board = match fen_tag {
+            Some(Tag::FEN(fen_str)) => {
+                let fen = fen_str.parse::<FEN>();
+                match fen {
+                    Ok(fen) => Board::from(fen),
+                    Err(e) => {
+                        log_and_return_error!(PGNParseError::NotationParseError(e.to_string()))
+                    }
+                }
+            }
+            _ => Board::new(),
+        };
+
         for notation in pgn.moves() {
             let mv = notation.to_move_with_context(board.get_current_state())?;
             match board.make_move(&mv) {
@@ -519,6 +543,26 @@ impl Board {
         log::info!("Transposition table created");
         log::info!("New Board created");
         Board {
+            variant: Variant::Standard,
+            current_state,
+            state_history,
+            move_history: Vec::new(),
+            game_over_state: None,
+            transposition_table,
+        }
+    }
+
+    pub fn new_chess960() -> Self {
+        let current_state = BoardState::new_chess960();
+        let mut state_history: Vec<BoardState> = Vec::new();
+        log::info!("State history created");
+        state_history.push(current_state.clone());
+
+        let transposition_table = transposition::TranspositionTable::new();
+        log::info!("Transposition table created");
+        log::info!("New Chess960 variant Board created");
+        Board {
+            variant: Variant::Chess960,
             current_state,
             state_history,
             move_history: Vec::new(),
@@ -566,6 +610,10 @@ impl Board {
 
     pub fn get_game_over_state(&self) -> Option<GameOverState> {
         self.game_over_state
+    }
+
+    pub fn variant(&self) -> Variant {
+        self.variant
     }
 
     pub fn make_move(&mut self, mv: &Move) -> Result<GameState, BoardStateError> {
@@ -617,10 +665,6 @@ impl Board {
             notations.push(notation);
         }
         notations
-    }
-
-    pub fn unmake_move(&mut self) -> Result<Rc<BoardState>, BoardStateError> {
-        todo!()
     }
 
     pub fn get_current_gamestate(&self) -> GameState {

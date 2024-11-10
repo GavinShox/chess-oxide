@@ -10,6 +10,9 @@ use crate::position::{Pos64, Position};
 pub const STD_STARTING_FEN_STR: &str = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
 const ABOVE_BELOW: usize = 8; // 8 indexes from i is the square directly above/below in the pos64 array
 
+// TODO add support for XFEN allowing changing starting
+// rook and king movegen positions to support chess960 and add variant tag so a board can be made from a XFEN FEN struct
+// Dont just create a brand new struct just for XFEN would cause loads of code duplication
 #[derive(Debug, Clone, Copy)]
 pub struct FEN {
     pos64: Pos64,

@@ -22,6 +22,7 @@ enum PGNResult {
     Draw,
     Undecided,
 }
+
 impl fmt::Display for PGNResult {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         match self {
@@ -99,7 +100,7 @@ impl From<&board::Board> for PGN {
                     }
                 },
             )));
-        match board.get_current_state().variant() {
+        match board.variant() {
             board::Variant::Standard => {
                 let fen = FEN::from(board.get_current_state());
                 if fen.to_string() != STD_STARTING_FEN_STR {
@@ -109,15 +110,15 @@ impl From<&board::Board> for PGN {
                 } else {
                     new.tags.push(Tag::SetUp("0".to_string()));
                 }
-            },
+            }
             board::Variant::Chess960 => {
                 let fen = FEN::from(board.get_current_state());
                 new.tags.push(Tag::Variant("Chess960".to_string()));
                 new.tags.push(Tag::SetUp("1".to_string()));
                 new.tags.push(Tag::FEN(fen.to_string()));
-            },
+            }
         }
-        
+
         new.tags.push(Tag::Termination("UNIMPLEMENTED".to_string()));
         new.tags.push(Tag::Annotator("chess-oxide".to_string()));
         new.moves = board.move_history_notation();
