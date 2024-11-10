@@ -1,6 +1,7 @@
 use std::ops::Deref;
 use std::ops::Index;
 use std::ops::IndexMut;
+use std::vec;
 
 use rand::seq::SliceRandom;
 
@@ -205,8 +206,89 @@ impl Position {
         new
     }
 
+    // derive a chess960 position from a number between 0 and 959 using fischer random numbering scheme
+    // https://en.wikipedia.org/wiki/Fischer_random_chess_numbering_scheme
+    pub fn new_chess960_number_derive(mut number: usize) -> Self {
+        assert!(number < 960); // todo should proper error handling be done
+        let mut pieces = vec![PieceType::King; 8]; // placeholder piecetypes
+
+        // get dark square bishop index first as this number derivation scheme
+        // is from perspective of white's starting pieces so these are light squares from white's perspective
+        let dark_sq_idxs = vec![1, 3, 5, 7];
+        pieces[dark_sq_idxs[number % 4]] = PieceType::Bishop;
+        number /= 4;
+
+        // get light square bishop index
+        let light_sq_idxs = vec![0, 2, 4, 6];
+        pieces[light_sq_idxs[number % 4]] = PieceType::Bishop;
+        number /= 4;
+
+        // set queen position
+        let mut queen_offset = number % 6;
+        number /= 6;
+        // we skip over queen_offset number of placeholder piecetypes (kings) before assigning queen
+        for piece in pieces.iter_mut() {
+            if *piece == PieceType::King {
+                if queen_offset == 0 {
+                    *piece = PieceType::Queen;
+                    break;
+                }
+                queen_offset -= 1;
+            }
+        }
+
+        // set knights based off below table
+        const KNIGHT_OFFSETS: [(usize, usize); 10] = [
+            (0, 1),
+            (0, 2),
+            (0, 3),
+            (0, 4),
+            (1, 2),
+            (1, 3),
+            (1, 4),
+            (2, 3),
+            (2, 4),
+            (3, 4),
+        ];
+        let mut knight_offset_1 = KNIGHT_OFFSETS[number].0;
+        let mut knight_offset_2 = KNIGHT_OFFSETS[number].1;
+        // will both be guaranteed overwritten, rust compiler doesn't allow these to be uninitialised
+        let mut knight_piece_1_idx = usize::MAX;
+        let mut knight_piece_2_idx = usize::MAX;
+        for (i, piece) in pieces.iter().enumerate() {
+            if *piece == PieceType::King {
+                if knight_offset_1 == 0 {
+                    knight_piece_1_idx = i;
+                    break;
+                }
+                knight_offset_1 -= 1;
+            }
+        }
+        for (i, piece) in pieces.iter().enumerate() {
+            if *piece == PieceType::King {
+                if knight_offset_2 == 0 {
+                    knight_piece_2_idx = i;
+                    break;
+                }
+                knight_offset_2 -= 1;
+            }
+        }
+        pieces[knight_piece_1_idx] = PieceType::Knight;
+        pieces[knight_piece_2_idx] = PieceType::Knight;
+
+        // finally rooks and king in last 3 spots
+        let mut king_rooks = vec![PieceType::Rook, PieceType::King, PieceType::Rook];
+        for piece in pieces.iter_mut() {
+            if *piece == PieceType::King {
+                *piece = king_rooks.pop().unwrap();
+            }
+        }
+
+        Self::new_from_piecetypes(pieces)
+    }
+
     pub fn new_chess960_random() -> Self {
-        let mut pos: Pos64 = Pos64::default();
+        // todo maybe just pick a random number between 0 and 959 and call new_chess960_number_derive
         let mut rng = rand::thread_rng();
         let mut remaining_idxs: Vec<usize> = vec![0, 1, 2, 3, 4, 5, 6, 7];
         let mut pieces = vec![PieceType::King; 8]; // placeholder piecetypes
@@ -245,6 +327,15 @@ impl Position {
         pieces[king_start] = PieceType::King;
         pieces[short_rook_start] = PieceType::Rook;
 
+        Self::new_from_piecetypes(pieces)
+    }
+
+    // takes a chess960 Vec<PieceType> back rank and generates a position
+    fn new_from_piecetypes(pieces: Vec<PieceType>) -> Self {
+        let king_start = pieces.iter().position(|&x| x == PieceType::King).unwrap();
+        let long_rook_start = pieces.iter().position(|&x| x == PieceType::Rook).unwrap();
+        let short_rook_start = pieces.iter().rposition(|&x| x == PieceType::Rook).unwrap();
+
         let movegen_flags = MovegenFlags {
             white_castle_short: true,
             white_castle_long: true,
@@ -259,6 +350,8 @@ impl Position {
             long_black_rook_start: long_rook_start,
             short_black_rook_start: short_rook_start,
         };
+
+        let mut pos: Pos64 = Pos64::default();
 
         for i in 0..8 {
             pos[i] = Square::Piece(Piece {
