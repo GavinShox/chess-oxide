@@ -209,32 +209,32 @@ impl Position {
         let mut pos: Pos64 = Pos64::default();
         let mut rng = rand::thread_rng();
         let mut remaining_idxs: Vec<usize> = vec![0, 1, 2, 3, 4, 5, 6, 7];
-        let mut pieces = Vec::with_capacity(8);
+        let mut pieces = vec![PieceType::King; 8]; // placeholder piecetypes
 
         // chose index for light square bishop
         let light_sq_idxs = vec![0, 2, 4, 6];
         let light_bishop_start = *light_sq_idxs.choose(&mut rng).unwrap();
-        remaining_idxs.remove(light_bishop_start);
+        remaining_idxs.retain(|&x| x != light_bishop_start);
         pieces[light_bishop_start] = PieceType::Bishop;
 
         // chose index for dark square bishop
         let dark_sq_idxs = vec![1, 3, 5, 7];
         let dark_bishop_start = *dark_sq_idxs.choose(&mut rng).unwrap();
-        remaining_idxs.remove(dark_bishop_start);
+        remaining_idxs.retain(|&x| x != dark_bishop_start);
         pieces[dark_bishop_start] = PieceType::Bishop;
 
         // chose index for queen
         let queen_start = *remaining_idxs.choose(&mut rng).unwrap();
-        remaining_idxs.remove(queen_start);
+        remaining_idxs.retain(|&x| x != queen_start);
         pieces[queen_start] = PieceType::Queen;
 
         // choose index for knights
         let knight1_start = *remaining_idxs.choose(&mut rng).unwrap();
-        remaining_idxs.remove(knight1_start);
+        remaining_idxs.retain(|&x| x != knight1_start);
         pieces[knight1_start] = PieceType::Knight;
 
         let knight2_start = *remaining_idxs.choose(&mut rng).unwrap();
-        remaining_idxs.remove(knight2_start);
+        remaining_idxs.retain(|&x| x != knight2_start);
         pieces[knight2_start] = PieceType::Knight;
 
         // remaining indexes are required to be rook-king-rook
@@ -333,8 +333,26 @@ impl Position {
                 new_pos.pos64[ep_capture] = Square::Empty;
             }
             MoveType::Castle(castle_mv) => {
-                new_pos.pos64[castle_mv.rook_to] = new_pos.pos64[castle_mv.rook_from];
-                new_pos.pos64[castle_mv.rook_from] = Square::Empty;
+                if castle_mv.rook_from != castle_mv.rook_to {
+                    new_pos.pos64[castle_mv.rook_to] = Square::Piece(Piece {
+                        pcolour: self.side,
+                        ptype: PieceType::Rook,
+                    });
+                    new_pos.pos64[castle_mv.rook_from] = Square::Empty;
+                }
+
+                if mv.from != mv.to {
+                    new_pos.pos64[mv.to] = Square::Piece(Piece {
+                        pcolour: self.side,
+                        ptype: PieceType::King,
+                    });
+                    if castle_mv.rook_to != mv.from {
+                        new_pos.pos64[mv.from] = Square::Empty;
+                    }
+                }
+                new_pos.toggle_side();
+                new_pos.gen_maps();
+                return new_pos;
             }
             MoveType::Promotion(ptype, _) => match &mut new_pos.pos64[mv.from] {
                 Square::Piece(p) => {
@@ -408,41 +426,57 @@ impl Position {
                 if self.in_check {
                     return false;
                 }
-                // todo doesnt work for chess960 there can be more king squares
-                let mv_through_idx = castle_mv.king_squares[1];
-                let mv_to_idx = castle_mv.king_squares[2];
-                let mut test_pos = self.test_clone();
+
                 let king_square = Square::Piece(Piece {
                     pcolour: self.side,
                     ptype: PieceType::King,
                 });
 
-                test_pos.pos64[mv_through_idx] = king_square;
-                test_pos.pos64[mv.from] = Square::Empty;
-                match self.side {
-                    PieceColour::White => test_pos.wking_idx = mv_through_idx,
-                    PieceColour::Black => test_pos.bking_idx = mv_through_idx,
-                }
-                if movegen_in_check(&test_pos.pos64, mv_through_idx) {
-                    return false;
+                let rook_square = Square::Piece(Piece {
+                    pcolour: self.side,
+                    ptype: PieceType::Rook,
+                });
+
+                // fixme this is hacky and doesnt work for more than 3 king squares
+                let mv_through_idx = castle_mv.king_squares[1];
+                let mv_to_idx = castle_mv.king_squares[2];
+                let mut test_pos = self.test_clone();
+                if mv.from != mv.to {
+                    // todo doesnt work for chess960 there can be more king squares
+
+                    test_pos.pos64[mv_through_idx] = king_square;
+                    test_pos.pos64[mv.from] = Square::Empty;
+                    match self.side {
+                        PieceColour::White => test_pos.wking_idx = mv_through_idx,
+                        PieceColour::Black => test_pos.bking_idx = mv_through_idx,
+                    }
+                    if movegen_in_check(&test_pos.pos64, mv_through_idx) {
+                        return false;
+                    }
+
+                    if mv_through_idx != mv_to_idx {
+                        test_pos.pos64[mv_to_idx] = king_square;
+                        test_pos.pos64[mv_through_idx] = Square::Empty;
+                        match self.side {
+                            PieceColour::White => test_pos.wking_idx = mv_to_idx,
+                            PieceColour::Black => test_pos.bking_idx = mv_to_idx,
+                        }
+                        if movegen_in_check(&test_pos.pos64, mv_to_idx) {
+                            return false;
+                        }
+                    }
                 }
 
-                test_pos.pos64[mv_to_idx] = king_square;
-                test_pos.pos64[mv_through_idx] = Square::Empty;
-                match self.side {
-                    PieceColour::White => test_pos.wking_idx = mv_to_idx,
-                    PieceColour::Black => test_pos.bking_idx = mv_to_idx,
-                }
-                if movegen_in_check(&test_pos.pos64, mv_to_idx) {
-                    return false;
-                }
-
-                // only needed for chess960 positions when moving the your rook will open a discovered check
-                // example position: (wKb1, wRb1, bKe8, bRa1) white castles a-side (long)
-                test_pos.pos64[castle_mv.rook_to] = test_pos.pos64[castle_mv.rook_from];
-                test_pos.pos64[castle_mv.rook_from] = Square::Empty;
-                if movegen_in_check(&test_pos.pos64, mv_to_idx) {
-                    return false;
+                if castle_mv.rook_from != castle_mv.rook_to {
+                    // only needed for chess960 positions when moving the your rook will open a discovered check
+                    // example position: (wKb1, wRb1, bKe8, bRa1) white castles a-side (long)
+                    test_pos.pos64[castle_mv.rook_to] = rook_square;
+                    if castle_mv.rook_from != mv.to {
+                        test_pos.pos64[castle_mv.rook_from] = Square::Empty;
+                    }
+                    if movegen_in_check(&test_pos.pos64, mv_to_idx) {
+                        return false;
+                    }
                 }
 
                 return true;
