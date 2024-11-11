@@ -4,6 +4,7 @@ use std::ops::IndexMut;
 use std::vec;
 
 use rand::seq::SliceRandom;
+use rand::Rng;
 
 use crate::fen::FEN;
 use crate::mailbox;
@@ -291,46 +292,7 @@ impl Position {
     }
 
     pub fn new_chess960_random() -> Self {
-        // todo maybe just pick a random number between 0 and 959 and call new_chess960_number_derive
-        let mut rng = rand::thread_rng();
-        let mut remaining_idxs: Vec<usize> = vec![0, 1, 2, 3, 4, 5, 6, 7];
-        let mut pieces = vec![PieceType::King; 8]; // placeholder piecetypes
-
-        // chose index for light square bishop
-        let light_sq_idxs = vec![0, 2, 4, 6];
-        let light_bishop_start = *light_sq_idxs.choose(&mut rng).unwrap();
-        remaining_idxs.retain(|&x| x != light_bishop_start);
-        pieces[light_bishop_start] = PieceType::Bishop;
-
-        // chose index for dark square bishop
-        let dark_sq_idxs = vec![1, 3, 5, 7];
-        let dark_bishop_start = *dark_sq_idxs.choose(&mut rng).unwrap();
-        remaining_idxs.retain(|&x| x != dark_bishop_start);
-        pieces[dark_bishop_start] = PieceType::Bishop;
-
-        // chose index for queen
-        let queen_start = *remaining_idxs.choose(&mut rng).unwrap();
-        remaining_idxs.retain(|&x| x != queen_start);
-        pieces[queen_start] = PieceType::Queen;
-
-        // choose index for knights
-        let knight1_start = *remaining_idxs.choose(&mut rng).unwrap();
-        remaining_idxs.retain(|&x| x != knight1_start);
-        pieces[knight1_start] = PieceType::Knight;
-
-        let knight2_start = *remaining_idxs.choose(&mut rng).unwrap();
-        remaining_idxs.retain(|&x| x != knight2_start);
-        pieces[knight2_start] = PieceType::Knight;
-
-        // remaining indexes are required to be rook-king-rook
-        let long_rook_start = remaining_idxs[0];
-        let king_start = remaining_idxs[1];
-        let short_rook_start = remaining_idxs[2];
-        pieces[long_rook_start] = PieceType::Rook;
-        pieces[king_start] = PieceType::King;
-        pieces[short_rook_start] = PieceType::Rook;
-
-        Self::new_from_piecetypes(pieces)
+        Self::new_chess960_number_derive(rand::thread_rng().gen_range(0..960))
     }
 
     // takes a chess960 Vec<PieceType> back rank and generates a position
