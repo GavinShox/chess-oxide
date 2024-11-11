@@ -8,23 +8,24 @@ export component MoveHistory inherits Rectangle {
         padding: 10px;
         spacing: 10px;
         Text {
-            horizontal-alignment: center;
+            horizontal-alignment: left;
             text: "Move History:";
             font-size: 18px;
             font-weight: 500;
         }
 
-        Rectangle {
-            border-color: black;
-            border-radius: 5px;
-            border-width: 1px;
-            width: 200px;
+        // Rectangle {
+        //     border-color: black;
+        //     border-radius: 5px;
+        //     border-width: 1px;
+        //     width: 200px;
             ListView {
+                width: 150px;
                 for move in move-history: Text {
                     text: " " + move.move-number + ". " + move.notation1 + " " + move.notation2;
                     font-size: 16px;
                 }
             }
-        }
+        //}
     }
 }
