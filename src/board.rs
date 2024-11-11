@@ -18,6 +18,9 @@ use crate::util;
 use crate::zobrist;
 use crate::zobrist::PositionHash;
 
+const DEFAULT_HALFMOVE_COUNT: u32 = 0;
+const DEFAULT_MOVE_COUNT: u32 = 1; // movecount starts at 1
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum GameState {
     Check,
@@ -87,7 +90,6 @@ impl PartialEq for BoardState {
 impl From<FEN> for BoardState {
     fn from(fen: FEN) -> Self {
         let pos = Position::from(fen);
-        // FEN only compatible with standard variant
         Self::from_parts(pos, fen.halfmove_count(), fen.move_count())
     }
 }
@@ -96,53 +98,34 @@ impl BoardState {
     pub fn new_starting() -> Self {
         let position = Position::new_starting();
         log::info!("New starting Position created");
-        let position_hash: PositionHash = position.pos_hash();
-        let board_hash = zobrist::board_state_hash(position_hash, 1, 0);
-        let side_to_move = position.side;
-        // deref all legal moves, performance isn't as important here, so avoid lifetime specifiers to make things easier to look at
-        let legal_moves = position.get_legal_moves().into_iter().cloned().collect();
-        log::trace!("Legal moves generated: {legal_moves:?}");
-        let mut position_occurences = ahash::AHashMap::default();
-        position_occurences.insert(position_hash, 1);
-        log::info!("New starting BoardState created");
-        BoardState {
-            position,
-            move_count: 1, // movecount starts at 1
-            halfmove_count: 0,
-            position_hash,
-            board_hash,
-            side_to_move,
-            last_move: NULL_MOVE,
-            legal_moves,
-            position_occurences,
-            lazy_legal_moves: false,
-        }
+        Self::from_parts(position, DEFAULT_HALFMOVE_COUNT, DEFAULT_MOVE_COUNT)
     }
 
     pub fn new_chess960() -> Self {
         let position = Position::new_chess960_random();
-        log::info!("New Chess960 Position created");
-        let position_hash: PositionHash = position.pos_hash();
-        let board_hash = zobrist::board_state_hash(position_hash, 1, 0);
-        let side_to_move = position.side;
-        // deref all legal moves, performance isn't as important here, so avoid lifetime specifiers to make things easier to look at
-        let legal_moves = position.get_legal_moves().into_iter().cloned().collect();
-        log::trace!("Legal moves generated: {legal_moves:?}");
-        let mut position_occurences = ahash::AHashMap::default();
-        position_occurences.insert(position_hash, 1);
-        log::info!("New Chess960 BoardState created");
-        BoardState {
-            position,
-            move_count: 1, // movecount starts at 1
-            halfmove_count: 0,
-            position_hash,
-            board_hash,
-            side_to_move,
-            last_move: NULL_MOVE,
-            legal_moves,
-            position_occurences,
-            lazy_legal_moves: false,
+        log::info!("New random Chess960 Position created");
+        Self::from_parts(position, DEFAULT_HALFMOVE_COUNT, DEFAULT_MOVE_COUNT)
+    }
+
+    pub fn new_chess960_from_num(position_number: usize) -> Result<Self, BoardStateError> {
+        if position_number > 959 {
+            let err = BoardStateError::InvalidInput(format!(
+                "Chess960 position number {} is out of range. Must be between 0 and 959",
+                position_number
+            ));
+            log_and_return_error!(err)
         }
+        let position = Position::new_chess960_number_derive(position_number);
+        log::info!(
+            "New Chess960 Position created from position number: {}",
+            position_number
+        );
+
+        Ok(Self::from_parts(
+            position,
+            DEFAULT_HALFMOVE_COUNT,
+            DEFAULT_MOVE_COUNT,
+        ))
     }
 
     pub(crate) fn from_parts(position: Position, halfmove_count: u32, move_count: u32) -> Self {
@@ -153,7 +136,12 @@ impl BoardState {
         let legal_moves = position.get_legal_moves().into_iter().cloned().collect();
         let mut position_occurences = ahash::AHashMap::default();
         position_occurences.insert(position_hash, 1);
-        log::info!("New BoardState created from parts");
+        log::info!(
+            "New BoardState created from position: {} halfmove_count: {} move_count: {}",
+            util::hash_to_string(position_hash),
+            halfmove_count,
+            move_count
+        );
         BoardState {
             position,
             move_count,
@@ -569,6 +557,25 @@ impl Board {
             game_over_state: None,
             transposition_table,
         }
+    }
+
+    pub fn new_chess960_from_num(position_number: usize) -> Result<Self, BoardStateError> {
+        let current_state = BoardState::new_chess960_from_num(position_number)?;
+        let mut state_history: Vec<BoardState> = Vec::new();
+        log::info!("State history created");
+        state_history.push(current_state.clone());
+
+        let transposition_table = transposition::TranspositionTable::new();
+        log::info!("Transposition table created");
+        log::info!("New Chess960 variant Board created from position number: {}", position_number);
+        Ok(Board {
+            variant: Variant::Chess960,
+            current_state,
+            state_history,
+            move_history: Vec::new(),
+            game_over_state: None,
+            transposition_table,
+        })
     }
 
     pub fn set_resign(&mut self, side: PieceColour) {

@@ -10,6 +10,7 @@ pub enum BoardStateError {
     NoLegalMoves(GameState),
     LazyIncompatiblity(String),
     GameOver(GameOverState),
+    InvalidInput(String),
 }
 
 impl fmt::Display for BoardStateError {
@@ -22,6 +23,7 @@ impl fmt::Display for BoardStateError {
                 write!(f, "Lazy legal move generation incompatibility: {}", s)
             }
             Self::GameOver(gos) => write!(f, "Game over: {:?}", gos),
+            Self::InvalidInput(s) => write!(f, "Invalid input: {}", s),
         }
     }
 }
