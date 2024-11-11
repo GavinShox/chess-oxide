@@ -72,6 +72,34 @@ impl Pos64 {
         }
         false
     }
+
+    // returns the index of the rook closest to the 'a' file (queen side)
+    pub fn a_side_outer_rook_idx(&self, colour: PieceColour) -> usize {
+        // first rook encountered will be the closest to 'a' file indexes 0 or 56
+        self.iter()
+            .position(|s| {
+                if let Square::Piece(p) = s {
+                    p.ptype == PieceType::Rook && p.pcolour == colour
+                } else {
+                    false
+                }
+            })
+            .unwrap()
+    }
+
+    // returns the index of the rook closest to the 'h' file (king side)
+    pub fn h_side_outer_rook_idx(&self, colour: PieceColour) -> usize {
+        // first rook encountered in reverse will be the closest to 'a' file indexes 63 or 7
+        self.iter()
+            .rposition(|s| {
+                if let Square::Piece(p) = s {
+                    p.ptype == PieceType::Rook && p.pcolour == colour
+                } else {
+                    false
+                }
+            })
+            .unwrap()
+    }
 }
 
 #[derive(Debug, PartialEq, Clone)]
