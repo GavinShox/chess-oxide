@@ -87,6 +87,14 @@ fn main() -> Result<(), slint::PlatformError> {
         ui.invoke_refresh_position();
     });
 
+    let ui_weak_new_chess960_game = ui.as_weak();
+    let board_new_chess960_game = board.clone();
+    ui.on_new_chess960_game(move || {
+        let ui = ui_weak_new_chess960_game.upgrade().unwrap();
+        *board_new_chess960_game.lock().unwrap() = chess::board::Board::new_chess960();
+        ui.invoke_refresh_position();
+    });
+
     let ui_weak_refresh_position = ui.as_weak();
     let export_dialog_weak_refresh_position = export_dialog.as_weak();
     let board_refresh_position = board.clone();

@@ -34,6 +34,7 @@ export component Board_UI inherits Window {
     in property <BoardTheme> board-theme: BoardThemes.wood;
     in property <PieceTheme> piece-theme: PieceThemes.default;
     callback new-game();
+    callback new-chess960-game();
     callback make-move() -> bool;
     callback engine-make-move();
     callback refresh-position();
@@ -79,25 +80,42 @@ export component Board_UI inherits Window {
                 }
 
                 Button {
-                    text: "New Game (white)";
+                    text: "New Game";
                     width: 25%;
                     height: 25px;
                     padding: 10px;
                     clicked => {
-                        root.new-game();
-                        root.reset-properties(PieceColour-UI.White, PieceColour-UI.White);
+                        if new-game-side.current-value == "White" {
+                            root.new-game();
+                            root.reset-properties(PieceColour-UI.White, PieceColour-UI.White);
+                        } else {
+                            root.new-game();
+                            root.reset-properties(PieceColour-UI.Black, PieceColour-UI.White);
+                        }
                     }
                 }
 
                 Button {
-                    text: "New Game (black)";
+                    text: "New Chess960 Game";
                     width: 25%;
                     height: 25px;
                     padding: 10px;
                     clicked => {
-                        root.new-game();
-                        root.reset-properties(PieceColour-UI.Black, PieceColour-UI.White);
+                        if new-game-side.current-value == "White" {
+                            root.new-chess960-game();
+                            root.reset-properties(PieceColour-UI.White, PieceColour-UI.White);
+                        } else {
+                            root.new-chess960-game();
+                            root.reset-properties(PieceColour-UI.Black, PieceColour-UI.White);
+                        }
                     }
+                }
+
+                new-game-side := ComboBox {
+                    width: 25%;
+                    height: 25px;
+                    model: ["White", "Black"];
+                    current-value: "White";
                 }
             }
 
