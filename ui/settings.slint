@@ -2,11 +2,12 @@ import { StandardButton, ComboBox, CheckBox } from "std-widgets.slint";
 import { BoardTheme, PieceTheme, BoardThemes, PieceThemes } from "theme.slint";
 
 export component SettingsDialog_UI inherits Dialog {
-    title: "Settings";
+    title: "Chess Oxide - Settings";
     icon: @image-url("resources/chesslogo.png");
     default-font-family: "CaskaydiaCove Nerd Font";
-    width: 300px;
+    width: 350px;
     height: 400px;
+    padding: 10px;
     always-on-top: true;
 
     callback close();
@@ -21,17 +22,23 @@ export component SettingsDialog_UI inherits Dialog {
 
         VerticalLayout {
             spacing: 10px;
+            width: 100%;
+
             HorizontalLayout {
                 alignment: center;
                 spacing: 10px;
+                width: 300px;
                 Text {
-                    text: "Engine Depth:  ";
+                    text: "Engine Depth:";
                     font-size: 12px;
+                    width: 150px;
                     vertical-alignment: center;
+                    horizontal-alignment: left;
                 }
 
                 ComboBox {
                     height: 25px;
+                    width: 150px;
                     model: [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
                     current-value: 5;
                     selected => {
@@ -43,16 +50,20 @@ export component SettingsDialog_UI inherits Dialog {
             HorizontalLayout {
                 alignment: center;
                 spacing: 10px;
+                width: 300px;
                 Text {
-                    text: "Board Theme:  ";
+                    text: "Board Theme:";
                     font-size: 12px;
+                    width: 150px;
                     vertical-alignment: center;
+                    horizontal-alignment: left;
                 }
 
                 ComboBox {
                     model: ["Wood", "Sky Blue", "Sea Green", "Purple", "Red"];
                     current-value: "Wood";
                     height: 25px;
+                    width: 150px;
                     selected => {
                         if (self.current-value == "Wood") {
                             set-theme(BoardThemes.wood);
@@ -72,10 +83,13 @@ export component SettingsDialog_UI inherits Dialog {
             HorizontalLayout {
                 alignment: center;
                 spacing: 10px;
+                width: 300px;
                 Text {
-                    text: "Piece Theme:   ";
+                    text: "Piece Theme:";
                     font-size: 12px;
+                    width: 150px;
                     vertical-alignment: center;
+                    horizontal-alignment: left;
                 }
 
                 ComboBox {
@@ -120,6 +134,7 @@ export component SettingsDialog_UI inherits Dialog {
                     ];
                     current-value: "Default";
                     height: 25px;
+                    width: 150px;
                     selected => {
                         if (self.current-value == "Default") {
                             set-piece-theme(PieceThemes.default);
@@ -203,23 +218,32 @@ export component SettingsDialog_UI inherits Dialog {
 
         VerticalLayout {
             spacing: 10px;
+            width: 100%;
             Text {
                 text: "Debugging:";
-                font-weight: 1000;
-                horizontal-alignment: center;
+                color: lightcoral;
+                font-weight: 800;
+                horizontal-alignment: left;
+                vertical-alignment: center;
+                width: 100%;
             }
 
             HorizontalLayout {
                 alignment: center;
-                spacing: 5px;
+                spacing: 10px;
+                width: 300px;
                 Text {
                     text: "Show Engine Eval:";
+                    color: lightcoral;
                     font-size: 12px;
                     vertical-alignment: center;
+                    horizontal-alignment: left;
+                    width: 150px;
                 }
 
                 CheckBox {
                     checked: false;
+                    width: 150px;
                     toggled => {
                         set-show-eval(self.checked);
                     }

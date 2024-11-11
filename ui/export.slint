@@ -1,0 +1,56 @@
+import { TabWidget, TextEdit, Button, StandardButton, CheckBox, LineEdit } from "std-widgets.slint";
+
+export component Export_UI inherits Dialog {
+    title: "Chess Oxide - Export";
+    icon: @image-url("resources/chesslogo.png");
+    default-font-family: "CaskaydiaCove Nerd Font";
+    width: 500px;
+    height: 600px;
+    always-on-top: true;
+
+    in property <string> pgn;
+    in property <string> fen;
+
+    callback close();
+
+    VerticalLayout {
+        spacing: 10px;
+        Text {
+            horizontal-alignment: center;
+            vertical-alignment: center;
+            text: "PGN:";
+            font-size: 14px;
+            font-weight: 500;
+        }
+
+        TextEdit {
+            wrap: word-wrap;
+            max-width: root.width;
+            height: 70%;
+            text: root.pgn;
+            font-size: 12px;
+            read-only: true;
+        }
+
+        Text {
+            horizontal-alignment: center;
+            vertical-alignment: center;
+            text: "FEN:";
+            font-size: 14px;
+            font-weight: 500;
+        }
+
+        LineEdit {
+            text: root.fen;
+            horizontal-alignment: center;
+            read-only: true;
+        }
+
+        StandardButton {
+            kind: ok;
+            clicked => {
+                close();
+            }
+        }
+    }
+}

@@ -4,14 +4,15 @@ import { SettingsDialog_UI } from "settings.slint";
 import { MoveHistory } from "move_history.slint";
 import { Piece_UI, Move_UI, MoveNotation_UI, PieceType_UI, PieceColour_UI, Square, PieceImg } from "defs.slint";
 import { Import_UI } from "import.slint";
+import { Export_UI } from "export.slint";
 
 import "resources/font/CaskaydiaCoveNerdFont-Regular.ttf";
 
 // re-export for use in rust, this file is what is compiled in build.rs
-export { SettingsDialog_UI, Import_UI }
+export { SettingsDialog_UI, Import_UI, Export_UI }
 
 export component Board_UI inherits Window {
-    title: "Chess";
+    title: "Chess Oxide";
     icon: @image-url("resources/chesslogo.png");
     default-font-family: "CaskaydiaCove Nerd Font";
     //background: rgb(218, 235, 235);
@@ -26,7 +27,6 @@ export component Board_UI inherits Window {
     in-out property <Move-UI> last-move: { from-square: -1, to-square: -1, string: "" };
     in-out property <PieceColour-UI> player-colour: PieceColour-UI.White;
     in-out property <[MoveNotation-UI]> move-history;
-    in property <string> fen;
     in-out property <string> depth: "5"; // default depth 5
     in-out property <string> gamestate;
     in-out property <bool> show-eval;
@@ -40,6 +40,7 @@ export component Board_UI inherits Window {
     callback get-gamestate();
     callback settings-dialog();
     callback import-dialog();
+    callback export-dialog();
 
     public function reset-properties(player-colour: PieceColour-UI, side-to-move-colour: PieceColour-UI) {
         self.selected-from-square = -1;
@@ -232,20 +233,20 @@ export component Board_UI inherits Window {
                     width: board.width;
                     alignment: center;
                     spacing: 5px;
-                    fen_export := LineEdit {
-                        width: 65%;
-                        visible: true;
-                        font-size: 10px;
-                        text: root.fen;
-                        read-only: true;
-                        horizontal-alignment: center;
-                    }
 
                     Button {
                         width: 30%;
                         text: "Import";
                         clicked => {
                             import-dialog();
+                        }
+                    }
+
+                    Button {
+                        width: 30%;
+                        text: "Export";
+                        clicked => {
+                            export-dialog();
                         }
                     }
                 }

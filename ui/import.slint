@@ -1,7 +1,7 @@
 import { TabWidget, TextEdit, Button, StandardButton, CheckBox, LineEdit } from "std-widgets.slint";
 
 export component Import_UI inherits Dialog {
-    title: "Import";
+    title: "Chess Oxide - Import";
     icon: @image-url("resources/chesslogo.png");
     default-font-family: "CaskaydiaCove Nerd Font";
     width: 500px;
@@ -35,6 +35,15 @@ export component Import_UI inherits Dialog {
             VerticalLayout {
                 alignment: center;
                 spacing: 10px;
+
+                Text {
+                    text: "Import FEN:";
+                    font-size: 14px;
+                    vertical-alignment: center;
+                    horizontal-alignment: center;
+                }
+
+
                 fen := LineEdit {
                     text: "";
                     placeholder-text: "Enter FEN";

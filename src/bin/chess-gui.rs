@@ -2,6 +2,7 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 use std::env;
+use std::ops::Deref;
 use std::sync::{Arc, Mutex};
 
 use env_logger::{Builder, Env, Target};
@@ -62,6 +63,7 @@ fn main() -> Result<(), slint::PlatformError> {
     let ui = Board_UI::new()?;
     let settings_dialog = SettingsDialog_UI::new()?;
     let import_dialog = Import_UI::new()?;
+    let export_dialog = Export_UI::new()?;
 
     let ui_weak_get_gamestate = ui.as_weak();
     let board_get_gamestate = board.clone();
@@ -86,9 +88,11 @@ fn main() -> Result<(), slint::PlatformError> {
     });
 
     let ui_weak_refresh_position = ui.as_weak();
+    let export_dialog_weak_refresh_position = export_dialog.as_weak();
     let board_refresh_position = board.clone();
     ui.on_refresh_position(move || {
         let ui = ui_weak_refresh_position.upgrade().unwrap();
+        let export_dialog = export_dialog_weak_refresh_position.upgrade().unwrap();
         let mut ui_position: Vec<PieceUI> = vec![];
         for s in board_refresh_position
             .lock()
@@ -142,14 +146,14 @@ fn main() -> Result<(), slint::PlatformError> {
         ui.invoke_get_gamestate();
 
         // set current BoardState FEN
-        ui.set_fen(
+        export_dialog.set_fen(
             FEN::from(board_refresh_position.lock().unwrap().get_current_state())
                 .to_string()
                 .into(),
         );
         log::debug!(
             "FEN: {} generated from boardstate with hash: {}",
-            ui.get_fen(),
+            export_dialog.get_fen(),
             hash_to_string(
                 board_refresh_position
                     .lock()
@@ -166,6 +170,22 @@ fn main() -> Result<(), slint::PlatformError> {
                     .unwrap()
                     .get_current_state()
                     .position_hash
+            )
+        );
+
+        export_dialog.set_pgn(
+            PGN::from(board_refresh_position.lock().unwrap().deref())
+                .to_string()
+                .into(),
+        );
+        log::debug!(
+            "PGN generated from board with current boardstate hash: {}",
+            hash_to_string(
+                board_refresh_position
+                    .lock()
+                    .unwrap()
+                    .get_current_state()
+                    .board_hash
             )
         );
 
@@ -265,15 +285,23 @@ fn main() -> Result<(), slint::PlatformError> {
         import_dialog.show().unwrap();
     });
 
+    let export_dialog_weak_run = export_dialog.as_weak();
+    ui.on_export_dialog(move || {
+        export_dialog_weak_run.upgrade().unwrap().show().unwrap();
+    });
+
     // close all child dialogs/windows on main window close
     let import_dialog_weak_close = import_dialog.as_weak();
+    let export_dialog_weak_close = export_dialog.as_weak();
     let settings_dialog_weak_close = settings_dialog.as_weak();
     ui.window()
         .on_close_requested(move || -> slint::CloseRequestResponse {
             let import_dialog = import_dialog_weak_close.upgrade().unwrap();
+            let export_dialog = export_dialog_weak_close.upgrade().unwrap();
             let settings_dialog = settings_dialog_weak_close.upgrade().unwrap();
             import_dialog.hide().unwrap();
             settings_dialog.hide().unwrap();
+            export_dialog.hide().unwrap();
             slint::CloseRequestResponse::HideWindow
         });
 
@@ -417,6 +445,12 @@ fn main() -> Result<(), slint::PlatformError> {
                 "".into()
             }
         }
+    });
+
+    let export_dialog_weak_close = export_dialog.as_weak();
+    export_dialog.on_close(move || {
+        let export_dialog = export_dialog_weak_close.upgrade().unwrap();
+        export_dialog.hide().unwrap();
     });
 
     let settings_dialog_weak_run = settings_dialog.as_weak();
