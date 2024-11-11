@@ -3,7 +3,6 @@ use std::ops::Index;
 use std::ops::IndexMut;
 use std::vec;
 
-use rand::seq::SliceRandom;
 use rand::Rng;
 
 use crate::fen::FEN;
