@@ -11,6 +11,8 @@ use crate::movegen::*;
 use crate::zobrist;
 use crate::zobrist::PositionHash;
 
+const ATTACK_MAP_START_SIZE: usize = 100;
+
 #[derive(Debug, PartialEq, Clone, Copy)]
 pub struct Pos64([Square; 64]);
 
@@ -76,8 +78,9 @@ impl Pos64 {
 pub struct AttackMap(Vec<Move>);
 
 impl AttackMap {
-    const fn new() -> Self {
-        Self(Vec::new())
+    fn new() -> Self {
+        //Self(Vec::new())
+        Self(Vec::with_capacity(ATTACK_MAP_START_SIZE))
     }
 
     fn new_no_alloc() -> Self {
