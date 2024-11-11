@@ -307,8 +307,6 @@ impl Position {
             black_castle_long: true,
             en_passant: None,
             polyglot_en_passant: None,
-            white_king_start: 56 + king_start,
-            black_king_start: king_start,
             long_white_rook_start: 56 + long_rook_start,
             short_white_rook_start: 56 + short_rook_start,
             long_black_rook_start: long_rook_start,

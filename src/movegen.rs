@@ -11,9 +11,7 @@ pub const ROOK_OFFSET: Offset = [-10, -1, 1, 10, 0, 0, 0, 0];
 pub const QUEEN_KING_OFFSET: Offset = [-11, -10, -9, -1, 1, 9, 10, 11];
 
 // indexes for *standard* starting position
-pub const STD_BLACK_KING_START: usize = 4;
 pub const STD_LONG_WHITE_ROOK_START: usize = 56;
-pub const STD_WHITE_KING_START: usize = 60;
 pub const STD_SHORT_WHITE_ROOK_START: usize = 63;
 pub const STD_LONG_BLACK_ROOK_START: usize = 0;
 pub const STD_SHORT_BLACK_ROOK_START: usize = 7;
@@ -99,8 +97,6 @@ pub struct MovegenFlags {
     pub black_castle_long: bool,
     pub en_passant: Option<usize>,
     pub polyglot_en_passant: Option<usize>,
-    pub white_king_start: usize,
-    pub black_king_start: usize,
     pub long_white_rook_start: usize,
     pub short_white_rook_start: usize,
     pub long_black_rook_start: usize,
@@ -116,8 +112,6 @@ impl Default for MovegenFlags {
             black_castle_long: false,
             en_passant: None,
             polyglot_en_passant: None,
-            white_king_start: STD_WHITE_KING_START,
-            black_king_start: STD_BLACK_KING_START,
             long_white_rook_start: STD_LONG_WHITE_ROOK_START,
             short_white_rook_start: STD_SHORT_WHITE_ROOK_START,
             long_black_rook_start: STD_LONG_BLACK_ROOK_START,
@@ -514,36 +508,32 @@ pub(crate) fn movegen(
     }
 
     // Castling movegen
-    if piece.ptype == PieceType::King {
-        let (king_start, rook_short_start, rook_long_start, short_castle, long_castle) =
-            match piece.pcolour {
-                PieceColour::White => (
-                    movegen_flags.white_king_start,
-                    movegen_flags.short_white_rook_start,
-                    movegen_flags.long_white_rook_start,
-                    movegen_flags.white_castle_short,
-                    movegen_flags.white_castle_long,
-                ),
-                PieceColour::Black => (
-                    movegen_flags.black_king_start,
-                    movegen_flags.short_black_rook_start,
-                    movegen_flags.long_black_rook_start,
-                    movegen_flags.black_castle_short,
-                    movegen_flags.black_castle_long,
-                ),
-            };
+    if piece.ptype == PieceType::King
+        && ((piece.pcolour == PieceColour::White
+            && (movegen_flags.white_castle_short || movegen_flags.white_castle_long))
+            || (piece.pcolour == PieceColour::Black
+                && (movegen_flags.black_castle_short || movegen_flags.black_castle_long)))
+    {
+        let (rook_short_start, rook_long_start, short_castle, long_castle) = match piece.pcolour {
+            PieceColour::White => (
+                movegen_flags.short_white_rook_start,
+                movegen_flags.long_white_rook_start,
+                movegen_flags.white_castle_short,
+                movegen_flags.white_castle_long,
+            ),
+            PieceColour::Black => (
+                movegen_flags.short_black_rook_start,
+                movegen_flags.long_black_rook_start,
+                movegen_flags.black_castle_short,
+                movegen_flags.black_castle_long,
+            ),
+        };
 
-        if i == king_start {
+        if short_castle {
             let king_short_end = if piece.pcolour == PieceColour::White {
                 WHITE_KING_SHORT_CASTLE_END
             } else {
                 BLACK_KING_SHORT_CASTLE_END
-            };
-
-            let king_long_end = if piece.pcolour == PieceColour::White {
-                WHITE_KING_LONG_CASTLE_END
-            } else {
-                BLACK_KING_LONG_CASTLE_END
             };
 
             let rook_short_end = if piece.pcolour == PieceColour::White {
@@ -552,44 +542,48 @@ pub(crate) fn movegen(
                 BLACK_ROOK_SHORT_CASTLE_END
             };
 
+            if is_castle_possible(pos, i, king_short_end, rook_short_start, rook_short_end) {
+                mv_map.add_move(
+                    &(Move {
+                        piece,
+                        from: i,
+                        to: king_short_end,
+                        move_type: MoveType::Castle(CastleMove {
+                            rook_from: rook_short_start,
+                            rook_to: rook_short_end,
+                            side: CastleSide::Short,
+                        }),
+                    }),
+                );
+            }
+        }
+
+        if long_castle {
+            let king_long_end = if piece.pcolour == PieceColour::White {
+                WHITE_KING_LONG_CASTLE_END
+            } else {
+                BLACK_KING_LONG_CASTLE_END
+            };
+
             let rook_long_end = if piece.pcolour == PieceColour::White {
                 WHITE_ROOK_LONG_CASTLE_END
             } else {
                 BLACK_ROOK_LONG_CASTLE_END
             };
 
-            if short_castle {
-                if is_castle_possible(pos, i, king_short_end, rook_short_start, rook_short_end) {
-                    mv_map.add_move(
-                        &(Move {
-                            piece,
-                            from: i,
-                            to: king_short_end,
-                            move_type: MoveType::Castle(CastleMove {
-                                rook_from: rook_short_start,
-                                rook_to: rook_short_end,
-                                side: CastleSide::Short,
-                            }),
+            if is_castle_possible(pos, i, king_long_end, rook_long_start, rook_long_end) {
+                mv_map.add_move(
+                    &(Move {
+                        piece,
+                        from: i,
+                        to: king_long_end,
+                        move_type: MoveType::Castle(CastleMove {
+                            rook_from: rook_long_start,
+                            rook_to: rook_long_end,
+                            side: CastleSide::Long,
                         }),
-                    );
-                }
-            }
-
-            if long_castle {
-                if is_castle_possible(pos, i, king_long_end, rook_long_start, rook_long_end) {
-                    mv_map.add_move(
-                        &(Move {
-                            piece,
-                            from: i,
-                            to: king_long_end,
-                            move_type: MoveType::Castle(CastleMove {
-                                rook_from: rook_long_start,
-                                rook_to: rook_long_end,
-                                side: CastleSide::Long,
-                            }),
-                        }),
-                    );
-                }
+                    }),
+                );
             }
         }
     }
