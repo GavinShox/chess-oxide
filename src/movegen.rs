@@ -203,7 +203,6 @@ pub enum CastleSide {
 pub struct CastleMove {
     pub rook_from: usize,
     pub rook_to: usize,
-    pub king_squares: [usize; 6], // 6 is max number of squares a king can move in a castle I think (chess960)
     pub side: CastleSide,
 }
 
@@ -326,15 +325,13 @@ fn is_castle_possible(
     king_end: usize,
     rook_start: usize,
     rook_end: usize,
-    king_squares: &mut [usize; 6],
 ) -> bool {
     let king_direction = if king_start < king_end { 1 } else { -1 };
     let rook_direction = if rook_start < rook_end { 1 } else { -1 };
 
-    // Check if squares between king's start and end(inclusive) are empty and populate king_squares
+    // Check if squares between king's start and end(inclusive) are empty
     for j in 1..=(king_end as i32 - king_start as i32).abs() {
         let idx = (king_start as i32 + j * king_direction) as usize;
-        king_squares[j as usize] = idx;
 
         if let Square::Piece(p) = pos[idx] {
             if !(p.ptype == PieceType::Rook && idx == rook_start) {
@@ -562,15 +559,7 @@ pub(crate) fn movegen(
             };
 
             if short_castle {
-                let mut king_squares = [i; 6];
-                if is_castle_possible(
-                    pos,
-                    i,
-                    king_short_end,
-                    rook_short_start,
-                    rook_short_end,
-                    &mut king_squares,
-                ) {
+                if is_castle_possible(pos, i, king_short_end, rook_short_start, rook_short_end) {
                     mv_map.add_move(
                         &(Move {
                             piece,
@@ -579,7 +568,6 @@ pub(crate) fn movegen(
                             move_type: MoveType::Castle(CastleMove {
                                 rook_from: rook_short_start,
                                 rook_to: rook_short_end,
-                                king_squares,
                                 side: CastleSide::Short,
                             }),
                         }),
@@ -588,15 +576,7 @@ pub(crate) fn movegen(
             }
 
             if long_castle {
-                let mut king_squares = [i; 6];
-                if is_castle_possible(
-                    pos,
-                    i,
-                    king_long_end,
-                    rook_long_start,
-                    rook_long_end,
-                    &mut king_squares,
-                ) {
+                if is_castle_possible(pos, i, king_long_end, rook_long_start, rook_long_end) {
                     mv_map.add_move(
                         &(Move {
                             piece,
@@ -605,7 +585,6 @@ pub(crate) fn movegen(
                             move_type: MoveType::Castle(CastleMove {
                                 rook_from: rook_long_start,
                                 rook_to: rook_long_end,
-                                king_squares,
                                 side: CastleSide::Long,
                             }),
                         }),

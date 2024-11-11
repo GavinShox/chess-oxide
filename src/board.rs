@@ -567,7 +567,10 @@ impl Board {
 
         let transposition_table = transposition::TranspositionTable::new();
         log::info!("Transposition table created");
-        log::info!("New Chess960 variant Board created from position number: {}", position_number);
+        log::info!(
+            "New Chess960 variant Board created from position number: {}",
+            position_number
+        );
         Ok(Board {
             variant: Variant::Chess960,
             current_state,
