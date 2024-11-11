@@ -2,19 +2,19 @@ use crate::mailbox;
 use crate::position;
 
 //pub const MOVE_VEC_SIZE: usize = 27; // max number of squares a queen can possibly move to is 27
-pub type Offset = [i32; 8];
+type Offset = [i32; 8];
 
-pub const PAWN_OFFSET: Offset = [0, 0, 0, 0, 0, 0, 0, 0];
-pub const KNIGHT_OFFSET: Offset = [-21, -19, -12, -8, 8, 12, 19, 21];
-pub const BISHOP_OFFSET: Offset = [-11, -9, 9, 11, 0, 0, 0, 0];
-pub const ROOK_OFFSET: Offset = [-10, -1, 1, 10, 0, 0, 0, 0];
-pub const QUEEN_KING_OFFSET: Offset = [-11, -10, -9, -1, 1, 9, 10, 11];
+const PAWN_OFFSET: Offset = [0, 0, 0, 0, 0, 0, 0, 0];
+const KNIGHT_OFFSET: Offset = [-21, -19, -12, -8, 8, 12, 19, 21];
+const BISHOP_OFFSET: Offset = [-11, -9, 9, 11, 0, 0, 0, 0];
+const ROOK_OFFSET: Offset = [-10, -1, 1, 10, 0, 0, 0, 0];
+const QUEEN_KING_OFFSET: Offset = [-11, -10, -9, -1, 1, 9, 10, 11];
 
 // indexes for *standard* starting position
-pub const STD_LONG_WHITE_ROOK_START: usize = 56;
-pub const STD_SHORT_WHITE_ROOK_START: usize = 63;
-pub const STD_LONG_BLACK_ROOK_START: usize = 0;
-pub const STD_SHORT_BLACK_ROOK_START: usize = 7;
+const STD_LONG_WHITE_ROOK_START: usize = 56;
+const STD_SHORT_WHITE_ROOK_START: usize = 63;
+const STD_LONG_BLACK_ROOK_START: usize = 0;
+const STD_SHORT_BLACK_ROOK_START: usize = 7;
 
 // in both fischer random and standard starting positions
 const BLACK_KING_SHORT_CASTLE_END: usize = 6;
@@ -26,7 +26,7 @@ const BLACK_ROOK_LONG_CASTLE_END: usize = 3;
 const WHITE_ROOK_SHORT_CASTLE_END: usize = 61;
 const WHITE_ROOK_LONG_CASTLE_END: usize = 59;
 
-pub const PROMOTION_PIECE_TYPES: [PieceType; 4] = [
+const PROMOTION_PIECE_TYPES: [PieceType; 4] = [
     PieceType::Knight,
     PieceType::Bishop,
     PieceType::Rook,
