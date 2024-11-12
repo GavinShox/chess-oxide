@@ -1,3 +1,4 @@
+use core::num;
 use std::ops::Deref;
 use std::ops::Index;
 use std::ops::IndexMut;
@@ -73,32 +74,52 @@ impl Pos64 {
         false
     }
 
-    // returns the index of the rook closest to the 'a' file (queen side)
-    pub fn a_side_outer_rook_idx(&self, colour: PieceColour) -> usize {
-        // first rook encountered will be the closest to 'a' file indexes 0 or 56
-        self.iter()
-            .position(|s| {
-                if let Square::Piece(p) = s {
-                    p.ptype == PieceType::Rook && p.pcolour == colour
-                } else {
-                    false
-                }
-            })
-            .unwrap()
+    pub fn back_rank(&self, colour: PieceColour) -> &[Square] {
+        if colour == PieceColour::White {
+            &self.0[56..64]
+        } else {
+            &self.0[0..8]
+        }
     }
 
-    // returns the index of the rook closest to the 'h' file (king side)
-    pub fn h_side_outer_rook_idx(&self, colour: PieceColour) -> usize {
-        // first rook encountered in reverse will be the closest to 'a' file indexes 63 or 7
-        self.iter()
-            .rposition(|s| {
-                if let Square::Piece(p) = s {
-                    p.ptype == PieceType::Rook && p.pcolour == colour
-                } else {
-                    false
+    // returns the index of the rook closest to the 'a' file (queen side) in back (starting) rank if present
+    pub fn queen_side_outer_rook_idx(&self, colour: PieceColour) -> Option<usize> {
+        // first rook encountered will be the closest to 'a' file indexes 0 or 56
+        let back_rank = self.back_rank(colour);
+        let mut idx = None;
+        for (i, s) in back_rank.iter().enumerate() {
+            if let Square::Piece(p) = s {
+                if p.ptype == PieceType::Rook && p.pcolour == colour {
+                    idx = if colour == PieceColour::White {
+                        Some(i + 56)
+                    } else {
+                        Some(i)
+                    };
+                    break;
                 }
-            })
-            .unwrap()
+            }
+        }
+        idx
+    }
+
+    // returns the index of the rook closest to the 'h' file (king side) in back (starting) rank if present
+    pub fn king_side_outer_rook_idx(&self, colour: PieceColour) -> Option<usize> {
+        // first rook encountered in reverse will be the closest to 'a' file indexes 63 or 7
+        let back_rank = self.back_rank(colour);
+        let mut idx = None;
+        for (i, s) in back_rank.iter().enumerate().rev() {
+            if let Square::Piece(p) = s {
+                if p.ptype == PieceType::Rook && p.pcolour == colour {
+                    idx = if colour == PieceColour::White {
+                        Some(i + 56)
+                    } else {
+                        Some(i)
+                    };
+                    break;
+                }
+            }
+        }
+        idx
     }
 }
 

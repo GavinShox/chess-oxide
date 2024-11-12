@@ -114,17 +114,79 @@ impl fmt::Display for FEN {
         }
         fen_str.push(' ');
 
+        // if castle rook isn't outer rook for its respective side, add the file of the rook to disambiguate (XFEN castling flag)
+        // unwrap is safe as FEN will be a valid position once parsed into this struct
         if self.movegen_flags.white_castle_short {
-            fen_str.push('K');
+            if self
+                .pos64()
+                .king_side_outer_rook_idx(PieceColour::White)
+                .unwrap()
+                != self.movegen_flags.short_white_rook_start
+            {
+                fen_str.push(
+                    index_to_notation(self.movegen_flags.short_white_rook_start)
+                        .chars()
+                        .next()
+                        .unwrap()
+                        .to_ascii_uppercase(),
+                );
+            } else {
+                fen_str.push('K');
+            }
         }
         if self.movegen_flags.white_castle_long {
-            fen_str.push('Q');
+            if self
+                .pos64()
+                .queen_side_outer_rook_idx(PieceColour::White)
+                .unwrap()
+                != self.movegen_flags.long_white_rook_start
+            {
+                fen_str.push(
+                    index_to_notation(self.movegen_flags.long_white_rook_start)
+                        .chars()
+                        .next()
+                        .unwrap()
+                        .to_ascii_uppercase(),
+                );
+            } else {
+                fen_str.push('Q');
+            }
         }
         if self.movegen_flags.black_castle_short {
-            fen_str.push('k');
+            if self
+                .pos64()
+                .king_side_outer_rook_idx(PieceColour::Black)
+                .unwrap()
+                != self.movegen_flags.short_black_rook_start
+            {
+                fen_str.push(
+                    index_to_notation(self.movegen_flags.short_black_rook_start)
+                        .chars()
+                        .next()
+                        .unwrap()
+                        .to_ascii_lowercase(),
+                );
+            } else {
+                fen_str.push('k');
+            }
         }
         if self.movegen_flags.black_castle_long {
-            fen_str.push('q');
+            if self
+                .pos64()
+                .queen_side_outer_rook_idx(PieceColour::Black)
+                .unwrap()
+                != self.movegen_flags.long_black_rook_start
+            {
+                fen_str.push(
+                    index_to_notation(self.movegen_flags.long_black_rook_start)
+                        .chars()
+                        .next()
+                        .unwrap()
+                        .to_ascii_lowercase(),
+                );
+            } else {
+                fen_str.push('q');
+            }
         }
         if !(self.movegen_flags.white_castle_short
             || self.movegen_flags.white_castle_long
@@ -344,17 +406,100 @@ impl FEN {
             match c {
                 'q' => {
                     self.movegen_flags.black_castle_long = true;
+                    self.movegen_flags.long_black_rook_start =
+                        match self.pos64().queen_side_outer_rook_idx(PieceColour::Black) {
+                            Some(idx) => idx,
+                            None => {
+                                return Err(FenParseError::InvalidFen(
+                                    "Invalid FEN: Black long castle rook not found".to_string(),
+                                ))
+                            }
+                        }
                 }
                 'Q' => {
                     self.movegen_flags.white_castle_long = true;
+                    self.movegen_flags.long_white_rook_start =
+                        match self.pos64().queen_side_outer_rook_idx(PieceColour::White) {
+                            Some(idx) => idx,
+                            None => {
+                                return Err(FenParseError::InvalidFen(
+                                    "Invalid FEN: White long castle rook not found".to_string(),
+                                ))
+                            }
+                        }
                 }
                 'k' => {
                     self.movegen_flags.black_castle_short = true;
+                    self.movegen_flags.short_black_rook_start =
+                        match self.pos64().king_side_outer_rook_idx(PieceColour::Black) {
+                            Some(idx) => idx,
+                            None => {
+                                return Err(FenParseError::InvalidFen(
+                                    "Invalid FEN: Black short castle rook not found".to_string(),
+                                ))
+                            }
+                        }
                 }
                 'K' => {
                     self.movegen_flags.white_castle_short = true;
+                    self.movegen_flags.short_white_rook_start =
+                        match self.pos64().king_side_outer_rook_idx(PieceColour::White) {
+                            Some(idx) => idx,
+                            None => {
+                                return Err(FenParseError::InvalidFen(
+                                    "Invalid FEN: White short castle rook not found".to_string(),
+                                ))
+                            }
+                        }
                 }
                 '-' => {}
+                x if (x >= 'A' && x <= 'H') | (x >= 'a' && x <= 'h') => {
+                    // uppercase is white castle flag, lowercase is black castle flag
+                    let (idx, pcolour) = if x.is_ascii_uppercase() {
+                        // white notation is x1
+                        (
+                            notation_to_index(&format!("{}1", x.to_ascii_lowercase()))?,
+                            PieceColour::White,
+                        )
+                    } else {
+                        // black notation is x8
+                        (
+                            notation_to_index(&format!("{}8", x.to_ascii_lowercase()))?,
+                            PieceColour::Black,
+                        )
+                    };
+
+                    // if idx is the outer kingside rook it means the outer queenside rook is not the long castle rook
+                    // and vice versa for the short castle rook, if x is set t
+                    if let Some(i) = self.pos64().king_side_outer_rook_idx(pcolour) {
+                        if i == idx {
+                            if pcolour == PieceColour::White {
+                                self.movegen_flags.white_castle_long = true;
+                                self.movegen_flags.long_white_rook_start = idx;
+                            } else {
+                                self.movegen_flags.black_castle_long = true;
+                                self.movegen_flags.long_black_rook_start = idx;
+                            }
+                        }
+                        continue;
+                    }
+                    if let Some(i) = self.pos64().queen_side_outer_rook_idx(pcolour) {
+                        if i == idx {
+                            if pcolour == PieceColour::White {
+                                self.movegen_flags.white_castle_short = true;
+                                self.movegen_flags.short_white_rook_start = idx;
+                            } else {
+                                self.movegen_flags.black_castle_short = true;
+                                self.movegen_flags.short_black_rook_start = idx;
+                            }
+                        }
+                        continue;
+                    }
+                    return Err(FenParseError::InvalidFen(format!(
+                        "Invalid castling flag: {}. Rook disambiguation is incorrect/rook not found at file",
+                        x
+                    )));
+                }
                 other => {
                     return Err(FenParseError::InvalidFen(format!(
                         "Invalid char in third field: {}",
