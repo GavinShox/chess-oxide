@@ -28,6 +28,7 @@ export component Board_UI inherits Window {
     in-out property <Move-UI> last-move: { from-square: -1, to-square: -1, string: "" };
     in-out property <PieceColour-UI> player-colour: PieceColour-UI.White;
     in-out property <[MoveNotation-UI]> move-history;
+    in-out property <string> selected-move-notation;
     in-out property <string> depth: "5"; // default depth 5
     in-out property <string> gamestate;
     in-out property <bool> show-eval;
@@ -44,6 +45,8 @@ export component Board_UI inherits Window {
     callback import-dialog();
     callback export-dialog();
     callback find-state(string);
+    callback prev-state();
+    callback next-state();
 
     public function reset-properties(player-colour: PieceColour-UI, side-to-move-colour: PieceColour-UI) {
         self.selected-from-square = -1;
@@ -280,7 +283,8 @@ export component Board_UI inherits Window {
         VerticalLayout {
             MoveHistory {
                 move-history: root.move-history;
-                highlight-selected: root.detached-state;  // highlight selected move if board is in a detached state
+                highlight-selected: true;
+                selected-move-notation <=> root.selected-move-notation;
                 selected(n) => {
                     root.find-state(n);
                 }
@@ -291,12 +295,14 @@ export component Board_UI inherits Window {
                 Button {
                     text: "";
                     clicked => {
+                        root.prev-state();
                     }
                 }
 
                 Button {
                     text: "";
                     clicked => {
+                        root.next-state();
                     }
                 }
             }

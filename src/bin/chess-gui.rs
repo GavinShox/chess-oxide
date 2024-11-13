@@ -10,7 +10,7 @@ use slint::{ComponentHandle, SharedString};
 
 use chess::fen::FEN;
 use chess::pgn::PGN;
-use chess::{board, eval_to_string, hash_to_string, print_board};
+use chess::{eval_to_string, hash_to_string};
 
 slint::include_modules!();
 
@@ -92,6 +92,50 @@ fn main() -> Result<(), slint::PlatformError> {
     ui.on_new_chess960_game(move || {
         let ui = ui_weak_new_chess960_game.upgrade().unwrap();
         *board_new_chess960_game.lock().unwrap() = chess::board::Board::new_chess960();
+        ui.invoke_refresh_position();
+    });
+
+    let ui_weak_prev_state = ui.as_weak();
+    let board_prev_state = board.clone();
+    ui.on_prev_state(move || {
+        let ui = ui_weak_prev_state.upgrade().unwrap();
+        let detatched = board_prev_state.lock().unwrap().checkout_prev();
+        if detatched {
+            ui.set_selected_move_notation(
+                board_prev_state
+                    .lock()
+                    .unwrap()
+                    .last_move_notation_string()
+                    .into(),
+            );
+            ui.set_detached_state(true);
+        } else {
+            ui.set_selected_move_notation("".into());
+            ui.set_detached_state(false)
+        }
+
+        ui.invoke_refresh_position();
+    });
+
+    let ui_weak_next_state = ui.as_weak();
+    let board_next_state = board.clone();
+    ui.on_next_state(move || {
+        let ui = ui_weak_next_state.upgrade().unwrap();
+        let detatched = board_next_state.lock().unwrap().checkout_next();
+        if detatched {
+            ui.set_selected_move_notation(
+                board_next_state
+                    .lock()
+                    .unwrap()
+                    .last_move_notation_string()
+                    .into(),
+            );
+            ui.set_detached_state(true);
+        } else {
+            ui.set_selected_move_notation("".into());
+            ui.set_detached_state(false)
+        }
+
         ui.invoke_refresh_position();
     });
 
@@ -248,6 +292,14 @@ fn main() -> Result<(), slint::PlatformError> {
                 });
             }
         }
+        // set notation of last move as well
+        ui.set_selected_move_notation(
+            board_refresh_position
+                .lock()
+                .unwrap()
+                .last_move_notation_string()
+                .into(),
+        );
         ui.set_position(pos.into());
     });
 

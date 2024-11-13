@@ -30,12 +30,6 @@ export component MoveHistory inherits Rectangle {
                         font-size: 16px;
                         horizontal-alignment: left;
                     }
-                    states [
-                        selected when move.move-number == root.selected-move-number && root.highlight-selected: {
-                            mv-num.font-weight: 500;
-                            mv-num.color: Colors.salmon;
-                        }
-                    ]
                 }
 
                 TouchArea {
@@ -45,8 +39,8 @@ export component MoveHistory inherits Rectangle {
                         horizontal-alignment: left;
                     }
                     clicked => {
-                        root.selected-move-number = move.move-number;
                         root.selected-move-notation = move.notation1;
+                        root.selected-move-number = move.move-number;
                         root.selected(root.selected-move-notation);
                     }
                     states [
@@ -63,8 +57,8 @@ export component MoveHistory inherits Rectangle {
                         horizontal-alignment: left;
                     }
                     clicked => {
-                        root.selected-move-number = move.move-number;
                         root.selected-move-notation = move.notation2;
+                        root.selected-move-number = move.move-number;
                         root.selected(root.selected-move-notation);
                     }
                     states [

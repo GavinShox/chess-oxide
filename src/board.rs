@@ -619,6 +619,14 @@ impl Board {
         &self.current_state
     }
 
+    pub fn get_current_move_count(&self) -> u32 {
+        self.current_state.move_count
+    }
+
+    pub fn get_current_halfmove_count(&self) -> u32 {
+        self.current_state.halfmove_count
+    }
+
     pub fn get_state_history(&self) -> &Vec<BoardState> {
         &self.state_history
     }
@@ -704,6 +712,29 @@ impl Board {
         notations
     }
 
+    pub fn last_move_notation(&self) -> Option<Notation> {
+        if let Some(idx) = self.detatched_idx {
+            if idx == 0 {
+                return None;
+            } else {
+                return Some(self.move_history_notation()[idx - 1].clone());
+            }
+        } else {
+            if self.move_history_notation().is_empty() {
+                return None;
+            }
+        }
+        Some(self.move_history_notation().last().unwrap().clone())
+    }
+
+    pub fn last_move_notation_string(&self) -> String {
+        if let Some(n) = self.last_move_notation() {
+            n.to_string()
+        } else {
+            "".to_string()
+        }
+    }
+
     pub fn checkout_state(&mut self, bs: &BoardState) -> Result<(), BoardStateError> {
         if self.state_history.contains(bs) {
             let index = self.state_history.iter().position(|x| *x == *bs).unwrap();
@@ -725,46 +756,37 @@ impl Board {
     }
 
     // returns true if board is still detatched, otherwise false
-    pub fn checkout_next(&mut self) -> Result<bool, BoardStateError> {
+    pub fn checkout_next(&mut self) -> bool {
         if let Some(idx) = self.detatched_idx {
-            if idx + 1 < self.state_history.len() {
+            if idx + 1 == self.state_history.len() - 1 {
+                self.checkout_latest_state();
+                false
+            } else {
                 self.current_state = self.state_history[idx + 1].clone();
                 self.detatched_idx = Some(idx + 1);
-                Ok(true)
-            } else {
-                self.current_state = self.state_history[idx].clone();
-                self.detatched_idx = None;
-                Ok(false)
+                true
             }
         } else {
-            let err = BoardStateError::Detatched(
-                "Error checking out next state, latest state already set to current_state"
-                    .to_string(),
-            );
-            log_and_return_error!(err)
+            false
         }
     }
 
-    pub fn checkout_prev(&mut self) -> Result<(), BoardStateError> {
-        let err = BoardStateError::Detatched(
-            "Error checking out previous state, already at starting state".to_string(),
-        );
+    // returns true if board is still detatched, otherwise false
+    pub fn checkout_prev(&mut self) -> bool {
         if let Some(idx) = self.detatched_idx {
             if idx > 0 {
                 self.current_state = self.state_history[idx - 1].clone();
                 self.detatched_idx = Some(idx - 1);
-                Ok(())
-            } else {
-                log_and_return_error!(err)
             }
+            true
         } else {
             if self.state_history.len() > 1 {
-                let idx = self.state_history.len() - 1;
+                let idx = self.state_history.len() - 2; // -2 as we want the second last state not the last (current) state
                 self.detatched_idx = Some(idx);
                 self.current_state = self.state_history[idx].clone();
-                Ok(())
+                true
             } else {
-                log_and_return_error!(err)
+                false // starting state is only state
             }
         }
     }
