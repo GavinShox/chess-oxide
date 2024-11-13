@@ -11,6 +11,8 @@ pub enum BoardStateError {
     LazyIncompatiblity(String),
     GameOver(GameOverState),
     InvalidInput(String),
+    Detatched(String),
+    NotFound(String),
 }
 
 impl fmt::Display for BoardStateError {
@@ -24,6 +26,8 @@ impl fmt::Display for BoardStateError {
             }
             Self::GameOver(gos) => write!(f, "Game over: {:?}", gos),
             Self::InvalidInput(s) => write!(f, "Invalid input: {}", s),
+            Self::Detatched(s) => write!(f, "Detatched from current boardstate: {}", s),
+            Self::NotFound(s) => write!(f, "Not found: {}", s),
         }
     }
 }

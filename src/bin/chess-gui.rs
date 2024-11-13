@@ -10,7 +10,7 @@ use slint::{ComponentHandle, SharedString};
 
 use chess::fen::FEN;
 use chess::pgn::PGN;
-use chess::{eval_to_string, hash_to_string};
+use chess::{board, eval_to_string, hash_to_string, print_board};
 
 slint::include_modules!();
 
@@ -92,6 +92,30 @@ fn main() -> Result<(), slint::PlatformError> {
     ui.on_new_chess960_game(move || {
         let ui = ui_weak_new_chess960_game.upgrade().unwrap();
         *board_new_chess960_game.lock().unwrap() = chess::board::Board::new_chess960();
+        ui.invoke_refresh_position();
+    });
+
+    let ui_weak_find_state = ui.as_weak();
+    let board_find_state = board.clone();
+    ui.on_find_state(move |notation| {
+        let ui = ui_weak_find_state.upgrade().unwrap();
+        // unwrap is safe as notation is valid and handled correctly in slint UI
+        let state = board_find_state
+            .lock()
+            .unwrap()
+            .find_state_by_notation(notation.as_str())
+            .unwrap()
+            .clone();
+
+        log::debug!("State found for notation: {}", notation);
+        // unwrap is safe as state was found and is Some()
+        board_find_state
+            .lock()
+            .unwrap()
+            .checkout_state(&state)
+            .unwrap();
+        log::debug!("State checked out, detatched idx set");
+        ui.set_detached_state(board_find_state.lock().unwrap().is_detatched());
         ui.invoke_refresh_position();
     });
 

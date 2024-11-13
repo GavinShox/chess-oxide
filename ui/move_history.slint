@@ -3,6 +3,11 @@ import { MoveNotation_UI } from "defs.slint";
 
 export component MoveHistory inherits Rectangle {
     in property <[MoveNotation-UI]> move-history;
+    in-out property <int> selected-move-number;
+    in-out property <string> selected-move-notation;
+    in-out property <bool> highlight-selected: false;
+
+    callback selected(string);
 
     VerticalLayout {
         padding: 10px;
@@ -14,18 +19,61 @@ export component MoveHistory inherits Rectangle {
             font-weight: 500;
         }
 
-        // Rectangle {
-        //     border-color: black;
-        //     border-radius: 5px;
-        //     border-width: 1px;
-        //     width: 200px;
-            ListView {
-                width: 150px;
-                for move in move-history: Text {
-                    text: " " + move.move-number + ". " + move.notation1 + " " + move.notation2;
-                    font-size: 16px;
+        ListView {
+            width: 150px;
+            for move in move-history: HorizontalLayout {
+                alignment: start;
+
+                TouchArea {
+                    mv-num := Text {
+                        text: " " + move.move-number + ". ";
+                        font-size: 16px;
+                        horizontal-alignment: left;
+                    }
+                    states [
+                        selected when move.move-number == root.selected-move-number && root.highlight-selected: {
+                            mv-num.font-weight: 500;
+                            mv-num.color: Colors.salmon;
+                        }
+                    ]
+                }
+
+                TouchArea {
+                    mv1 := Text {
+                        text: move.notation1 + " ";
+                        font-size: 16px;
+                        horizontal-alignment: left;
+                    }
+                    clicked => {
+                        root.selected-move-number = move.move-number;
+                        root.selected-move-notation = move.notation1;
+                        root.selected(root.selected-move-notation);
+                    }
+                    states [
+                        selected when move.notation1 == root.selected-move-notation && root.highlight-selected: {
+                            mv1.color: Colors.salmon;
+                        }
+                    ]
+                }
+
+                TouchArea {
+                    mv2 := Text {
+                        text: move.notation2;
+                        font-size: 16px;
+                        horizontal-alignment: left;
+                    }
+                    clicked => {
+                        root.selected-move-number = move.move-number;
+                        root.selected-move-notation = move.notation2;
+                        root.selected(root.selected-move-notation);
+                    }
+                    states [
+                        selected when move.notation2 == root.selected-move-notation && root.highlight-selected: {
+                            mv2.color: Colors.salmon;
+                        }
+                    ]
                 }
             }
-        //}
+        }
     }
 }

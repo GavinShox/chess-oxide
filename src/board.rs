@@ -449,6 +449,7 @@ pub struct Board {
     move_history: Vec<Move>,
     game_over_state: Option<GameOverState>,
     transposition_table: transposition::TranspositionTable,
+    detatched_idx: Option<usize>,
 }
 
 impl Default for Board {
@@ -471,6 +472,7 @@ impl From<FEN> for Board {
             move_history: Vec::new(),
             game_over_state: None,
             transposition_table,
+            detatched_idx: None,
         }
     }
 }
@@ -537,6 +539,7 @@ impl Board {
             move_history: Vec::new(),
             game_over_state: None,
             transposition_table,
+            detatched_idx: None,
         }
     }
 
@@ -556,6 +559,7 @@ impl Board {
             move_history: Vec::new(),
             game_over_state: None,
             transposition_table,
+            detatched_idx: None,
         }
     }
 
@@ -578,6 +582,7 @@ impl Board {
             move_history: Vec::new(),
             game_over_state: None,
             transposition_table,
+            detatched_idx: None,
         })
     }
 
@@ -626,7 +631,22 @@ impl Board {
         self.variant
     }
 
+    pub fn is_detatched(&self) -> bool {
+        self.detatched_idx.is_some()
+    }
+
+    pub fn detatched_idx(&self) -> Option<usize> {
+        self.detatched_idx
+    }
+
     pub fn make_move(&mut self, mv: &Move) -> Result<GameState, BoardStateError> {
+        if let Some(idx) = self.detatched_idx {
+            let err = BoardStateError::Detatched(format!(
+                "Detatched from current boardstate at index {}. Cannot make move",
+                idx
+            ));
+            log_and_return_error!(err)
+        }
         if let Some(gos) = self.game_over_state {
             let err = BoardStateError::GameOver(gos);
             log_and_return_error!(err)
@@ -645,6 +665,13 @@ impl Board {
     }
 
     pub fn make_engine_move(&mut self, depth: u8) -> Result<(GameState, i32), BoardStateError> {
+        if let Some(idx) = self.detatched_idx {
+            let err = BoardStateError::Detatched(format!(
+                "Detatched from current boardstate at index {}. Cannot make engine move",
+                idx
+            ));
+            log_and_return_error!(err)
+        }
         if let Some(gos) = self.game_over_state {
             let err = BoardStateError::GameOver(gos);
             log_and_return_error!(err)
@@ -675,6 +702,93 @@ impl Board {
             notations.push(notation);
         }
         notations
+    }
+
+    pub fn checkout_state(&mut self, bs: &BoardState) -> Result<(), BoardStateError> {
+        if self.state_history.contains(bs) {
+            let index = self.state_history.iter().position(|x| *x == *bs).unwrap();
+            self.current_state = self.state_history[index].clone();
+            // not detatched if index is the latest state
+            self.detatched_idx = if index + 1 == self.state_history.len() {
+                None
+            } else {
+                Some(index)
+            };
+            Ok(())
+        } else {
+            let err = BoardStateError::NotFound(format!(
+                "BoardState ({}) not found in state history",
+                bs.board_hash
+            ));
+            log_and_return_error!(err)
+        }
+    }
+
+    // returns true if board is still detatched, otherwise false
+    pub fn checkout_next(&mut self) -> Result<bool, BoardStateError> {
+        if let Some(idx) = self.detatched_idx {
+            if idx + 1 < self.state_history.len() {
+                self.current_state = self.state_history[idx + 1].clone();
+                self.detatched_idx = Some(idx + 1);
+                Ok(true)
+            } else {
+                self.current_state = self.state_history[idx].clone();
+                self.detatched_idx = None;
+                Ok(false)
+            }
+        } else {
+            let err = BoardStateError::Detatched(
+                "Error checking out next state, latest state already set to current_state"
+                    .to_string(),
+            );
+            log_and_return_error!(err)
+        }
+    }
+
+    pub fn checkout_prev(&mut self) -> Result<(), BoardStateError> {
+        let err = BoardStateError::Detatched(
+            "Error checking out previous state, already at starting state".to_string(),
+        );
+        if let Some(idx) = self.detatched_idx {
+            if idx > 0 {
+                self.current_state = self.state_history[idx - 1].clone();
+                self.detatched_idx = Some(idx - 1);
+                Ok(())
+            } else {
+                log_and_return_error!(err)
+            }
+        } else {
+            if self.state_history.len() > 1 {
+                let idx = self.state_history.len() - 1;
+                self.detatched_idx = Some(idx);
+                self.current_state = self.state_history[idx].clone();
+                Ok(())
+            } else {
+                log_and_return_error!(err)
+            }
+        }
+    }
+
+    pub fn checkout_latest_state(&mut self) {
+        self.detatched_idx = None;
+        self.current_state = self.state_history.last().unwrap().clone();
+    }
+
+    pub fn checkout_starting_state(&mut self) {
+        self.detatched_idx = Some(0);
+        self.current_state = self.state_history[0].clone();
+    }
+
+    pub fn find_state_by_notation(&self, notation: &str) -> Option<&BoardState> {
+        let mut state_iter = self.state_history.iter();
+        state_iter.next(); // skip starting state
+
+        for (state, n) in state_iter.zip(self.move_history_notation()) {
+            if n.to_string() == notation {
+                return Some(state);
+            }
+        }
+        None
     }
 
     pub fn get_current_gamestate(&self) -> GameState {

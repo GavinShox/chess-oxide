@@ -21,6 +21,7 @@ export component Board_UI inherits Window {
     property <length> square-size: 60px;
 
     in-out property <[Piece_UI]> position;
+    in-out property <bool> detached-state: false;
     out property <int> selected-from-square: -1;
     out property <int> selected-to-square: -1;
     in-out property <bool> engine-made-move: true;
@@ -42,6 +43,7 @@ export component Board_UI inherits Window {
     callback settings-dialog();
     callback import-dialog();
     callback export-dialog();
+    callback find-state(string);
 
     public function reset-properties(player-colour: PieceColour-UI, side-to-move-colour: PieceColour-UI) {
         self.selected-from-square = -1;
@@ -228,6 +230,10 @@ export component Board_UI inherits Window {
                                     disabled when !root.engine-made-move: {
                                         ta.enabled: false;
                                     }
+                                    disabled-detatched when root.detached-state: {
+                                        ta.enabled: false;
+                                        square.background: square.get-square-background().transparentize(0.15);
+                                    }
                                 ]
                             }
                         }
@@ -271,8 +277,29 @@ export component Board_UI inherits Window {
             }
         }
 
-        MoveHistory {
-            move-history: root.move-history;
+        VerticalLayout {
+            MoveHistory {
+                move-history: root.move-history;
+                highlight-selected: root.detached-state;  // highlight selected move if board is in a detached state
+                selected(n) => {
+                    root.find-state(n);
+                }
+            }
+
+            HorizontalLayout {
+                spacing: 5px;
+                Button {
+                    text: "";
+                    clicked => {
+                    }
+                }
+
+                Button {
+                    text: "";
+                    clicked => {
+                    }
+                }
+            }
         }
     }
 }
