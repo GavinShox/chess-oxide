@@ -22,6 +22,8 @@ export component Board_UI inherits Window {
 
     in-out property <[Piece_UI]> position;
     in-out property <bool> detached-state: false;
+    in-out property <[bool]> selected-legal-moves;
+    in-out property <bool> show-legal-moves: false;
     out property <int> selected-from-square: -1;
     out property <int> selected-to-square: -1;
     in-out property <bool> engine-made-move: true;
@@ -50,12 +52,14 @@ export component Board_UI inherits Window {
     callback prev-state();
     callback next-state();
     callback latest-state();
+    callback select-legal-moves(int);
 
     public function reset-properties(player-colour: PieceColour-UI, side-to-move-colour: PieceColour-UI) {
         self.selected-from-square = -1;
         self.selected-to-square = -1;
         self.engine-made-move = true;
         self.last-move = { from-square: -1, to-square: -1 };
+        self.selected-legal-moves = [];
         self.selected-move-notation = "";
         self.detached-state = false;
         self.selected-move-number = 0;
@@ -191,12 +195,14 @@ export component Board_UI inherits Window {
                                     height: parent.height;
                                     piece-theme: root.piece-theme;
                                 }
+                                legal-move: root.selected-legal-moves[self.index] && root.show-legal-moves;
 
                                 ta := TouchArea {
                                     height: 100%;
                                     width: 100%;
                                     clicked => {
                                         if root.selected-from-square == -1 {
+                                            root.select-legal-moves(square.index);
                                             root.selected-from-square = square.index;
                                         } else if root.selected-from-square >= 0 && root.selected-to-square == -1 && root.engine-made-move {
                                             root.selected-to-square = square.index;
@@ -208,8 +214,10 @@ export component Board_UI inherits Window {
                                             }// reset variables even if move was invalid
                                             root.selected-from-square = -1;
                                             root.selected-to-square = -1;
+                                            root.selected-legal-moves = [];
                                             // reselect square if there was a players piece there
                                             if root.position[square.index].piece-colour == root.player-colour {
+                                                root.select-legal-moves(square.index);
                                                 root.selected-from-square = square.index;
                                             }
                                         }// shouldnt reach this else

@@ -15,6 +15,7 @@ export component SettingsDialog_UI inherits Dialog {
     callback set-depth(string);
     callback set-piece-theme(PieceTheme);
     callback set-show-eval(bool);
+    callback set-show-legal-moves(bool);
 
     VerticalLayout {
         alignment: start;
@@ -211,6 +212,27 @@ export component SettingsDialog_UI inherits Dialog {
                         } else if (self.current-value == "Tatiana") {
                             set-piece-theme(PieceThemes.tatiana);
                         }
+                    }
+                }
+            }
+
+            HorizontalLayout {
+                alignment: center;
+                spacing: 10px;
+                width: 300px;
+                Text {
+                    text: "Show Legal Moves:";
+                    font-size: 12px;
+                    width: 150px;
+                    vertical-alignment: center;
+                    horizontal-alignment: left;
+                }
+
+                CheckBox {
+                    checked: false;
+                    width: 150px;
+                    toggled => {
+                        set-show-legal-moves(self.checked);
                     }
                 }
             }

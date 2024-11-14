@@ -95,6 +95,22 @@ fn main() -> Result<(), slint::PlatformError> {
         ui.invoke_refresh_position();
     });
 
+    let ui_select_legal_moves = ui.as_weak();
+    let board_select_legal_moves = board.clone();
+    ui.on_select_legal_moves(move |from_square| {
+        let ui = ui_select_legal_moves.upgrade().unwrap();
+        let board = board_select_legal_moves.lock().unwrap();
+        let mut legal_moves = [false; 64];
+        for mv in board.get_current_state().get_legal_moves().unwrap() {
+            if mv.from as i32 == from_square {
+                legal_moves[mv.to as usize] = true;
+            }
+        }
+        ui.set_selected_legal_moves(
+            std::rc::Rc::new(slint::VecModel::from(legal_moves.to_vec())).into(),
+        );
+    });
+
     let ui_weak_latest_state = ui.as_weak();
     let board_latest_state = board.clone();
     ui.on_latest_state(move || {
@@ -656,6 +672,12 @@ fn main() -> Result<(), slint::PlatformError> {
     settings_dialog.on_set_show_eval(move |show| {
         let ui = ui_weak_set_show_eval.upgrade().unwrap();
         ui.set_show_eval(show);
+    });
+
+    let ui_weak_set_show_legal_moves = ui.as_weak();
+    settings_dialog.on_set_show_legal_moves(move |show| {
+        let ui = ui_weak_set_show_legal_moves.upgrade().unwrap();
+        ui.set_show_legal_moves(show);
     });
 
     ui.invoke_refresh_position();

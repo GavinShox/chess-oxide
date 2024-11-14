@@ -63,6 +63,7 @@ export component PieceImg inherits Image {
 export component Square inherits Rectangle {
     in property <int> index;
     in property <BoardTheme> theme;
+    in property <bool> legal-move;
     property <color> dark-square: theme.dark-square;
     property <color> light-square: theme.light-square;
 
@@ -74,6 +75,15 @@ export component Square inherits Rectangle {
         }
     }
 
+    if legal-move: Path {
+        stroke: gray.transparentize(0.75);
+        stroke-width: 1px;
+        commands: "M 50 50 m -25, 0 a 25,25 0 1,0 50,0 a 25,25 0 1,0 -50,0";
+        width: 50%;
+        height: 50%;
+        fill: gray.transparentize(0.75);
+    }
+
     background: get-square-background();
 
     animate background { duration: 50ms; }
@@ -82,5 +92,4 @@ export component Square inherits Rectangle {
         easing: ease-in-out-quad;
         delay: 250ms;
     }
-    //animate border-width { duration: 500ms; easing: ease-in-out-bounce; delay: 100ms;}
 }
