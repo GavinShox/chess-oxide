@@ -558,7 +558,7 @@ impl Position {
                         test_pos.pos64[last_king_idx] = Square::Empty;
                         test_pos.set_king_idx(i);
 
-                        if movegen_in_check(&test_pos.pos64, i) {
+                        if movegen_in_check(&test_pos.pos64, i, self.side) {
                             return false;
                         }
                     }
@@ -570,7 +570,7 @@ impl Position {
                 if castle_mv.rook_from != mv.to {
                     test_pos.pos64[castle_mv.rook_from] = Square::Empty;
                 }
-                if movegen_in_check(&test_pos.pos64, test_pos.get_king_idx()) {
+                if movegen_in_check(&test_pos.pos64, test_pos.get_king_idx(), self.side) {
                     return false;
                 }
 
@@ -588,7 +588,7 @@ impl Position {
         test_pos.pos64[mv.to] = test_pos.pos64[mv.from];
         test_pos.pos64[mv.from] = Square::Empty;
 
-        !movegen_in_check(&test_pos.pos64, test_pos.get_king_idx())
+        !movegen_in_check(&test_pos.pos64, test_pos.get_king_idx(), self.side)
     }
 
     #[inline(always)]
@@ -699,7 +699,7 @@ impl Position {
                 movegen(pos64, movegen_flags, *p, i, &mut self.attack_map);
             }
         }
-        self.in_check = movegen_in_check(&self.pos64, self.get_king_idx());
+        self.in_check = movegen_in_check(&self.pos64, self.get_king_idx(), self.side);
     }
 }
 

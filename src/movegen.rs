@@ -590,76 +590,58 @@ pub(crate) fn movegen(
     }
 }
 
-pub fn movegen_in_check(pos: &position::Pos64, king_idx: usize) -> bool {
-    let king_colour = if let Square::Piece(p) = pos[king_idx] {
-        p.pcolour
-    } else {
-        unreachable!("king_idx does not contain a king....")
-    }; // just give the correct value please and we dont need to panic
+pub fn movegen_in_check(pos: &position::Pos64, king_idx: usize, king_colour: PieceColour) -> bool {
     for (i, s) in pos.iter().enumerate() {
-        match s {
-            Square::Piece(piece) => {
-                if piece.pcolour != king_colour {
-                    // Move gen for pawns
-                    if piece.ptype == PieceType::Pawn {
-                        // Defending moves for pawns
-                        let attack_offset = mb_get_pawn_attack_offset(*piece);
-
-                        for j in attack_offset {
-                            let mv = mailbox::next_mailbox_number(i, j);
-                            if mv >= 0 {
-                                if (mv as usize) == king_idx {
-                                    return true;
-                                } else {
-                                    continue;
-                                }
-                            }
-                        }
-                    } else {
-                        // move gen for other pieces
-                        for j in mb_get_offset(*piece) {
-                            // end of offsets
-                            if j == 0 {
-                                break;
-                            }
-
-                            let mut mv = mailbox::next_mailbox_number(i, j);
-                            let mut slide_idx = j;
-
-                            while mv >= 0 {
-                                let mv_square = &pos[mv as usize];
-                                match mv_square {
-                                    Square::Piece(_) => {
-                                        if (mv as usize) == king_idx {
-                                            return true;
-                                        } else {
-                                            break; // break the slide after encountering a piece
-                                        }
-                                    }
-                                    Square::Empty => {
-                                        if (mv as usize) == king_idx {
-                                            return true;
-                                        }
-                                    }
-                                }
-                                // is piece a sliding type
-                                if get_slide(*piece) {
-                                    slide_idx += j;
-                                    mv = mailbox::next_mailbox_number(i, slide_idx);
-
-                                    continue;
-                                } else {
-                                    break;
-                                } // continue through rest of offsets
+        if let Square::Piece(piece) = s {
+            if piece.pcolour != king_colour {
+                // Move gen for pawns
+                if piece.ptype == PieceType::Pawn {
+                    // Defending moves for pawns
+                    let attack_offset = mb_get_pawn_attack_offset(*piece);
+                    for j in attack_offset {
+                        let mv = mailbox::next_mailbox_number(i, j);
+                        if mv >= 0 {
+                            if (mv as usize) == king_idx {
+                                return true;
                             }
                         }
                     }
                 } else {
-                    continue;
+                    // move gen for other pieces
+                    let mb_offset = mb_get_offset(*piece);
+                    let slide = get_slide(*piece);
+                    for j in mb_offset {
+                        // end of offsets
+                        if j == 0 {
+                            break;
+                        }
+
+                        let mut mv = mailbox::next_mailbox_number(i, j);
+                        let mut slide_idx = j;
+
+                        while mv >= 0 {
+                            if matches!(&pos[mv as usize], Square::Piece(_)) {
+                                if mv as usize == king_idx {
+                                    return true;
+                                }
+                                break; // break the slide after encountering a piece
+                            }
+                            // repeating this code here and in the matches! is faster than just putting it on top. Don't know why
+                            if mv as usize == king_idx {
+                                return true;
+                            }
+
+                            // is piece a sliding type
+                            if slide {
+                                slide_idx += j;
+                                mv = mailbox::next_mailbox_number(i, slide_idx);
+                                continue;
+                            } else {
+                                break;
+                            }
+                        }
+                    }
                 }
-            }
-            Square::Empty => {
-                continue;
             }
         }
     }
