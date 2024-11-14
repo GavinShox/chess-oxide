@@ -389,7 +389,7 @@ impl ZobristHashTable {
         hash
     }
 
-    fn board_state_hash(
+    const fn board_state_hash(
         &self,
         current_hash: PositionHash,
         occurrences: u8,

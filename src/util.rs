@@ -87,6 +87,7 @@ pub fn bytes_to_str(size: usize) -> String {
 }
 
 // returns the high bits of u64 returning a u32
+#[allow(clippy::cast_possible_truncation)]
 #[inline(always)]
 pub const fn high_bits(x: u64) -> u32 {
     // type casting to u32 truncates the high bits, so shift right by 32 bits and cast to u32
@@ -94,6 +95,7 @@ pub const fn high_bits(x: u64) -> u32 {
 }
 
 // returns the low bits of u64 returning a u32
+#[allow(clippy::cast_possible_truncation)]
 #[inline(always)]
 pub const fn low_bits(x: u64) -> u32 {
     // type casting to u32 truncates the high bits
