@@ -558,7 +558,7 @@ fn main() -> Result<(), slint::PlatformError> {
         let pgn_import = pgn.as_str().parse::<PGN>();
         match pgn_import {
             Ok(p) => {
-                log::debug!("Successfully parsed PGN: {:#?}", p);
+                log::debug!("Successfully parsed PGN");
                 let new_board = chess::Board::try_from(p);
                 match new_board {
                     Ok(b) => {

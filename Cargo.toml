@@ -48,5 +48,6 @@ panic = "abort"
 [profile.test]
 opt-level = 2 # optimise for performance heavy perft tests
 
-# [profile.dev]
-# opt-level = 1
+[profile.dev-perf]
+inherits = "dev"
+opt-level = 1
