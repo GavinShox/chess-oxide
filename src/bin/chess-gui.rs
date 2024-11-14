@@ -95,6 +95,22 @@ fn main() -> Result<(), slint::PlatformError> {
         ui.invoke_refresh_position();
     });
 
+    let ui_weak_latest_state = ui.as_weak();
+    let board_latest_state = board.clone();
+    ui.on_latest_state(move || {
+        let ui = ui_weak_latest_state.upgrade().unwrap();
+        board_latest_state.lock().unwrap().checkout_latest_state();
+        ui.set_selected_move_notation(
+            board_latest_state
+                .lock()
+                .unwrap()
+                .last_move_notation_string()
+                .into(),
+        );
+        ui.set_detached_state(false);
+        ui.invoke_refresh_position();
+    });
+
     let ui_weak_prev_state = ui.as_weak();
     let board_prev_state = board.clone();
     ui.on_prev_state(move || {
@@ -338,6 +354,11 @@ fn main() -> Result<(), slint::PlatformError> {
                     to_square: last_move.to as i32,
                 });
             }
+        } else {
+            ui.set_last_move(Move_UI {
+                from_square: -1,
+                to_square: -1,
+            });
         }
         // set notation of last move as well
         ui.set_selected_move_notation(
