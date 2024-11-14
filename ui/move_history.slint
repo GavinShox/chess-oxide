@@ -3,7 +3,9 @@ import { MoveNotation_UI } from "defs.slint";
 
 export component MoveHistory inherits Rectangle {
     in property <[MoveNotation-UI]> move-history;
+    // selected move and halfmove for disambiguation of moves with same notation 
     in-out property <int> selected-move-number;
+    in-out property <int> selected-halfmove;
     in-out property <string> selected-move-notation;
     in-out property <bool> highlight-selected: false;
 
@@ -41,10 +43,11 @@ export component MoveHistory inherits Rectangle {
                     clicked => {
                         root.selected-move-notation = move.notation1;
                         root.selected-move-number = move.move-number;
+                        root.selected-halfmove = 1;
                         root.selected(root.selected-move-notation);
                     }
                     states [
-                        selected when move.notation1 == root.selected-move-notation && root.highlight-selected: {
+                        selected when move.notation1 == root.selected-move-notation && root.highlight-selected && root.selected-move-number == move.move-number && root.selected-halfmove == 1: {
                             mv1.color: Colors.salmon;
                         }
                     ]
@@ -59,10 +62,11 @@ export component MoveHistory inherits Rectangle {
                     clicked => {
                         root.selected-move-notation = move.notation2;
                         root.selected-move-number = move.move-number;
+                        root.selected-halfmove = 2;
                         root.selected(root.selected-move-notation);
                     }
                     states [
-                        selected when move.notation2 == root.selected-move-notation && root.highlight-selected: {
+                        selected when move.notation2 == root.selected-move-notation && root.highlight-selected && root.selected-move-number == move.move-number && root.selected-halfmove == 2: {
                             mv2.color: Colors.salmon;
                         }
                     ]

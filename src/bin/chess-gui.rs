@@ -10,7 +10,7 @@ use slint::{ComponentHandle, SharedString};
 
 use chess::fen::FEN;
 use chess::pgn::PGN;
-use chess::{eval_to_string, hash_to_string};
+use chess::{eval_to_string, hash_to_string, PieceColour};
 
 slint::include_modules!();
 
@@ -113,7 +113,18 @@ fn main() -> Result<(), slint::PlatformError> {
             ui.set_selected_move_notation("".into());
             ui.set_detached_state(false)
         }
-
+        let side = board_prev_state.lock().unwrap().get_side_to_move();
+        ui.set_selected_halfmove(if side == PieceColour::White {
+            2 // if white is to move, last halfmove was black
+        } else {
+            1 // last halfmove was white
+        });
+        ui.set_selected_move_number(if side == PieceColour::White {
+            board_prev_state.lock().unwrap().get_current_move_count() as i32 - 1
+        // if white is to move, last move was in movecount - 1
+        } else {
+            board_prev_state.lock().unwrap().get_current_move_count() as i32 // last halfmove is in current movecount
+        });
         ui.invoke_refresh_position();
     });
 
@@ -135,7 +146,18 @@ fn main() -> Result<(), slint::PlatformError> {
             ui.set_selected_move_notation("".into());
             ui.set_detached_state(false)
         }
-
+        let side = board_next_state.lock().unwrap().get_side_to_move();
+        ui.set_selected_halfmove(if side == PieceColour::White {
+            2 // if white is to move, last halfmove was black
+        } else {
+            1 // last halfmove was white
+        });
+        ui.set_selected_move_number(if side == PieceColour::White {
+            board_next_state.lock().unwrap().get_current_move_count() as i32 - 1
+        // if white is to move, last move was in movecount - 1
+        } else {
+            board_next_state.lock().unwrap().get_current_move_count() as i32 // last halfmove is in current movecount
+        });
         ui.invoke_refresh_position();
     });
 
@@ -160,6 +182,18 @@ fn main() -> Result<(), slint::PlatformError> {
             .unwrap();
         log::debug!("State checked out, detatched idx set");
         ui.set_detached_state(board_find_state.lock().unwrap().is_detatched());
+        let side = board_find_state.lock().unwrap().get_side_to_move();
+        ui.set_selected_halfmove(if side == PieceColour::White {
+            2 // if white is to move, last halfmove was black
+        } else {
+            1 // last halfmove was white
+        });
+        ui.set_selected_move_number(if side == PieceColour::White {
+            board_find_state.lock().unwrap().get_current_move_count() as i32 - 1
+        // if white is to move, last move was in movecount - 1
+        } else {
+            board_find_state.lock().unwrap().get_current_move_count() as i32 // last halfmove is in current movecount
+        });
         ui.invoke_refresh_position();
     });
 
@@ -300,6 +334,24 @@ fn main() -> Result<(), slint::PlatformError> {
                 .last_move_notation_string()
                 .into(),
         );
+        let side = board_refresh_position.lock().unwrap().get_side_to_move();
+        ui.set_selected_halfmove(if side == PieceColour::White {
+            2 // if white is to move, last halfmove was black
+        } else {
+            1 // last halfmove was white
+        });
+        ui.set_selected_move_number(if side == PieceColour::White {
+            board_refresh_position
+                .lock()
+                .unwrap()
+                .get_current_move_count() as i32
+                - 1 // if white is to move, last move was in movecount - 1
+        } else {
+            board_refresh_position
+                .lock()
+                .unwrap()
+                .get_current_move_count() as i32 // last halfmove is in current movecount
+        });
         ui.set_position(pos.into());
     });
 
