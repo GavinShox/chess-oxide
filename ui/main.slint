@@ -30,7 +30,7 @@ export component Board_UI inherits Window {
     in-out property <[MoveNotation-UI]> move-history;
     in-out property <string> selected-move-notation;
     in-out property <int> selected-move-number;
-    in-out property <int> selected-halfmove: 1;
+    in-out property <int> selected-halfmove;
     in-out property <string> depth: "5"; // default depth 5
     in-out property <string> gamestate;
     in-out property <bool> show-eval;
@@ -55,6 +55,10 @@ export component Board_UI inherits Window {
         self.selected-to-square = -1;
         self.engine-made-move = true;
         self.last-move = { from-square: -1, to-square: -1 };
+        self.selected-move-notation = "";
+        self.detached-state = false;
+        self.selected-move-number = 0;
+        self.selected-halfmove = 0;
         root.player-colour = player-colour;
         root.eval = "";
 
@@ -288,7 +292,7 @@ export component Board_UI inherits Window {
                 highlight-selected: true;
                 selected-move-notation <=> root.selected-move-notation;
                 selected-move-number <=> root.selected-move-number;
-                selected-halfmove: root.selected-halfmove;
+                selected-halfmove <=> root.selected-halfmove;
                 selected(n) => {
                     root.find-state(n);
                 }

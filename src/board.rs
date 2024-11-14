@@ -202,7 +202,6 @@ impl BoardState {
         );
         let side_to_move = position.side;
         let last_move = *mv;
-        // deref all legal moves
         let legal_moves = Vec::with_capacity(0); // empty vec as we don't need to generate legal moves ahead of time
 
         let move_count = if side_to_move == PieceColour::White {
@@ -794,16 +793,16 @@ impl Board {
         self.current_state = self.state_history[0].clone();
     }
 
-    pub fn find_state_by_notation(&self, notation: &str) -> Option<&BoardState> {
+    pub fn find_states_by_notation(&self, notation: &str) -> Vec<&BoardState> {
         let mut state_iter = self.state_history.iter();
         state_iter.next(); // skip starting state
-
+        let mut states = Vec::new();
         for (state, n) in state_iter.zip(self.move_history_notation()) {
             if n.to_string() == notation {
-                return Some(state);
+                states.push(state);
             }
         }
-        None
+        states
     }
 
     pub fn get_current_gamestate(&self) -> GameState {

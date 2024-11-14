@@ -165,16 +165,41 @@ fn main() -> Result<(), slint::PlatformError> {
     let board_find_state = board.clone();
     ui.on_find_state(move |notation| {
         let ui = ui_weak_find_state.upgrade().unwrap();
-        // unwrap is safe as notation is valid and handled correctly in slint UI
-        let state = board_find_state
+        // get states that match notation and clone them into owned vector
+        let states = board_find_state
             .lock()
             .unwrap()
-            .find_state_by_notation(notation.as_str())
-            .unwrap()
-            .clone();
+            .find_states_by_notation(notation.as_str())
+            .into_iter()
+            .cloned()
+            .collect::<Vec<chess::BoardState>>();
 
-        log::debug!("State found for notation: {}", notation);
-        // unwrap is safe as state was found and is Some()
+        let state = if states.len() > 1 {
+            let selected_move_number = ui.get_selected_move_number();
+            let selected_halfmove = ui.get_selected_halfmove();
+            log::debug!("Multiple states found for notation: {}. Disambiguating based on selected move number: {} and selected halfmove: {}", 
+                notation, selected_move_number, selected_halfmove);
+            // find state with matching move number and halfmove
+            states
+                .iter()
+                .find(|s| {
+                    if s.side_to_move == PieceColour::White {
+                        s.move_count() as i32 == selected_move_number + 1
+                            && selected_halfmove == 2
+                    } else {
+                        s.move_count() as i32 == selected_move_number
+                            && selected_halfmove == 1
+                    }
+                })
+                .unwrap()
+                .clone()
+        } else {
+            // guaranteed to have at least one state as notation is valid from gui
+            log::debug!("Single state found for notation: {}", notation);
+            states[0].clone()
+        };
+
+        // unwrap is safe as state was found
         board_find_state
             .lock()
             .unwrap()
@@ -182,18 +207,6 @@ fn main() -> Result<(), slint::PlatformError> {
             .unwrap();
         log::debug!("State checked out, detatched idx set");
         ui.set_detached_state(board_find_state.lock().unwrap().is_detatched());
-        let side = board_find_state.lock().unwrap().get_side_to_move();
-        ui.set_selected_halfmove(if side == PieceColour::White {
-            2 // if white is to move, last halfmove was black
-        } else {
-            1 // last halfmove was white
-        });
-        ui.set_selected_move_number(if side == PieceColour::White {
-            board_find_state.lock().unwrap().get_current_move_count() as i32 - 1
-        // if white is to move, last move was in movecount - 1
-        } else {
-            board_find_state.lock().unwrap().get_current_move_count() as i32 // last halfmove is in current movecount
-        });
         ui.invoke_refresh_position();
     });
 
