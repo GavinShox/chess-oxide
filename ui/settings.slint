@@ -16,6 +16,7 @@ export component SettingsDialog_UI inherits Dialog {
     callback set-piece-theme(PieceTheme);
     callback set-show-eval(bool);
     callback set-show-legal-moves(bool);
+    callback set-show-last-move(bool);
 
     VerticalLayout {
         alignment: start;
@@ -233,6 +234,27 @@ export component SettingsDialog_UI inherits Dialog {
                     width: 150px;
                     toggled => {
                         set-show-legal-moves(self.checked);
+                    }
+                }
+            }
+
+            HorizontalLayout {
+                alignment: center;
+                spacing: 10px;
+                width: 300px;
+                Text {
+                    text: "Highlight Last Move:";
+                    font-size: 12px;
+                    width: 150px;
+                    vertical-alignment: center;
+                    horizontal-alignment: left;
+                }
+
+                CheckBox {
+                    checked: true;
+                    width: 150px;
+                    toggled => {
+                        set-show-last-move(self.checked);
                     }
                 }
             }

@@ -680,6 +680,12 @@ fn main() -> Result<(), slint::PlatformError> {
         ui.set_show_legal_moves(show);
     });
 
+    let ui_weak_set_show_last_move = ui.as_weak();
+    settings_dialog.on_set_show_last_move(move |show| {
+        let ui = ui_weak_set_show_last_move.upgrade().unwrap();
+        ui.set_show_last_move(show);
+    });
+
     ui.invoke_refresh_position();
     ui.run()
 }

@@ -36,6 +36,7 @@ export component Board_UI inherits Window {
     in-out property <string> depth: "5"; // default depth 5
     in-out property <string> gamestate;
     in-out property <bool> show-eval;
+    in-out property <bool> show-last-move: true; // default highlight last move
     in-out property <string> eval;
     in property <BoardTheme> board-theme: BoardThemes.wood;
     in property <PieceTheme> piece-theme: PieceThemes.default;
@@ -235,7 +236,7 @@ export component Board_UI inherits Window {
                                 }
 
                                 states [
-                                    last-move when root.last-move.from-square == square.index || root.last-move.to-square == square.index: {
+                                    last-move when root.show-last-move && (root.last-move.from-square == square.index || root.last-move.to-square == square.index): {
                                         square.border-color: salmon;
                                         square.border-width: 2px;
                                     }
