@@ -265,12 +265,12 @@ impl Position {
 
         // get dark square bishop index first as this number derivation scheme
         // is from perspective of white's starting pieces so these are light squares from white's perspective
-        let dark_sq_idxs = vec![1, 3, 5, 7];
+        let dark_sq_idxs = [1, 3, 5, 7];
         pieces[dark_sq_idxs[number % 4]] = PieceType::Bishop;
         number /= 4;
 
         // get light square bishop index
-        let light_sq_idxs = vec![0, 2, 4, 6];
+        let light_sq_idxs = [0, 2, 4, 6];
         pieces[light_sq_idxs[number % 4]] = PieceType::Bishop;
         number /= 4;
 

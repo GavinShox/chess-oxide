@@ -123,12 +123,13 @@ impl Default for MovegenFlags {
 impl MovegenFlags {
     // default flags for a standard starting position
     pub fn default_starting() -> Self {
-        let mut s = Self::default();
-        s.white_castle_short = true;
-        s.white_castle_long = true;
-        s.black_castle_short = true;
-        s.black_castle_long = true;
-        s
+        Self {
+            white_castle_short: true,
+            white_castle_long: true,
+            black_castle_short: true,
+            black_castle_long: true,
+            ..Default::default()
+        }
     }
 }
 

@@ -409,7 +409,6 @@ fn main() -> Result<(), slint::PlatformError> {
                 }
                 Err(e) => {
                     log::error!("BoardStateError on making engine move: {e}");
-                    return;
                 }
             },
         );

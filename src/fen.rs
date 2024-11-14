@@ -453,7 +453,7 @@ impl FEN {
                         }
                 }
                 '-' => {}
-                x if (x >= 'A' && x <= 'H') | (x >= 'a' && x <= 'h') => {
+                x if ('A'..='H').contains(&x) | ('a'..='h').contains(&x) => {
                     // uppercase is white castle flag, lowercase is black castle flag
                     let (idx, pcolour) = if x.is_ascii_uppercase() {
                         // white notation is x1
@@ -646,7 +646,7 @@ mod tests {
 
     #[test]
     fn test_fen_from_str_invalid_castling_flags() {
-        let fen_str = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KdQkq - 0 1";
+        let fen_str = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w zakK - 0 1";
         assert!(FEN::from_str(fen_str).is_err());
     }
 

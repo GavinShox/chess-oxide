@@ -481,10 +481,7 @@ impl TryFrom<pgn::PGN> for Board {
     type Error = PGNParseError;
 
     fn try_from(pgn: pgn::PGN) -> Result<Self, PGNParseError> {
-        let fen_tag = pgn.tags().iter().find(|tag| match tag {
-            Tag::FEN(_) => true,
-            _ => false,
-        });
+        let fen_tag = pgn.tags().iter().find(|tag| matches!(tag, Tag::FEN(_)));
 
         let mut board = match fen_tag {
             Some(Tag::FEN(fen_str)) => {
@@ -719,10 +716,8 @@ impl Board {
             } else {
                 return Some(self.move_history_notation()[idx - 1].clone());
             }
-        } else {
-            if self.move_history_notation().is_empty() {
-                return None;
-            }
+        } else if self.move_history_notation().is_empty() {
+            return None;
         }
         Some(self.move_history_notation().last().unwrap().clone())
     }
@@ -779,15 +774,13 @@ impl Board {
                 self.detatched_idx = Some(idx - 1);
             }
             true
+        } else if self.state_history.len() > 1 {
+            let idx = self.state_history.len() - 2; // -2 as we want the second last state not the last (current) state
+            self.detatched_idx = Some(idx);
+            self.current_state = self.state_history[idx].clone();
+            true
         } else {
-            if self.state_history.len() > 1 {
-                let idx = self.state_history.len() - 2; // -2 as we want the second last state not the last (current) state
-                self.detatched_idx = Some(idx);
-                self.current_state = self.state_history[idx].clone();
-                true
-            } else {
-                false // starting state is only state
-            }
+            false // starting state is only state
         }
     }
 
