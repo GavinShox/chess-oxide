@@ -628,7 +628,11 @@ impl Board {
     }
 
     pub fn get_game_over_state(&self) -> Option<GameOverState> {
-        self.game_over_state
+        if self.is_detatched() {
+            return None;
+        } else {
+            self.game_over_state
+        }
     }
 
     pub fn variant(&self) -> Variant {

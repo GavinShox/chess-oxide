@@ -70,13 +70,37 @@ fn main() -> Result<(), slint::PlatformError> {
     ui.on_get_gamestate(move || {
         let ui = ui_weak_get_gamestate.upgrade().unwrap();
         let board = board_get_gamestate.lock().unwrap();
-        let side_to_move = if board.get_current_state().side_to_move == chess::PieceColour::White {
-            "White"
-        } else {
-            "Black"
-        };
-        let gamestate = board.get_current_state().get_gamestate().to_string();
-        ui.set_gamestate(format!("{}'s turn: {}", side_to_move, gamestate).into());
+        let side_to_move = board.get_side_to_move();
+        match board.get_game_over_state() {
+            Some(state) => match state {
+                chess::GameOverState::WhiteResign => {
+                    ui.set_gamestate("White resigned".into());
+                }
+                chess::GameOverState::BlackResign => {
+                    ui.set_gamestate("Black resigned".into());
+                }
+                chess::GameOverState::AgreedDraw => {
+                    ui.set_gamestate("Draw agreed".into());
+                }
+                chess::GameOverState::Forced(gs) => {
+                    if gs.is_win() {
+                        ui.set_gamestate(format!("{} wins: {}", !side_to_move, gs).into());
+                    } else {
+                        ui.set_gamestate(format!("Draw: {}", gs).into());
+                    }
+                }
+            },
+            None => {
+                ui.set_gamestate(
+                    format!(
+                        "{}'s turn: {}",
+                        side_to_move,
+                        board.get_current_state().get_gamestate()
+                    )
+                    .into(),
+                );
+            }
+        }
     });
 
     let ui_weak_new_game = ui.as_weak();

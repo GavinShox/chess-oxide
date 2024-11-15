@@ -1,3 +1,5 @@
+use core::fmt;
+
 use crate::mailbox;
 use crate::position;
 
@@ -73,6 +75,15 @@ impl core::ops::Not for PieceColour {
         match self {
             Self::White => Self::Black,
             Self::Black => Self::White,
+        }
+    }
+}
+
+impl fmt::Display for PieceColour {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::White => write!(f, "White"),
+            Self::Black => write!(f, "Black"),
         }
     }
 }
