@@ -344,20 +344,12 @@ fn main() -> Result<(), slint::PlatformError> {
             )
         );
 
-        // only set last move in GUI if it is not NULL_MOVE, then unwrap() is safe
-        if board_refresh_position
+        if let Some(last_move) = board_refresh_position
             .lock()
             .unwrap()
             .get_current_state()
             .last_move
-            != chess::NULL_MOVE
         {
-            let last_move = board_refresh_position
-                .lock()
-                .unwrap()
-                .get_current_state()
-                .last_move;
-
             if ui.get_player_colour() == PieceColour_UI::Black {
                 // reverse index if player is black as the board is flipped
                 ui.set_last_move(Move_UI {

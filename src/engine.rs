@@ -334,7 +334,7 @@ fn sorted_move_indexes(
     moves: &[Move],
     captures_only: bool,
     tt_mv: ShortMove,
-    last_mv: &Move,
+    last_mv: &Option<Move>,
 ) -> Vec<usize> {
     let mut move_scores: Vec<(usize, i32)> = Vec::with_capacity(moves.len());
 
@@ -351,14 +351,17 @@ fn sorted_move_indexes(
             MoveType::Capture(capture_type) => {
                 let mv_ptype_value = get_piece_value(&mv.piece.ptype);
                 // prioritise captures, even when capturing with a more valuable piece. After trades it could still be good, so min 1
-                cmp::max(
-                    get_piece_value(&capture_type) - mv_ptype_value,
-                    1,
-                )
-                // prioritize recaptures, with least valuable piece
-                + if mv.to == last_mv.to {
-                    10000 - mv_ptype_value
-                } else { 0 }
+                cmp::max(get_piece_value(&capture_type) - mv_ptype_value, 1)
+                    + if let Some(last_mv) = last_mv {
+                        // prioritize recaptures, with least valuable piece
+                        if mv.to == last_mv.to {
+                            10000 - mv_ptype_value
+                        } else {
+                            0
+                        }
+                    } else {
+                        0
+                    }
             }
             MoveType::Promotion(promotion_type, _) => get_piece_value(&promotion_type), // TODO maybe potential capture should be taken into account
             _ => 0,

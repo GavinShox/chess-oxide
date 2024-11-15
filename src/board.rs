@@ -70,7 +70,7 @@ impl fmt::Display for GameState {
 #[derive(Debug, Clone)]
 pub struct BoardState {
     pub side_to_move: PieceColour,
-    pub last_move: Move,
+    pub last_move: Option<Move>,
     legal_moves: Vec<Move>,
     pub board_hash: u64,
     pub position_hash: u64,
@@ -149,7 +149,7 @@ impl BoardState {
             position_hash,
             board_hash,
             side_to_move,
-            last_move: NULL_MOVE,
+            last_move: None,
             legal_moves,
             position_occurences,
             lazy_legal_moves: false,
@@ -201,7 +201,7 @@ impl BoardState {
             util::hash_to_string(position_hash)
         );
         let side_to_move = position.side;
-        let last_move = *mv;
+        let last_move = Some(*mv);
         let legal_moves = Vec::with_capacity(0); // empty vec as we don't need to generate legal moves ahead of time
 
         let move_count = if side_to_move == PieceColour::White {
@@ -283,7 +283,7 @@ impl BoardState {
             util::hash_to_string(position_hash)
         );
         let side_to_move = position.side;
-        let last_move = *mv;
+        let last_move = Some(*mv);
         // deref all legal moves
         let legal_moves = position.get_legal_moves().into_iter().cloned().collect();
         log::trace!("Legal moves generated: {legal_moves:?}");
