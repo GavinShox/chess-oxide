@@ -144,7 +144,7 @@ fn main() -> Result<(), slint::PlatformError> {
             board_latest_state
                 .lock()
                 .unwrap()
-                .last_move_notation_string()
+                .last_move_string_notation()
                 .into(),
         );
         ui.set_detached_state(false);
@@ -161,7 +161,7 @@ fn main() -> Result<(), slint::PlatformError> {
                 board_prev_state
                     .lock()
                     .unwrap()
-                    .last_move_notation_string()
+                    .last_move_string_notation()
                     .into(),
             );
             ui.set_detached_state(true);
@@ -194,7 +194,7 @@ fn main() -> Result<(), slint::PlatformError> {
                 board_next_state
                     .lock()
                     .unwrap()
-                    .last_move_notation_string()
+                    .last_move_string_notation()
                     .into(),
             );
             ui.set_detached_state(true);
@@ -397,7 +397,7 @@ fn main() -> Result<(), slint::PlatformError> {
             board_refresh_position
                 .lock()
                 .unwrap()
-                .last_move_notation_string()
+                .last_move_string_notation()
                 .into(),
         );
         let side = board_refresh_position.lock().unwrap().get_side_to_move();

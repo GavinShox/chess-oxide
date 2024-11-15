@@ -725,7 +725,7 @@ impl Board {
         Some(self.move_history_notation().last().unwrap().clone())
     }
 
-    pub fn last_move_notation_string(&self) -> String {
+    pub fn last_move_string_notation(&self) -> String {
         if let Some(n) = self.last_move_notation() {
             n.to_string()
         } else {
