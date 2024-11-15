@@ -196,7 +196,7 @@ export component Board_UI inherits Window {
                                     height: parent.height;
                                     piece-theme: root.piece-theme;
                                 }
-                                legal-move: root.selected-legal-moves[self.index] && root.show-legal-moves;
+                                legal-move: root.selected-legal-moves[self.index] && root.show-legal-moves && !root.detached-state;
 
                                 ta := TouchArea {
                                     height: 100%;
