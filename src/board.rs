@@ -483,15 +483,24 @@ impl From<FEN> for Board {
 
 impl TryFrom<pgn::PGN> for Board {
     type Error = PGNParseError;
-
     fn try_from(pgn: pgn::PGN) -> Result<Self, PGNParseError> {
         let fen_tag = pgn.tags().iter().find(|tag| matches!(tag, Tag::FEN(_)));
-
+        let variant_tag = pgn.tags().iter().find(|tag| matches!(tag, Tag::Variant(_)));
         let mut board = match fen_tag {
             Some(Tag::FEN(fen_str)) => {
                 let fen = fen_str.parse::<FEN>();
                 match fen {
-                    Ok(fen) => Board::from(fen),
+                    Ok(fen) => {
+                        // default variant is set to FromPosition
+                        let mut board = Board::from(fen);
+                        if let Some(Tag::Variant(v)) = variant_tag {
+                            // set variant to Chess960 if tag is present, as both FromPosition and Chess960 will have FEN tag
+                            if v == "Chess960" {
+                                board.variant = Variant::Chess960;
+                            }
+                        }
+                        board
+                    }
                     Err(e) => {
                         log_and_return_error!(PGNParseError::NotationParseError(e.to_string()))
                     }
