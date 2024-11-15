@@ -9,7 +9,7 @@ use std::str::FromStr;
 use chrono::prelude::*;
 
 use crate::errors::PGNParseError;
-use crate::fen::{FEN, STD_STARTING_FEN_STR};
+use crate::fen::FEN;
 use crate::movegen::PieceColour;
 use crate::{board, GameOverState};
 use notation::*;
@@ -102,18 +102,13 @@ impl From<&board::Board> for PGN {
             )));
         match board.variant() {
             board::Variant::Standard => {
-                let fen = FEN::from(board.get_starting_state());
-                if fen.to_string() != STD_STARTING_FEN_STR {
-                    new.tags.push(Tag::Variant("Standard".to_string()));
-                    new.tags.push(Tag::SetUp("1".to_string()));
-                    new.tags.push(Tag::FEN(fen.to_string()));
-                } else {
-                    new.tags.push(Tag::SetUp("0".to_string()));
-                }
+                new.tags
+                    .push(Tag::Variant(board::Variant::Standard.to_string()));
+                new.tags.push(Tag::SetUp("0".to_string()));
             }
-            board::Variant::Chess960 => {
-                let fen = FEN::from(board.get_current_state());
-                new.tags.push(Tag::Variant("Chess960".to_string()));
+            v => {
+                let fen = FEN::from(board.get_starting_state());
+                new.tags.push(Tag::Variant(v.to_string()));
                 new.tags.push(Tag::SetUp("1".to_string()));
                 new.tags.push(Tag::FEN(fen.to_string()));
             }
@@ -162,7 +157,7 @@ impl fmt::Display for PGN {
         else {
             unreachable!("Result tag is required and set in all constructors, it will be found");
         };
-        pgn.push_str(&format!(" {}\n", termination_indicator));
+        pgn.push_str(&format!("{}\n", termination_indicator));
 
         write!(f, "{}", pgn)
     }

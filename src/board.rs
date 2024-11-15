@@ -431,12 +431,17 @@ pub enum Variant {
     #[default]
     Standard,
     Chess960,
+    FromPosition,
 }
 
-impl Variant {
-    #[inline]
-    pub fn is_standard(&self) -> bool {
-        matches!(self, Self::Standard)
+impl fmt::Display for Variant {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let variant_str = match self {
+            Self::Standard => "Standard",
+            Self::Chess960 => "Chess960",
+            Self::FromPosition => "From Position",
+        };
+        write!(f, "{}", variant_str)
     }
 }
 
@@ -465,7 +470,7 @@ impl From<FEN> for Board {
         // TODO gos
         log::info!("New Board created from FEN: {}", fen.to_string());
         Board {
-            variant: Variant::Standard,
+            variant: Variant::FromPosition,
             current_state,
             state_history,
             move_history: Vec::new(),
