@@ -266,8 +266,7 @@ fn pawn_promotion(
 
 #[inline(always)]
 fn is_square_empty(pos: &position::Pos64, i: usize) -> bool {
-    // unsafe { return pos.get_unchecked(i) == &Square::Empty }
-    pos[i] == Square::Empty
+    unsafe { return pos.get_unchecked(i) == &Square::Empty }
 }
 
 #[inline(always)]
