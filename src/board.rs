@@ -446,8 +446,25 @@ impl fmt::Display for Variant {
 }
 
 #[derive(Debug, Clone)]
+pub struct PlayerData {
+    pub name: Option<String>,
+    pub elo: Option<u16>,
+}
+
+impl Default for PlayerData {
+    fn default() -> Self {
+        Self {
+            name: None,
+            elo: None,
+        }
+    }
+}
+
+#[derive(Debug, Clone)]
 pub struct Board {
     variant: Variant,
+    white_player: PlayerData,
+    black_player: PlayerData,
     current_state: BoardState,
     state_history: Vec<BoardState>,
     move_history: Vec<Move>,
@@ -471,6 +488,8 @@ impl From<FEN> for Board {
         log::info!("New Board created from FEN: {}", fen.to_string());
         Board {
             variant: Variant::FromPosition,
+            white_player: PlayerData::default(),
+            black_player: PlayerData::default(),
             current_state,
             state_history,
             move_history: Vec::new(),
@@ -509,6 +528,43 @@ impl TryFrom<pgn::PGN> for Board {
             _ => Board::new(),
         };
 
+        // unwrap is safe as white and black tags are guarenteed to be present in PGN
+        let white_tag = pgn
+            .tags()
+            .iter()
+            .find(|tag| matches!(tag, Tag::White(_)))
+            .unwrap();
+        let white_elo = pgn
+            .tags()
+            .iter()
+            .find(|tag| matches!(tag, Tag::WhiteElo(_)));
+        let black_tag = pgn
+            .tags()
+            .iter()
+            .find(|tag| matches!(tag, Tag::Black(_)))
+            .unwrap();
+        let black_elo = pgn
+            .tags()
+            .iter()
+            .find(|tag| matches!(tag, Tag::BlackElo(_)));
+
+        if let Tag::White(name) = white_tag {
+            board.white_player.name = Some(name.clone());
+        }
+        if let Some(Tag::WhiteElo(elo)) = white_elo {
+            if let Ok(elo) = elo.parse::<u16>() {
+                board.white_player.elo = Some(elo);
+            }
+        }
+        if let Tag::Black(name) = black_tag {
+            board.black_player.name = Some(name.clone());
+        }
+        if let Some(Tag::BlackElo(elo)) = black_elo {
+            if let Ok(elo) = elo.parse::<u16>() {
+                board.black_player.elo = Some(elo);
+            }
+        }
+
         for notation in pgn.moves() {
             let mv = notation.to_move_with_context(board.get_current_state())?;
             match board.make_move(&mv) {
@@ -544,6 +600,8 @@ impl Board {
         log::info!("New Board created");
         Board {
             variant: Variant::Standard,
+            white_player: PlayerData::default(),
+            black_player: PlayerData::default(),
             current_state,
             state_history,
             move_history: Vec::new(),
@@ -564,6 +622,8 @@ impl Board {
         log::info!("New Chess960 variant Board created");
         Board {
             variant: Variant::Chess960,
+            white_player: PlayerData::default(),
+            black_player: PlayerData::default(),
             current_state,
             state_history,
             move_history: Vec::new(),
@@ -587,6 +647,8 @@ impl Board {
         );
         Ok(Board {
             variant: Variant::Chess960,
+            white_player: PlayerData::default(),
+            black_player: PlayerData::default(),
             current_state,
             state_history,
             move_history: Vec::new(),
