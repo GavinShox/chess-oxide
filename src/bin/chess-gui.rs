@@ -270,6 +270,7 @@ fn main() -> Result<(), slint::PlatformError> {
     let export_dialog_weak_refresh_position = export_dialog.as_weak();
     let board_refresh_position = board.clone();
     ui.on_refresh_position(move || {
+        log::debug!("Refreshing position...");
         let ui = ui_weak_refresh_position.upgrade().unwrap();
         let export_dialog = export_dialog_weak_refresh_position.upgrade().unwrap();
         let mut ui_position: Vec<PieceUI> = vec![];
@@ -419,6 +420,7 @@ fn main() -> Result<(), slint::PlatformError> {
                 .get_current_move_count() as i32 // last halfmove is in current movecount
         });
         ui.set_position(pos.into());
+        log::debug!("Position refreshed");
     });
 
     let ui_weak_make_move = ui.as_weak();
