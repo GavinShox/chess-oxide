@@ -572,7 +572,7 @@ impl TryFrom<pgn::PGN> for Board {
                 Err(e) => log_and_return_error!(PGNParseError::NotationParseError(e.to_string())),
             }
         }
-        //TODO when board can store more info set it here
+
         for tag in pgn.tags() {
             if let Tag::Result(result) = tag {
                 match result.as_str() {
@@ -709,6 +709,14 @@ impl Board {
         } else {
             self.game_over_state
         }
+    }
+
+    pub fn get_white_player(&self) -> &PlayerData {
+        &self.white_player
+    }
+
+    pub fn get_black_player(&self) -> &PlayerData {
+        &self.black_player
     }
 
     pub fn variant(&self) -> Variant {

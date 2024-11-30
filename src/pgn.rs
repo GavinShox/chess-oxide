@@ -73,8 +73,15 @@ impl From<&board::Board> for PGN {
         new.tags.push(Tag::Date(date));
 
         new.tags.push(Tag::Round("?".to_string()));
-        new.tags.push(Tag::White("?".to_string()));
-        new.tags.push(Tag::Black("?".to_string()));
+
+        match &board.get_white_player().name {
+            Some(name) => new.tags.push(Tag::White(name.to_string())),
+            None => new.tags.push(Tag::White("?".to_string())),
+        }
+        match &board.get_black_player().name {
+            Some(name) => new.tags.push(Tag::Black(name.to_string())),
+            None => new.tags.push(Tag::Black("?".to_string())),
+        }
 
         // set result tag based on Board GameOverState
         new.tags
@@ -100,6 +107,7 @@ impl From<&board::Board> for PGN {
                     }
                 },
             )));
+
         match board.variant() {
             board::Variant::Standard => {
                 new.tags
@@ -112,6 +120,15 @@ impl From<&board::Board> for PGN {
                 new.tags.push(Tag::SetUp("1".to_string()));
                 new.tags.push(Tag::FEN(fen.to_string()));
             }
+        }
+
+        match board.get_white_player().elo {
+            Some(elo) => new.tags.push(Tag::WhiteElo(elo.to_string())),
+            None => new.tags.push(Tag::WhiteElo("?".to_string())),
+        }
+        match board.get_black_player().elo {
+            Some(elo) => new.tags.push(Tag::BlackElo(elo.to_string())),
+            None => new.tags.push(Tag::BlackElo("?".to_string())),
         }
 
         new.tags.push(Tag::Termination("UNIMPLEMENTED".to_string()));
