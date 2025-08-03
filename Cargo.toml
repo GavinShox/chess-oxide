@@ -44,6 +44,7 @@ lto = "fat"
 codegen-units = 1
 opt-level = 3
 panic = "abort"
+strip = "symbols"
 
 [profile.test]
 opt-level = 2 # optimise for performance heavy perft tests
