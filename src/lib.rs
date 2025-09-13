@@ -12,6 +12,7 @@ mod position;
 mod transposition;
 mod util;
 mod zobrist;
+mod storage;
 
 pub use {
     board::*,
