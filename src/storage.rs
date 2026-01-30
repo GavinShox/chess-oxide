@@ -35,14 +35,14 @@ const CONFIG_FILE_NAME: &str = "chess_oxide.toml";
 #[cfg(target_os = "windows")]
 const CONFIG_DIR: &str = "C:\\Users\\%USERNAME%\\AppData\\Local\\chess_oxide";
 #[cfg(target_os = "linux")]
-const CONFIG_DIR: &str = "/home/$USER/.chess_oxide";
+const CONFIG_DIR: &str = "/home/$USER/.config/chess_oxide";
 #[cfg(target_os = "macos")]
 const CONFIG_DIR: &str = "/Users/$USER/Library/Application Support/chess_oxide";
 
 #[cfg(target_os = "windows")]
 const ARCHIVE_DIR: &str = "C:\\Users\\%USERNAME%\\AppData\\Local\\chess_oxide\\archives";
 #[cfg(target_os = "linux")]
-const ARCHIVE_DIR: &str = "/home/$USER/.chess_oxide/archives";
+const ARCHIVE_DIR: &str = "/home/$USER/.local/share/chess_oxide/archives";
 #[cfg(target_os = "macos")]
 const ARCHIVE_DIR: &str = "/Users/$USER/Library/Application Support/chess_oxide/archives";
 
