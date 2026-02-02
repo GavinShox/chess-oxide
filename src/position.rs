@@ -45,7 +45,7 @@ impl Default for Pos64 {
 }
 
 impl Pos64 {
-    // is a pawn of colour 'pawn_colour' is either side of square at index i, used for setting polyglot en passant flag
+    // check if a pawn of colour 'pawn_colour' is on either side of square at index i, used for setting polyglot en passant flag
     #[inline(always)]
     pub fn polyglot_is_pawn_beside(&self, i: usize, pawn_colour: PieceColour) -> bool {
         let piece = Piece {
