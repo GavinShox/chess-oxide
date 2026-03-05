@@ -27,7 +27,7 @@ debug_engine_logging = []
 
 [dependencies]
 rand = "0.8.5"
-static_init = "1.0.3"
+static_init = "1.0.4"
 log = "0.4"
 env_logger = "0.11"
 slint = "1.8.0"
