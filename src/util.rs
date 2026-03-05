@@ -111,7 +111,7 @@ pub fn hash_to_string(hash: u64) -> String {
 // Display engine eval in pawn units or handle checkmate evals as Mate in x ply/Checkmate
 pub fn eval_to_string(eval: i32) -> String {
     if is_eval_checkmate(eval) {
-        match get_checkmate_ply(eval) - 1 {
+        match get_checkmate_ply(eval) {
             0 => "Checkmate".to_string(),
             x => format!("Mate in {} ply", x),
         }
