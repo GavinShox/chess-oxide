@@ -1,4 +1,5 @@
 use core::fmt;
+use std::string;
 
 use ahash;
 use log;
@@ -460,6 +461,29 @@ impl Default for PlayerData {
     }
 }
 
+pub struct EngineAnalysis {
+    pub board_hash: u64,
+    pub position_hash: u64,
+    pub eval: i32,
+    pub best_move: Option<Move>,
+    pub best_move_notation: Option<Notation>,
+}
+
+impl fmt::Display for EngineAnalysis {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(
+            f,
+            "[Board hash: {:016x}, Position hash: {:016x}] Best move: {:?}, Notation: {}, Raw eval: {}, Str Eval: {}",
+            self.board_hash,
+            self.position_hash,
+            self.best_move,
+            self.best_move_notation.as_ref().map_or_else(|| "None".into(), |n| n.to_string()),
+            self.eval,
+            util::eval_to_string(self.eval)
+        )
+    }
+}
+
 #[derive(Debug, Clone)]
 pub struct Board {
     variant: Variant,
@@ -775,6 +799,29 @@ impl Board {
             Ok(gs) => Ok((gs, eval)),
             Err(e) => Err(e),
         }
+    }
+
+    // analyse current_state and return analysis struct
+    pub fn engine_analyse(&mut self, depth: u8) -> EngineAnalysis {
+        let (eval, mv) =
+            engine::choose_move(&self.current_state, depth, &mut self.transposition_table);
+        EngineAnalysis {
+            board_hash: self.current_state.board_hash,
+            position_hash: self.current_state.position_hash,
+            eval,
+            best_move: if mv != &NULL_MOVE { Some(*mv) } else { None },
+            best_move_notation: if mv != &NULL_MOVE {
+                // should be guaranteed to be Some if we get here. if not, it will fail silently by returning None
+                self.get_move_notation(mv).ok()
+            } else {
+                None
+            },
+        }
+    }
+
+    pub fn get_move_notation(&self, mv: &Move) -> Result<Notation, PGNParseError> {
+        // mv needs to be a legal move for current_state. If not PGNParseError is returned
+        Notation::from_mv_with_context(&self.current_state, mv)
     }
 
     pub fn move_history_string_notation(&self) -> Vec<String> {
