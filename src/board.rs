@@ -473,9 +473,9 @@ impl fmt::Display for EngineAnalysis {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(
             f,
-            "[Board hash: {:016x}, Position hash: {:016x}] Best move: {:?}, Notation: {}, Raw eval: {}, Str Eval: {}",
-            self.board_hash,
-            self.position_hash,
+            "[Board hash: {}, Position hash: {}] Best move: {:?}, Notation: {}, Raw eval: {}, Str Eval: {}",
+            util::hash_to_string(self.board_hash),
+            util::hash_to_string(self.position_hash),
             self.best_move,
             self.best_move_notation.as_ref().map_or_else(|| "None".into(), |n| n.to_string()),
             self.eval,
