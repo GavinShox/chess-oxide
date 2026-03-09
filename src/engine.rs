@@ -12,7 +12,7 @@ const CHECKMATE_VALUE: i32 = 100_000_000;
 const CHECKMATE_THRESHOLD: i32 = CHECKMATE_VALUE - 1000;
 const DRAW_VALUE: i32 = 0;
 // max depth for quiescence search, best case it should be unlimited (only stopping when there are no more captures), but in practice it takes too long
-const QUIECENCE_DEPTH: u8 = 4;
+const QUIECENCE_DEPTH: u8 = 10;
 
 // TODO for tt, to make sure checkmate eval is relative to the ply it was found at, maybe have a checkmate flag in the tt entry or an enum here for evals i dont know
 #[inline(always)]
@@ -332,14 +332,17 @@ fn negamax(
 
 fn sorted_move_indexes(
     moves: &[Move],
-    captures_only: bool,
+    quiecense_mode: bool,
     tt_mv: ShortMove,
     last_mv: &Option<Move>,
 ) -> Vec<usize> {
     let mut move_scores: Vec<(usize, i32)> = Vec::with_capacity(moves.len());
 
     for (index, mv) in moves.iter().enumerate() {
-        if captures_only && !matches!(mv.move_type, MoveType::Capture(_)) {
+        if quiecense_mode
+            && (!matches!(mv.move_type, MoveType::Capture(_))
+                || matches!(mv.move_type, MoveType::Promotion(_, _)))
+        {
             continue;
         }
         if mv == &tt_mv {
