@@ -1,5 +1,4 @@
 use core::fmt;
-use std::string;
 
 use ahash;
 use log;
@@ -66,6 +65,65 @@ impl fmt::Display for GameState {
         };
         write!(f, "{}", state_str)
     }
+}
+
+pub struct EngineAnalysis {
+    pub board_hash: u64,
+    pub position_hash: u64,
+    pub eval: i32,
+    pub best_move: Option<Move>,
+    pub best_move_notation: Option<Notation>,
+}
+
+impl fmt::Display for EngineAnalysis {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(
+            f,
+            "[Board hash: {}, Position hash: {}] Best move (notation): {}, Str Eval: {} Best move (raw): {:?}, Eval (raw): {},",
+            util::hash_to_string(self.board_hash),
+            util::hash_to_string(self.position_hash),
+            self.best_move_notation.as_ref().map_or_else(|| "None".into(), |n| n.to_string()),
+            util::eval_to_string(self.eval),
+            self.best_move,
+            self.eval
+        )
+    }
+}
+
+// analyse current_state and return analysis struct
+// TODO LEGALIT|Y CHECKS for boardstates? IF NEEDED? Could an illegal boardstate even be created? probably not
+pub fn engine_analyse_boardstate(
+    bs: &BoardState,
+    depth: u8,
+    tt: &mut transposition::TranspositionTable,
+) -> EngineAnalysis {
+    log::info!(
+        "Engine analysis started for current boardstate (bhash: {}, phash: {}) at depth {}",
+        util::hash_to_string(bs.board_hash),
+        util::hash_to_string(bs.position_hash),
+        depth
+    );
+    let (eval, mv) = engine::choose_move(bs, depth, tt);
+    let ea = EngineAnalysis {
+        board_hash: bs.board_hash,
+        position_hash: bs.position_hash,
+        eval,
+        best_move: if mv != &NULL_MOVE { Some(*mv) } else { None },
+        best_move_notation: if mv != &NULL_MOVE {
+            // should be guaranteed to be Some if we get here. if not, it will fail silently by returning None
+            bs.get_move_notation(mv).ok()
+        } else {
+            None
+        },
+    };
+    log::info!(
+        "Engine analysis for current boardstate (bhash: {}, phash: {}) completed",
+        util::hash_to_string(bs.board_hash),
+        util::hash_to_string(bs.position_hash)
+    );
+    log::info!("Engine analysis result: {}", &ea.to_string());
+
+    ea
 }
 
 #[derive(Debug, Clone)]
@@ -379,6 +437,13 @@ impl BoardState {
         }
     }
 
+    // TODO ChANGE LAZY LEGAL TO GENERATE MOVES IF ANY FUNCTION IS CALLED.
+    // MAKES MORE SENSE. THE ENGINE WONT CALL ANY OF THOSE FUNCTIONS. MAYBE LEGAL MOVES STRUCT?????
+    pub fn get_move_notation(&self, mv: &Move) -> Result<Notation, PGNParseError> {
+        // mv needs to be a legal move for &self state. If not PGNParseError is returned
+        Notation::from_mv_with_context(&self, mv)
+    }
+
     // fn is_in_check(&self) -> bool {
     //     self.position.is_in_check()
     // }
@@ -458,29 +523,6 @@ impl Default for PlayerData {
             name: None,
             elo: None,
         }
-    }
-}
-
-pub struct EngineAnalysis {
-    pub board_hash: u64,
-    pub position_hash: u64,
-    pub eval: i32,
-    pub best_move: Option<Move>,
-    pub best_move_notation: Option<Notation>,
-}
-
-impl fmt::Display for EngineAnalysis {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(
-            f,
-            "[Board hash: {}, Position hash: {}] Best move: {:?}, Notation: {}, Raw eval: {}, Str Eval: {}",
-            util::hash_to_string(self.board_hash),
-            util::hash_to_string(self.position_hash),
-            self.best_move,
-            self.best_move_notation.as_ref().map_or_else(|| "None".into(), |n| n.to_string()),
-            self.eval,
-            util::eval_to_string(self.eval)
-        )
     }
 }
 
@@ -799,29 +841,6 @@ impl Board {
             Ok(gs) => Ok((gs, eval)),
             Err(e) => Err(e),
         }
-    }
-
-    // analyse current_state and return analysis struct
-    pub fn engine_analyse(&mut self, depth: u8) -> EngineAnalysis {
-        let (eval, mv) =
-            engine::choose_move(&self.current_state, depth, &mut self.transposition_table);
-        EngineAnalysis {
-            board_hash: self.current_state.board_hash,
-            position_hash: self.current_state.position_hash,
-            eval,
-            best_move: if mv != &NULL_MOVE { Some(*mv) } else { None },
-            best_move_notation: if mv != &NULL_MOVE {
-                // should be guaranteed to be Some if we get here. if not, it will fail silently by returning None
-                self.get_move_notation(mv).ok()
-            } else {
-                None
-            },
-        }
-    }
-
-    pub fn get_move_notation(&self, mv: &Move) -> Result<Notation, PGNParseError> {
-        // mv needs to be a legal move for current_state. If not PGNParseError is returned
-        Notation::from_mv_with_context(&self.current_state, mv)
     }
 
     pub fn move_history_string_notation(&self) -> Vec<String> {
