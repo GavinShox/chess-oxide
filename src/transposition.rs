@@ -82,8 +82,20 @@ impl<T: TTData + Copy + Clone> TT<T> {
         }
     }
 
+    pub fn disabled() -> Self {
+        Self {
+            table: Vec::with_capacity(0),
+            entry_count: 0,
+            size_mb: 0,
+        }
+    }
+
+    pub fn is_disabled(&self) -> bool {
+        self.table.is_empty()
+    }
+
     pub fn get(&self, hash: PositionHash) -> Option<&T> {
-        if self.size_mb != 0 {
+        if !self.is_disabled() {
             self.table[self.get_idx(hash)].get(self.get_bucket_hash(hash))
         } else {
             None
@@ -91,7 +103,7 @@ impl<T: TTData + Copy + Clone> TT<T> {
     }
 
     pub fn insert(&mut self, hash: PositionHash, data: T) {
-        if self.size_mb != 0 {
+        if !self.is_disabled() {
             let idx = self.get_idx(hash);
             let bucket_hash = self.get_bucket_hash(hash);
             // returns true if the bucket was empty, so we can increment entry_count
@@ -104,7 +116,7 @@ impl<T: TTData + Copy + Clone> TT<T> {
     pub fn size(&self) -> usize {
         self.table.len() * NUM_BUCKETS
     }
-
+    // todo check the purpose of this function, wont it be the same as size_mb?
     pub fn heap_alloc_size(&self) -> usize {
         self.table.len() * std::mem::size_of::<Entry<T>>()
     }
