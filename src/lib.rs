@@ -15,6 +15,7 @@ mod zobrist;
 
 pub use {
     board::*,
+    engine::{abs_eval, eval_to_string},
     movegen::{
         CastleMove, CastleSide, Move, MoveType, Piece, PieceColour, PieceType, ShortMove, Square,
         NULL_MOVE, NULL_SHORT_MOVE,

@@ -465,13 +465,16 @@ fn main() -> Result<(), slint::PlatformError> {
             .to_string()
             .parse::<i32>()
             .unwrap();
+        let rel_colour = bmem.lock().unwrap().get_side_to_move(); // for getting abs eval below
         std::thread::spawn(
             move || match bmem.lock().unwrap().make_engine_move(depth as u8) {
                 Ok((_, eval)) => {
                     slint::invoke_from_event_loop(move || {
                         ui.upgrade().unwrap().invoke_refresh_position();
                         ui.upgrade().unwrap().set_engine_made_move(true);
-                        ui.upgrade().unwrap().set_eval(eval_to_string(eval).into())
+                        ui.upgrade()
+                            .unwrap()
+                            .set_eval(eval_to_string(chess::abs_eval(rel_colour, eval)).into())
                     })
                     .unwrap();
                 }

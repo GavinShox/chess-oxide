@@ -483,3 +483,26 @@ fn evaluate(bs: &BoardState) -> i32 {
         -eval
     }
 }
+
+// High level utility functions:
+
+// Display engine eval in pawn units or handle checkmate evals as Mate in x ply/Checkmate
+pub fn eval_to_string(eval: i32) -> String {
+    if is_eval_checkmate(eval) {
+        match get_checkmate_ply(eval) {
+            0 => "Checkmate".to_string(),
+            x => format!("Mate in {} ply", x),
+        }
+    } else {
+        let eval = eval as f64 / 100.0; // convert centipawns to pawns
+        format!("{:+.2}", eval)
+    }
+}
+
+// Converts an eval relative to maxi-colour, to an absolute eval from white's perspective
+pub fn abs_eval(rel_colour: PieceColour, rel_eval: i32) -> i32 {
+    match rel_colour {
+        PieceColour::White => rel_eval,
+        PieceColour::Black => -rel_eval,
+    }
+}

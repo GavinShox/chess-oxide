@@ -67,10 +67,12 @@ impl fmt::Display for GameState {
     }
 }
 
+// TODO move this into src/engine.rs? And maybe negamax can return this struct at the root (only at root for performance reasons)
 pub struct EngineAnalysis {
     pub board_hash: u64,
     pub position_hash: u64,
-    pub eval: i32,
+    pub rel_eval: i32,
+    pub abs_eval: i32,
     pub best_move: Option<Move>,
     pub best_move_notation: Option<Notation>,
 }
@@ -79,16 +81,23 @@ impl fmt::Display for EngineAnalysis {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(
             f,
-            "[Board hash: {}, Position hash: {}] Best move (notation): {}, Str Eval: {} Best move (raw): {:?}, Eval (raw): {},",
+            "[Board hash: {}, Position hash: {}] Best move: {}, Eval: {}\nDEBUG:\nBest move (raw): {:#?}\nRelative Eval (raw): {}\nAbsolute Eval (raw): {}",
             util::hash_to_string(self.board_hash),
             util::hash_to_string(self.position_hash),
             self.best_move_notation.as_ref().map_or_else(|| "None".into(), |n| n.to_string()),
-            util::eval_to_string(self.eval),
+            engine::eval_to_string(self.abs_eval),
             self.best_move,
-            self.eval
+            self.rel_eval,
+            self.abs_eval
         )
     }
 }
+
+// impl EngineAnalysis {
+//     pub fn get_string_eval(&self) -> String {
+//         engine::eval_to_string(self.abs_eval)
+//     }
+// }
 
 // analyse current_state and return analysis struct
 // TODO LEGALIT|Y CHECKS for boardstates? IF NEEDED? Could an illegal boardstate even be created? probably not
@@ -103,11 +112,12 @@ pub fn engine_analyse_boardstate(
         util::hash_to_string(bs.position_hash),
         depth
     );
-    let (eval, mv) = engine::choose_move(bs, depth, tt);
+    let (rel_eval, mv) = engine::choose_move(bs, depth, tt);
     let ea = EngineAnalysis {
         board_hash: bs.board_hash,
         position_hash: bs.position_hash,
-        eval,
+        rel_eval,
+        abs_eval: engine::abs_eval(bs.side_to_move, rel_eval),
         best_move: if mv != &NULL_MOVE { Some(*mv) } else { None },
         best_move_notation: if mv != &NULL_MOVE {
             // should be guaranteed to be Some if we get here. if not, it will fail silently by returning None
